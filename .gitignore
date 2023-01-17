@@ -1,0 +1,16 @@
+node_modules
+.env
+.vscode
+.DS_Store
+webapp-service-account.json
+server/stats.json
+server/client/stats.json
+server/backups
+loaded-transforms
+gitinfo.json
+fcrepo-webapp-*-SNAPSHOT*
+tests
+test
+temp/
+services/fin/ucd-lib-client/client/public/js
+services/fin/ucd-lib-client/client/dist
