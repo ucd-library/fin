@@ -63,15 +63,15 @@ class ElasticSearchModel {
     if( !searchDocument.sort ) {
       searchDocument.sort = [
         '_score',
-        { 'name.raw' : 'asc' }
+        { 'node.name.raw' : 'asc' }
       ]
     }
 
-    let esBody = this.searchDocumentToEsBody(searchDocument);
-    let esResult = await this.esSearch(esBody, index);
-    let result = this.esResultToDamsResult(esResult);
+    let esBody = finSearch.searchDocumentToEsBody(searchDocument);
+    let esResult = await this.esSearch(esBody, {}, index);
+    let result = finSearch.esResultToDamsResult(esResult, searchDocument);
 
-    result.results = result.results.forEach(item => {
+    result.results.forEach(item => {
       if( options.compact ) utils.compactAllTypes(item);
       if( options.singleNode ) item.node = utils.singleNode(item.id, item.node);
     });

@@ -128,7 +128,7 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
    */
   async login(params) {
     if( params.options.headless ) {
-      let authUrl = new URL(config.host+'/auth/cas/login');
+      let authUrl = new URL(config.host+'/auth/keycloak-oidc/login');
       authUrl.searchParams.set('cliRedirectUrl', `${config.host}/auth/login-shell`);
       authUrl.searchParams.set('provideJwt', 'true');
       authUrl.searchParams.set('force', 'true');
