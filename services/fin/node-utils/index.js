@@ -16,5 +16,6 @@ module.exports = {
   },
   seo : require('./lib/seo'),
   keycloak : require('./lib/keycloak.js'),
-  models : require('./lib/models.js')
+  models : require('./lib/models.js'),
+  gc : require('./lib/gc/index.js')
 }

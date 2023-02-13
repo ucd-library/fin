@@ -301,8 +301,9 @@ class FinIoImport {
         return;
       }
     } else if ( localpath !== '_virtual_' ) {
-      let localSha = await api.sha(localpath);
-      finIoNode[utils.PROPERTIES.FIN_IO.METADATA_SHA] = [{'@value': localSha}];
+      let hash = await api.hash(localpath);
+      finIoNode[utils.PROPERTIES.FIN_IO.METADATA_SHA] = [{'@value': hash.sha}];
+      finIoNode[utils.PROPERTIES.FIN_IO.METADATA_MD5] = [{'@value': hash.md5}];
     }
 
     // set ldp headers for types that must be specified there and not in @type

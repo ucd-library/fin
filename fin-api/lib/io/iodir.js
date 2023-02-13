@@ -125,7 +125,8 @@ class IoDir {
 
         // TODO: need to check for hasPart/isPartOf and add inverse
         // perhaps on the crawl?  check collection AG and dir hasPart?
-        if( this.archivalGroup && this.typeConfig && this.typeConfig.virtualIndirectContainers ) {
+        if( this.archivalGroup && this.isContainerGraphFile(p) && 
+          this.typeConfig && this.typeConfig.virtualIndirectContainers ) {
           await this.setHasRelation(p)
           // continue;
         }

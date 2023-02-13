@@ -35,6 +35,7 @@ class IoUtils {
       },
       FIN_IO : {
         METADATA_SHA : 'http://digital.ucdavis.edu/schema#finIoMetadataSha256',
+        METADATA_MD5 : 'http://digital.ucdavis.edu/schema#finIoMetadataMd5',
         INDIRECT_REFERENCE_SHA : 'http://digital.ucdavis.edu/schema#finIoIndirectReferenceSha'
       },
       LDP : {
@@ -135,6 +136,8 @@ class IoUtils {
    */
   getMainGraphNode(graph, id) {
     if( graph['@graph'] ) graph = graph['@graph'];
+    if( !Array.isArray(graph) ) graph = [graph];
+
     let mainNode = null;
 
     // if there is id given, graph by id
@@ -152,10 +155,25 @@ class IoUtils {
   }
 
   getGraphNode(graph, typeOrId) {
+    if( graph['@graph'] ) graph = graph['@graph'];
+    if( !Array.isArray(graph) ) graph = [graph];
+
     let node = graph.find(item => item['@type'] && item['@type'].includes(typeOrId));
     if( node ) return node;
     return graph.find(item => item['@id'] === typeOrId);
   }
+
+  removeGraphNode(graph, typeOrId) {
+    if( graph['@graph'] ) graph = graph['@graph'];
+    if( !Array.isArray(graph) ) graph = [graph];
+
+    let index = graph.findIndex(item => item['@type'] && item['@type'].includes(typeOrId));
+    if( index > -1 ) {
+      return graph.splice(index, 1);
+    }
+    return null;
+  }
+
 
   /**
    * @method getGraphNode
@@ -169,7 +187,9 @@ class IoUtils {
    * @param {String} prop 
    */
   getGraphValue(graph, prop) {
+    if( graph['@graph'] ) graph = graph['@graph'];
     if( !Array.isArray(graph) ) graph = [graph];
+
     for( let node of graph ) {
       if( node[prop] && node[prop].length ) {
         return node[prop][0]['@value'];

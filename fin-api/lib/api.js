@@ -155,7 +155,8 @@ class FinApi {
      */
     this.io = {
       import : new IO.import(this),
-      export : new IO.export(this)
+      export : new IO.export(this),
+      utils : IO.utils
     }
 
     /**
@@ -355,8 +356,8 @@ class FinApi {
       let shaNum = 256; // this is causing issues, fcrepo doesn't seem to calculate it correctly
       // let shaNum = 1;
 
-      var sha = await this.sha(options.file, shaNum );
-      options.headers.digest = `sha${shaNum}=${sha}`;
+      let {sha, md5} = await this.hash(options.file, shaNum);
+      options.headers.digest = `sha${shaNum}=${sha}, md5=${md5}`;
     }
 
     // set the content disposition from file name or provided filename option
@@ -389,6 +390,26 @@ class FinApi {
       fs.createReadStream(file)
         .on('data', data => hash.update(data))
         .on('close', () => resolve(hash.digest('hex')));
+    });
+  }
+
+  /**
+   * @method hash 
+   * @description Calculate md5 and sha for given file
+   */
+  hash(file, shaNum=256) {
+    return new Promise((resolve, reject) => {
+      let md5 = crypto.createHash('md5');
+      let sha = crypto.createHash('sha'+shaNum);
+      fs.createReadStream(file)
+        .on('data', data => {
+          sha.update(data)
+          md5.update(data)
+        })
+        .on('close', () => resolve({
+          sha : sha.digest('hex'),
+          md5 : md5.digest('hex')
+        }));
     });
   }
 
@@ -511,7 +532,7 @@ class FinApi {
     }
     var req = this.baseRequest('POST', options);
 
-    if( options.content ) req.body = options.content;
+    if( options.content || options.body ) req.body = options.content || options.body;
     else if( options.file ) req.body = fs.createReadStream(options.file);
 
     return _simpleRequest(req);
@@ -622,7 +643,7 @@ class FinApi {
 
     var req = this.baseRequest('PUT', options);
 
-    if( options.content !== undefined ) req.body = options.content;
+    if( options.content || options.body ) req.body = options.content || options.body;
     else if( options.file ) req.body = fs.createReadStream(options.file);
 
     if( options.partial ) {

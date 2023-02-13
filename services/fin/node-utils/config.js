@@ -7,10 +7,15 @@ var fcrepoHostname = process.env.FCREPO_HOST || 'fcrepo';
 var esHostname = process.env.ES_HOST || 'elasticsearch';
 var esPort = process.env.ES_PORT || 9200;
 
-let serviceAccountFile = process.env.GOOGLE_SERVICE_ACCOUNT_FILE || '/etc/fin/webapp-service-account.json';
+let serviceAccountFile = process.env.GOOGLE_APPLICATION_CREDENTIALS || '/etc/fin/service-account.json';
 let serviceAccountExists = fs.existsSync(serviceAccountFile) && fs.lstatSync(serviceAccountFile).isFile();
+if( serviceAccountExists && !env.GOOGLE_APPLICATION_CREDENTIALS ) {
+  env.GOOGLE_APPLICATION_CREDENTIALS = serviceAccountFile;
+}
 
 module.exports = {
+
+  dataEnv : env.DATA_ENV || 'local-dev',
 
   server : {
     url : process.env.FIN_URL || 'http://localhost:3000',
@@ -136,7 +141,12 @@ module.exports = {
     rootDir : env.FIN_MODEL_ROOT || '/fin/services/models'
   },
 
-  google : {serviceAccountExists, serviceAccountFile},
+  google : {
+    serviceAccountExists, 
+    serviceAccountFile,
+    project : env.GOOGLE_CLOUD_PROJECT,
+    pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || 'local-dev',
+  },
 
   workflow : {
     root : '/.workflow'
