@@ -2,6 +2,7 @@ const express = require('express');
 const {logger, config, keycloak} = require('@ucd-lib/fin-service-utils');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const api = require('@ucd-lib/fin-api');
 const compression = require('compression');
 
@@ -33,6 +34,11 @@ require('./lib/startupCheck')(() => {
   const app = express();
 
   app.use(cookieParser(config.server.cookieSecret)); 
+
+  app.use(cookieSession({
+    name: 'fin-gateway',
+    keys: [config.server.cookieSecret],
+  }));
 
   // strip all x-headers 
   app.use((req, res, next) => {

@@ -2,7 +2,7 @@
 
 # Config Definition
 
-The workflow definition file should exist at: /finio/workflows.json
+The workflow definition file should exist at: /fin/workflows/config.json
 
 ## Fin Base Workflows Definition:
 
@@ -34,11 +34,11 @@ When type is `gc-workflow` the following should be provided in addition to the `
 
  - `gcsBucket`: Bucket to store final products.  This is not enforced by the Fin Workflow, but will be passed as a parameter to the workflow.
  - `gcsSubpath`: subpath to store data in the GCS bucket.  Workflows should store data in GCS at gs://`gcsBucket`/`finPath`/`gcsSubpath`.  This is not enfored by the Fin Workflow, but will be passed as a parameter to the workflow.
- - `tmpGcsBucket`: When a Fin Workflow starts, a uuid `workflowId` will be generated and the container/binary at the specified path will be uploaded to gs://`tmpGcsBucket`/`workflowId`/`containerName`.  This path will be deleted in GCS after the worflow completes.
+ - `tmpGcsBucket`: When a Fin Workflow starts, a uuid `finWorkflowId` will be generated and the container/binary at the specified path will be uploaded to gs://`tmpGcsBucket`/`finWorkflowId`/`containerName`.  This path will be deleted in GCS after the worflow completes.
  - `data`: Additional parameters to send to the GC Workflow.  Note, `{{MY_VAR}}` syntax can be used to insert environment variables.
  
-The `data` parameter will automatically have `gcsBucket`, `gcsSubpath`,`tmpGcsBucket` and `workflowId` added to it.  Additionally, `finPath` and `finHost` will be added to the run parameters.
+The `data` parameter will automatically have `gcsBucket`, `gcsSubpath`,`tmpGcsBucket` and `finWorkflowId` added to it.  Additionally, `finPath` and `finHost` will be added to the run parameters.
 
 # Fin GC Workflow Definitions
 
-All workflow definitions stored in `/finio/gc-workflows/[worfklow-name].yaml` will added to GC on start.
+All workflow definitions stored in `/fin/workflows/gc/[worfklow-name].yaml` will added to GC on start.

@@ -308,13 +308,14 @@ class ProxyModel {
     }
 
     // set redirect url
-    logger.info('redirect debug', req.query.cliRedirectUrl, req.query.redirectUrl, '/');
-    let url = req.query.cliRedirectUrl || req.query.redirectUrl || '/';
-    if( req.query.provideJwt === 'true') {
-      url += '?jwt='+token+'&username='+username;
+    let url = req.session.cliRedirectUrl || req.session.redirectUrl || '/';
+    if( req.session.provideJwt === 'true') {
+      url += '?jwt='+token;
     }
 
-    logger.info('redirect debug', url);
+    delete req.session.cliRedirectUrl;
+    delete req.session.redirectUrl;
+    delete req.session.provideJwt;
     
     // hijack response, setting redirect to desired location
     res.statusCode = 302;

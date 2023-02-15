@@ -7,10 +7,10 @@ const portfinder = require('portfinder');
 const path = require('path');
 const fs = require('fs');
 
-class CASLogin {
+class BrowerLogin {
 
   async login() {
-    let server = new CASLoginServer();
+    let server = new LocalLoginServer();
 
     try {
       await server.login();
@@ -21,7 +21,7 @@ class CASLogin {
 
 }
 
-class CASLoginServer {
+class LocalLoginServer {
 
   login() {
     return new Promise((resolve, reject) => {
@@ -34,7 +34,7 @@ class CASLoginServer {
   async _initServer() {
     var port = await portfinder.getPortPromise();
 
-    let authUrl = new URL(config.host+'/auth/cas/login');
+    let authUrl = new URL(config.host+'/auth/keycloak-oidc/login');
     authUrl.searchParams.set('cliRedirectUrl', `http://localhost:${port}`);
     authUrl.searchParams.set('provideJwt', 'true');
     authUrl.searchParams.set('force', 'true');
@@ -44,18 +44,18 @@ class CASLoginServer {
       let url = new URL(`http://localhost:${port}${req.url}`);
 
       let jwt = url.searchParams.get('jwt');
-      let username = url.searchParams.get('username');
 
       // if a jwt and username is not provided in request, ignore request
       // otherwise things like a favicon request could mess us up
-      if( !jwt || !username ) return;
+      if( !jwt  ) return;
 
       config.jwt = jwt;
-      config.username = username;
 
       await this._respondWithFile(req, res, 200, path.join('..', 'templates', 'login.html'));
 
       this.resolve();
+
+      await sleep(1000);
 
       this.server.close();
     });
@@ -100,4 +100,8 @@ class CASLoginServer {
 
 }
 
-module.exports = new CASLogin();
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+module.exports = new BrowerLogin();

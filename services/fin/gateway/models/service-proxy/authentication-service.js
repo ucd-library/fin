@@ -34,6 +34,13 @@ module.exports = (req, res) => {
 
     logger.info(`AuthenticationService proxy request: ${req.originalUrl} -> ${service.url+path}`);
 
+    if( req.query.cliRedirectUrl || req.query.redirectUrl ) {
+      req.session.cliRedirectUrl = req.query.cliRedirectUrl || req.query.redirectUrl
+    }
+    if( req.query.cliRedirectUrl ) {
+      req.session.provideJwt = req.query.provideJwt;
+    }
+
     // send proxy request to new path, including reference headers to original request path
     proxy.web(req, res, {
       target : service.url+path,

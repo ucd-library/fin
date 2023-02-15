@@ -49,6 +49,7 @@ COPY ${FIN_REPO_SERVICE_ROOT}/essync essync
 COPY ${FIN_REPO_SERVICE_ROOT}/gateway gateway
 COPY ${FIN_REPO_SERVICE_ROOT}/node-utils node-utils
 COPY ${FIN_REPO_SERVICE_ROOT}/trusted-proxy trusted-proxy
+COPY ${FIN_REPO_SERVICE_ROOT}/workflow workflow
 
 # Leave us in the service root dir
 WORKDIR ${FIN_SERVICE_ROOT}

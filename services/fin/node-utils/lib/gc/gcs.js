@@ -1,5 +1,7 @@
 const api = require('@ucd-lib/fin-api');
-const {RDF_URIS, config, logger} = require('@ucd-lib/fin-service-utils');
+const RDF_URIS = require('../common-rdf-uris.js');
+const config = require('../../config.js');
+const logger = require('../logger.js');
 const {Storage} = require('@google-cloud/storage');
 const crypto = require('crypto');
 const path = require('path');
@@ -52,7 +54,12 @@ class GcsWrapper {
    * @return {Promise}
    */
   async syncToGcs(finPath, gcsBucket, opts={}) {
-    let gcsFile = 'gs://'+gcsBucket+finPath;
+    let gcPath = finPath;
+    if( opts.replacePath ) {
+      gcPath = opts.replacePath(finPath);
+    }
+
+    let gcsFile = 'gs://'+gcsBucket+gcPath;
     let fcrepoContainer = await this.syncContainerToGcs(finPath, gcsFile);
 
     if( !Array.isArray(fcrepoContainer) ) {

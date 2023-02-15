@@ -52,7 +52,7 @@ class FinIoImport {
     console.log(options);
 
     let response = await api.get({
-      path: '/finio/config.json',
+      path: '/fin/io/config.json',
     });
 
     this.instanceConfig = null;
@@ -354,11 +354,14 @@ class FinIoImport {
         let sha = shas.find(item => item[0] === '256');
         if( !sha ) sha = shas[0];
 
-        let localSha = await api.sha(binary.localpath, sha[0]);
-        if( localSha === sha[1] ) {
-          console.log(' -> IGNORING (sha match)');
-          return false;
+        if( sha[0].match(/^sha/) ) {
+          let localSha = await api.sha(binary.localpath, sha[0]);
+          if( localSha === sha[1] ) {
+            console.log(' -> IGNORING (sha match)');
+            return false;
+          }
         }
+
       }
     }
     

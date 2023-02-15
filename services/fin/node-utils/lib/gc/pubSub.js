@@ -1,6 +1,6 @@
 // import the nodejs pubsub library
 const {PubSub} = require('@google-cloud/pubsub');
-const {config} = require('@ucd-lib/fin-service-utils');
+const config = require('../../config.js');
 const EventEmitter = require('events');
 
 /**

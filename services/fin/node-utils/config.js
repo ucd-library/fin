@@ -9,8 +9,10 @@ var esPort = process.env.ES_PORT || 9200;
 
 let serviceAccountFile = process.env.GOOGLE_APPLICATION_CREDENTIALS || '/etc/fin/service-account.json';
 let serviceAccountExists = fs.existsSync(serviceAccountFile) && fs.lstatSync(serviceAccountFile).isFile();
+let gcServiceAccount = {};
 if( serviceAccountExists && !env.GOOGLE_APPLICATION_CREDENTIALS ) {
   env.GOOGLE_APPLICATION_CREDENTIALS = serviceAccountFile;
+  gcServiceAccount = JSON.parse(fs.readFileSync(serviceAccountFile, 'utf-8'));
 }
 
 module.exports = {
@@ -144,7 +146,9 @@ module.exports = {
   google : {
     serviceAccountExists, 
     serviceAccountFile,
-    project : env.GOOGLE_CLOUD_PROJECT,
+    serviceAcountEmail : env.GOOGLE_SERVICE_ACCOUNT_EMAIL || gcServiceAccount.client_email,
+    project : env.GOOGLE_CLOUD_PROJECT || gcServiceAccount.project_id,
+    location : env.GOOGLE_CLOUD_LOCATION || 'us-central1',
     pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || 'local-dev',
   },
 

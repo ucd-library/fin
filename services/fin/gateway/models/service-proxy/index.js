@@ -211,7 +211,10 @@ class ServiceProxy {
     }
 
     // check if binary
-    let binary = links.type.find(item => item.url === BINARY) ? true : false;
+    let binary = false;
+    if( links.type ) {
+      binary = links.type.find(item => item.url === BINARY) ? true : false;
+    }
 
     // we are not a binary container
     req.finContainer = {access: true, binary, links, response, token: req.token};

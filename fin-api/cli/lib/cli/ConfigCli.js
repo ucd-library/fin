@@ -3,7 +3,7 @@ const location = require('../lib/location');
 const inquirer = require('inquirer');
 const Logger = require('../lib/logger');
 const auth = require('../lib/auth');
-const cas = require('../lib/cas');
+const browserLogin = require('../lib/browser-login');
 const {URL} = require('url');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
@@ -127,6 +127,8 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
    * Login User
    */
   async login(params) {
+    if( !params.options ) params.options = {};
+
     if( params.options.headless ) {
       let authUrl = new URL(config.host+'/auth/keycloak-oidc/login');
       authUrl.searchParams.set('cliRedirectUrl', `${config.host}/auth/login-shell`);
@@ -182,30 +184,7 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
       return;
     }
 
-    if( !params.options.local ) {
-      await cas.login();
-      
-      await auth.getRefreshToken(config.jwt, {username: config.username});
-
-      Logger.log(`Logged in as ${config.username}`);
-      return;
-    }
-    
-    return this.prompt([{
-        type: 'password',
-        name: 'password',
-        message: 'password: '
-    }]).then(async args => {
-      var resp = await auth.loginPassword({
-        username : params.username,
-        password : args.password
-      });
-
-      await auth.getRefreshToken(config.jwt, {username: params.username});
-
-      if( resp ) Logger.log(`Logged in as ${params.username}`);
-      else Logger.log('Invalid username or password');
-    });
+    browserLogin.login();
   }
 
   async logout() {
