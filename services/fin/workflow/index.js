@@ -1,6 +1,6 @@
 // create express router
 const express = require('express');
-const {gc, logger} = require('@ucd-lib/fin-service-utils');
+const {gc, logger, config} = require('@ucd-lib/fin-service-utils');
 const {workflowModel} = gc;
 
 const app = express();
@@ -34,8 +34,18 @@ app.get('/', async (req, res) => {
 });
 
 app.get('/:workflowId', async (req, res) => {
+
   try {
-    res.json(await workflowModel.getWorkflowInfo(req.params.workflowId));
+    let finPath = req.query.fcPath.replace(/\/fcrepo\/rest/, '');
+    let workflow = await workflowModel.getWorkflowInfo(req.params.workflowId);
+    
+    // redirect if workflow is not for this finPath
+    if( workflow.data.finPath !== finPath ) {
+      let workflowSvcName = req.headers['x-fin-original-url'].split('/svc:')[1]
+      return res.redirect(`${config.server.url}${config.fcrepo.root}${workflow.data.finPath}/svc:${workflowSvcName}`);
+    }
+
+    res.json(workflow);
   } catch(e) {
     res.status(500).json({
       error : e.message,
@@ -44,16 +54,16 @@ app.get('/:workflowId', async (req, res) => {
   }
 });
 
-app.delete('/:workflowId', async (req, res) => {
-  try {
-    res.json(await workflowModel.cleanupWorkflow(req.params.workflowId));
-  } catch(e) {
-    res.status(500).json({
-      error : e.message,
-      stack : e.stack
-    });
-  }
-});
+// app.delete('/:workflowId', async (req, res) => {
+//   try {
+//     res.json(await workflowModel.cleanupWorkflow(req.params.workflowId));
+//   } catch(e) {
+//     res.status(500).json({
+//       error : e.message,
+//       stack : e.stack
+//     });
+//   }
+// });
 
 workflowModel.load();
 

@@ -152,8 +152,4 @@ module.exports = {
     pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || 'local-dev',
   },
 
-  workflow : {
-    root : '/.workflow'
-  }
-
 }

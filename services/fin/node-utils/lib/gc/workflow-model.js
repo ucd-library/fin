@@ -140,14 +140,14 @@ class FinGcWorkflowModel {
     return workflowName+'-'+new URL(config.server.url).hostname;
   }
 
-  replaceEnvVars(params) {
+  replaceEnvVars(params={}) {
     let out = {};
     for( let key in params ) {
       if( typeof params[key] !== 'string' ) {
         out[key] = params[key];
         continue;
       }
-      
+
       out[key] = params[key].replace(/\{\{(\w+)\}\}/g, (match, p1) => {
         return process.env[p1] || '';
       });
@@ -160,6 +160,7 @@ class FinGcWorkflowModel {
   }
   
   async setDefinition(name, definition) {
+    definition.data = this.replaceEnvVars(definition.data);
     this.definitions[name] = this.replaceEnvVars(definition);
     logger.info('Loading fin workflow definition: '+name, this.definitions[name]);
     await this.loadWorkflowIntoGc(name);
@@ -217,7 +218,7 @@ class FinGcWorkflowModel {
       let data = clone(this.definitions[finWorkflowName].data || {});
       data.gcsBucket = this.getGcsBucket(finWorkflowName);
       data.tmpGcsBucket = this.getTmpGcsBucket(finWorkflowName);
-
+      data.tmpGcsPath = 'gs://'+data.tmpGcsBucket+'/'+finWorkflowId+'/'+path.parse(finPath).base;
 
       let gcWorkflowName = this.getGcWorkflowName(finWorkflowName);
 
@@ -299,7 +300,6 @@ class FinGcWorkflowModel {
         });
       })
       .catch((err) => {
-        console.log('createExecutionErr', err);
         pg.updateWorkflow({
           finWorkflowId, 
           state: 'error', 
@@ -394,6 +394,8 @@ class FinGcWorkflowModel {
           state: 'completed', 
           data: workflow.data
         });
+
+        await this.cleanupWorkflow(workflow.workflow_id);
       } else if( execution.state === 'FAILED' ) {
         await pg.updateWorkflow({
           finWorkflowId: workflow.workflow_id, 
@@ -401,6 +403,8 @@ class FinGcWorkflowModel {
           data: JSON.stringify(workflow.data),
           error : execution.error.message
         });
+
+        await this.cleanupWorkflow(workflow.workflow_id);
       } else {
         // console.log('HERE', execution.state)
       }

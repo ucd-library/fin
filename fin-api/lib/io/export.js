@@ -11,6 +11,7 @@ const GIT_SOURCE_PROP = 'http://library.ucdavis.edu/git#';
 
 const ARCHIVAL_GROUP = 'http://fedora.info/definitions/v4/repository#ArchivalGroup';
 const BINARY = 'http://fedora.info/definitions/v4/repository#Binary';
+const NON_RDF_SOURCE = 'http://www.w3.org/ns/ldp#NonRDFSource';
 const COLLECTION = 'http://schema.org/Collection';
 const HAS_PART = 'http://schema.org/hasPart';
 
@@ -126,9 +127,11 @@ class ExportCollection {
     let cpath = options.currentPath;
 
     let isBinary = false;
-    if( links.type && links.type.find(item => item.url === BINARY) ) {
-      isBinary = true;
-      cpath += '/fcr:metadata';
+    if( links.type ) {
+      if( links.type.find(item => item.url === BINARY) || links.type.find(item => item.url === NON_RDF_SOURCE) ) {
+        isBinary = true;
+        cpath += '/fcr:metadata';
+      }
     }
 
     let isArchivalGroup = false;
@@ -142,6 +145,11 @@ class ExportCollection {
         accept : api.RDF_FORMATS.JSON_LD
       }
     });
+
+    if( metadata.last.statusCode !== 200 ) {
+      console.log('Error Access Path '+metadata.last.statusCode+': '+cpath+' '+metadata.last.body);
+      return;
+    }
 
     let graph = JSON.parse(metadata.last.body);
     metadata = graph.find(item => item['@id'].match(api.getConfig().fcBasePath+options.currentPath) );

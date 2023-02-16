@@ -94,6 +94,7 @@ class FinIoImport {
     }
 
     let counts = {};
+    console.log(rootDir.archivalGroups.length);
     rootDir.archivalGroups.forEach(item => {
       let typeConfig = item.typeConfig || {};
       if( !counts[typeConfig.id] ) counts[typeConfig.id] = 0;

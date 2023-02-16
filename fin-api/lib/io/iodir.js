@@ -17,11 +17,11 @@ class IoDir {
    * @param {Array} archivalGroups list of all known ArchivalGroups
    */
   constructor(fsroot, subPath='', config={}, archivalGroup, archivalGroups=[]) {
-    if( process.stdout && process.stdout.clearLine ) {
-      process.stdout.clearLine();
-      process.stdout.cursorTo(0); 
-      process.stdout.write('Crawling: '+subPath);
-    }
+    // if( process.stdout && process.stdout.clearLine ) {
+    //   process.stdout.clearLine();
+    //   process.stdout.cursorTo(0); 
+    //   process.stdout.write('Crawling: '+subPath);
+    // }
 
     if( !subPath.match(/^\//) ) {
       subPath = '/'+subPath;
@@ -88,7 +88,7 @@ class IoDir {
       if( !fs.statSync(p).isDirectory() ) {
 
         // if this is a .ttl file and there is a directory of same name, skip.
-        let childFileInfo = path.parse(child);
+        let childFileInfo = path.parse(child.replace(utils.CONTAINER_FILE_EXTS_REGEX, ''));
         if( this.isContainerGraphFile(child) && 
             children.includes(childFileInfo.name) && 
             fs.statSync(path.join(this.fsfull, childFileInfo.name)) ) {
