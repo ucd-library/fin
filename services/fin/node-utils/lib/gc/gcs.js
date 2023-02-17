@@ -5,6 +5,7 @@ const logger = require('../logger.js');
 const {Storage} = require('@google-cloud/storage');
 const crypto = require('crypto');
 const path = require('path');
+const pg = require('./gcs-postgres.js');
 
 // For more information on ways to initialize Storage, please see
 // https://googleapis.dev/nodejs/storage/latest/Storage.html
@@ -27,6 +28,7 @@ class GcsWrapper {
     ]
 
     this.resetStats();
+    pg.connect();
   }
 
   resetStats() {
@@ -60,7 +62,7 @@ class GcsWrapper {
     }
 
     let gcsFile = 'gs://'+gcsBucket+gcPath;
-    let fcrepoContainer = await this.syncContainerToGcs(finPath, gcsFile);
+    let fcrepoContainer = await this.syncContainerToGcs(finPath, gcsFile, opts);
 
     if( !Array.isArray(fcrepoContainer) ) {
       fcrepoContainer = [fcrepoContainer];
@@ -71,7 +73,7 @@ class GcsWrapper {
 
       for( let child of node[RDF_URIS.PROPERTIES.CONTAINS] ) {
         let childFinPath = child['@id'].split(api.getConfig().fcBasePath)[1];
-        await this.syncToGcs(childFinPath, gcsBucket);
+        await this.syncToGcs(childFinPath, gcsBucket, opts);
       }
     }
   }
@@ -86,14 +88,14 @@ class GcsWrapper {
 
       // look up root binary or container
       if( queryPath ) {
-        console.log('gs://'+gcsBucket+queryPath);
         file = await this.getGcsFile('gs://'+gcsBucket+queryPath);
-        console.log(file);
 
-        if( file && file.metadata.contentType !== 'application/ld+json' ) {
-          metadata = await this.getGcsFile('gs://'+gcsBucket+queryPath+this.JSON_LD_EXTENTION);
-        } else if( file.metadata.contentType === 'application/ld+json' ) {
-          isContainer = true;
+        if( file ) {
+          if( file.metadata.contentType !== 'application/ld+json' ) {
+            metadata = await this.getGcsFile('gs://'+gcsBucket+queryPath+this.JSON_LD_EXTENTION);
+          } else if( file.metadata.contentType === 'application/ld+json' ) {
+            isContainer = true;
+          }
         }
       }
 
@@ -103,7 +105,7 @@ class GcsWrapper {
           path : queryPath,
           dir: true,
           metadata : file
-        });
+        }, opts);
       } else if( file ) {
         await this.syncBinaryToFcrepo({
           path : queryPath,
@@ -113,6 +115,20 @@ class GcsWrapper {
 
         // there are no sub files in this folder
         // we are done.
+        return;
+      } else {
+
+        // no gcs file found, so we are done
+        await pg.updateStatus({
+          path : finPath,
+          gcsFile : gcsPath,
+          direction : 'gcs-to-fcrepo',
+          event : opts.event,
+          error : 'gcs file not found',
+          message : 'error'
+        });
+        logger.error('gcs file not found, skipping sync', gcsPath)
+
         return;
       }
 
@@ -167,7 +183,7 @@ class GcsWrapper {
       if( grouping[item].dir !== true ) continue;
       
       if( grouping[item].metadata ) {
-        await this.syncContainerToFcrepo(grouping[item]);
+        await this.syncContainerToFcrepo(grouping[item], opts);
       }
 
       opts.ignoreRootFile = true; 
@@ -183,7 +199,7 @@ class GcsWrapper {
    * 
    * @returns {Object} fcrepo container
    */
-  async syncContainerToGcs(finPath, gcsFile) {
+  async syncContainerToGcs(finPath, gcsFile, opts={}) {
     // fetch the fcrepo container
     let {container} = await this.getFcrepoContainer(finPath);
     let fcrepoContainer = container;
@@ -193,9 +209,9 @@ class GcsWrapper {
 
     // if binary, stream upload to gcs
     if( binaryNode ) {
-      await this.syncBinaryToGcs(finPath, fcrepoContainer, gcsFile);
+      await this.syncBinaryToGcs(finPath, fcrepoContainer, gcsFile, opts);
     } else {
-      await this.syncMetadataToGcs(finPath, gcsFile);
+      await this.syncMetadataToGcs(finPath, gcsFile, opts);
     }
 
     return fcrepoContainer;
@@ -209,13 +225,20 @@ class GcsWrapper {
    * @param {Object} fcrepoContainer fcrepo fcr:metadata response for binary 
    * @param {Object} gcsFile 
    */
-  async syncBinaryToGcs(finPath, fcrepoContainer, gcsFile) {
+  async syncBinaryToGcs(finPath, fcrepoContainer, gcsFile, opts={}) {
     let gcsMetadata = await this.getGcsFileMetadata(gcsFile);
 
     let binaryNode = api.io.utils.getGraphNode(fcrepoContainer, RDF_URIS.TYPES.BINARY);
 
     if( this.isBinaryMd5Match(binaryNode, gcsMetadata) ) {
       logger.info('md5 match, ignoring fcrepo to gcs sync', finPath, gcsFile);
+      await pg.updateStatus({
+        path : finPath,
+        gcsFile,
+        direction : 'fcrepo-to-gcs',
+        event : opts.event,
+        message : 'md5 match'
+      });
     } else {
       logger.info('syncing container from fcrepo to gcs', finPath, gcsFile);
 
@@ -233,8 +256,24 @@ class GcsWrapper {
         directAccess : true
       });
       if( result.last.statusCode !== 200 ) {
+        await pg.updateStatus({
+          path : finPath,
+          gcsFile,
+          direction : 'fcrepo-to-gcs',
+          event : opts.event,
+          error : result.last.statusCode+' '+result.last.body,
+          message : 'error'
+        });
         throw new Error('Error streaming upload to gcs: '+result.last.statusCode);
       }
+
+      await pg.updateStatus({
+        path : finPath,
+        gcsFile,
+        direction : 'fcrepo-to-gcs',
+        event : opts.event,
+        message : 'binary synced'
+      });
 
       this.stats.toGcs.binaries++;
     }
@@ -301,12 +340,34 @@ class GcsWrapper {
       }
 
       if( result.last.statusCode >= 400 ) {
+        await pg.updateStatus({
+          path : item.path,
+          gcsFile,
+          direction : 'gcs-to-fcrepo',
+          event : opts.event,
+          error: result.last.statusCode+' '+result.last.body,
+          message : 'error'
+        });
         throw new Error('Error streaming upload to fcrepo: '+result.last.statusCode+' '+result.last.body);
       }
-      
+
+      await pg.updateStatus({
+        path : item.path,
+        gcsFile,
+        direction : 'gcs-to-fcrepo',
+        event : opts.event,
+        message : 'syned binary'
+      });
 
       this.stats.toFcrepo.binaries++;
     } else {
+      await pg.updateStatus({
+        path : item.path,
+        gcsFile,
+        direction : 'gcs-to-fcrepo',
+        event : opts.event,
+        message : 'md5 match'
+      });
       logger.info('md5 match, ignoring gcs to fcrepo sync', gcsFile, item.path)
     }
 
@@ -343,16 +404,32 @@ class GcsWrapper {
       });
 
       if( result.last.statusCode >= 400 ) {
+        await pg.updateStatus({
+          path : item.path+'/fcr:metadata',
+          gcsFile,
+          direction : 'gcs-to-fcrepo',
+          event : opts.event,
+          error: result.last.statusCode+' '+result.last.body,
+          message : 'error'
+        });
         throw new Error('Error streaming upload to fcrepo: '+result.last.statusCode);
       }
 
       this.stats.toFcrepo.containers++;
     } else {
       logger.info('md5 match, ignoring gcs to fcrepo sync', gcsFile, item.path+'/fcr:metadata');
+    
+      await pg.updateStatus({
+        path : item.path+'/fcr:metadata',
+        gcsFile,
+        direction : 'gcs-to-fcrepo',
+        event : opts.event,
+        message : 'md5 match'
+      });
     }
   }
 
-  async syncContainerToFcrepo(item) {
+  async syncContainerToFcrepo(item, opts={}) {
     let gcsFile = 'gs://'+item.metadata.metadata.bucket+'/'+item.metadata.name;
     let fcrepoContainer = null;
 
@@ -392,9 +469,25 @@ class GcsWrapper {
         throw new Error('Error streaming upload to fcrepo: '+result.last.statusCode+': '+result.last.body);
       }
 
+      await pg.updateStatus({
+        path : item.path,
+        gcsFile,
+        direction : 'gcs-to-fcrepo',
+        event : opts.event,
+        message : 'synced container'
+      });
+
       this.stats.toFcrepo.containers++;
     } else {
       logger.info('md5 match, ignoring gcs to fcrepo sync', gcsFile, item.path)
+
+      await pg.updateStatus({
+        path : item.path,
+        gcsFile,
+        direction : 'gcs-to-fcrepo',
+        event : opts.event,
+        message : 'md5 match'
+      });
     }
   }
 
@@ -408,7 +501,7 @@ class GcsWrapper {
    * 
    * @returns {Promise}
    */
-  async syncMetadataToGcs(finPath, gcsFile) {
+  async syncMetadataToGcs(finPath, gcsFile, opts={}) {
     let gcsMetadata = await this.getGcsFileMetadata(gcsFile);
     let {isArchivalGroup, container} = await this.getFcrepoContainer(finPath, true);
     let fcrepoContainer = container;
@@ -419,6 +512,13 @@ class GcsWrapper {
     let fileContent = JSON.stringify(fcrepoContainer);
     if( this.isMetadataMd5Match(fileContent, gcsMetadata) ) {
       logger.info('md5 match, ignoring fcrepo to gcs sync', finPath, gcsFile);
+      await pg.updateStatus({
+        path : finPath,
+        gcsFile,
+        direction : 'fcrepo-to-gcs',
+        event : opts.event,
+        message : 'md5 match'
+      });
       return;
     }
 
@@ -434,6 +534,14 @@ class GcsWrapper {
           'isArchivalGroup' : isArchivalGroup
         }
       }
+    });
+
+    await pg.updateStatus({
+      path : finPath,
+      gcsFile,
+      direction : 'fcrepo-to-gcs',
+      event : opts.event,
+      message : 'synced container'
     });
 
     this.stats.toGcs.containers++;
@@ -651,10 +759,3 @@ class GcsWrapper {
 }
 
 module.exports = new GcsWrapper();
-// gcs.syncToGcs('/item', 'dams-client-products')
-//   .then(() => console.log(gcs.stats));
-// gcs.syncContainerToGcs('/item/ark:/pets/ashley', 'gcs://dams-client-products/item/ark:/pets/ashley');
-
-// gcs.syncToFcrepo('/item', 'dams-client-products', {proxyBinary : true})
-//   .then(() => console.log(gcs.stats));
-// gcs.syncToFcrepo('/item/ark:/87287/d7dw8t', 'dams-client-products');

@@ -15,9 +15,12 @@ if( serviceAccountExists && !env.GOOGLE_APPLICATION_CREDENTIALS ) {
   gcServiceAccount = JSON.parse(fs.readFileSync(serviceAccountFile, 'utf-8'));
 }
 
+// make sure this is set for gcssync templates
+if( !env.DATA_ENV ) env.DATA_ENV = 'local-dev';
+
 module.exports = {
 
-  dataEnv : env.DATA_ENV || 'local-dev',
+  dataEnv : env.DATA_ENV,
 
   server : {
     url : process.env.FIN_URL || 'http://localhost:3000',
@@ -87,18 +90,7 @@ module.exports = {
       COMMON_URI.TYPES.BINARY,
       COMMON_URI.TYPES.FIN_IO_INDIRECT,
       COMMON_URI.TYPES.WEBAC
-    ],
-    
-    // if these attributes exist, the ISO 8601 date will be stripped for
-    // everything but the year and a new attribute created with the name
-    // of the given key in the hash
-    dateToYear : {
-      datePublished : 'yearPublished'
-    },
-
-    bagOfFiles : {
-      type : 'http://digital.ucdavis.edu/schema#BagOfFiles'
-    }
+    ]
   },
 
   elasticsearch : {
@@ -131,12 +123,6 @@ module.exports = {
     host : process.env.REDIS_HOST || 'redis',
     port : process.env.REDIS_PORT || 6379,
     refreshTokenExpire : (86400 * 30)
-  },
-
-  backups : {
-    enabled : (env.DATA_BACKUPS === 'true'),
-    cron : env.BACKUP_CRON || '0 4 * * *',
-    env : env.DATA_ENV
   },
 
   models : {

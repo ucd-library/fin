@@ -9,7 +9,7 @@ const uuid = require('uuid/v4');
 const clone = require('clone');
 const config = require('../../config.js');
 const crypto = require('crypto');
-const pg = require('./postgres.js');
+const pg = require('./workflow-postgres.js');
 
 class FinGcWorkflowModel {
 
