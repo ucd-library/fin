@@ -19,6 +19,28 @@ class KeycloakUtils {
     this.protect = this.protect.bind(this);
   }
 
+  /**
+   * @method getServiceAccountToken
+   * @description Get a service account token from fin
+   */
+  async getServiceAccountToken() {
+    if( this.finServiceAccountToken ) {
+      return this.finServiceAccountToken;
+    }
+
+    let resp = await this.loginServiceAccount(config.serviceAccount.username, config.serviceAccount.secret); 
+    if( resp.status === 200 ) {
+      console.log(resp.body);
+      this.finServiceAccountToken = resp.body.access_token;
+
+      setTimeout(() => this.finServiceAccountToken = null, 1000*60*60*24);
+
+      return this.finServiceAccountToken;
+    }
+    
+    throw new Error('Failed to get service account token: '+config.serviceAccount.username);
+  }
+
   async loginServiceAccount(username, secret) {
     let apiResp = await fetch(config.oidc.baseUrl+'/protocol/openid-connect/token', {
       method: 'POST',

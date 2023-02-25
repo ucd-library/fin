@@ -9,14 +9,18 @@ const uuid = require('uuid/v4');
 const clone = require('clone');
 const config = require('../../config.js');
 const crypto = require('crypto');
-const pg = require('./workflow-postgres.js');
+const pg = require('../workflow/postgres.js');
+const keycloak = require('../keycloak.js');
 
 class FinGcWorkflowModel {
 
   constructor() {
-    this.TYPE = 'gc-workflow';
-    this.GC_WORKFLOW_PATH = '/fin/workflows/gc';
-    this.CONFIG_PATH = '/fin/workflows/config.json';
+    let gcconf = config.google.workflow;
+
+    this.TYPE = gcconf.type;
+    this.GC_WORKFLOW_PATH = gcconf.finWorkflowPath;
+    this.CONFIG_PATH = config.workflow.finConfigPath;
+    this.MAX_WORKFLOWS_RUNNING = gcconf.maxConcurrentWorkflows;
 
     this.definitions = {};
     this.defaults = {};
@@ -166,6 +170,11 @@ class FinGcWorkflowModel {
     await this.loadWorkflowIntoGc(name);
   }
 
+  getNotifyOnSuccess(workflowName) {
+    return this.definitions[workflowName].notifyOnSuccess ||
+      this.defaults.notifyOnSuccess;
+  }
+
   getGcsBucket(workflowName) {
     return this.definitions[workflowName].gcsBucket ||
       this.defaults.gcsBucket ||
@@ -197,19 +206,25 @@ class FinGcWorkflowModel {
   }
 
   /**
-   * @method initWorkflow
-   * @description given a file stream and filename, this function will create a
-   * a unique id for the workflow, create a directory in the tmp bucket, and
-   * stream the file to the local directory for reading and processing.
+   * @method createWorkflow
+   * @description 
    * 
-   * @param {*} fileStream 
-   * @param {*} filename 
+   * @param {*} finWorkflowName 
+   * @param {*} finPath 
    * @returns 
    */
-  async initWorkflow(finWorkflowName, finPath) {
+  async createWorkflow(finWorkflowName, finPath) {
     if( !this.definitions[finWorkflowName] ) {
       throw new Error('Invalid workflow name: '+finWorkflowName);
     }
+
+    // verify a workflow with the same name is not already running on this path
+    let currentWorkflow = await pg.getLatestWorkflowByPath(finPath, finWorkflowName);
+    if( currentWorkflow && 
+      (currentWorkflow.state !== 'completed' && currentWorkflow.state !== 'error' )) {
+      throw new Error('Workflow already '+currentWorkflow.state+' on path: '+finPath);
+    }
+
 
     let finWorkflowId = uuid();
     logger.info('init workflow', finWorkflowName, finPath, finWorkflowId);
@@ -218,6 +233,7 @@ class FinGcWorkflowModel {
       let data = clone(this.definitions[finWorkflowName].data || {});
       data.gcsBucket = this.getGcsBucket(finWorkflowName);
       data.tmpGcsBucket = this.getTmpGcsBucket(finWorkflowName);
+      data.notifyOnSuccess = this.getNotifyOnSuccess(finWorkflowName);
       data.tmpGcsPath = 'gs://'+data.tmpGcsBucket+'/'+finWorkflowId+'/'+path.parse(finPath).base;
 
       let gcWorkflowName = this.getGcWorkflowName(finWorkflowName);
@@ -236,12 +252,53 @@ class FinGcWorkflowModel {
         data
       };
 
-      await pg.initWorkflow({
-        finWorkflowId,
-        name : finWorkflowName,
-        type : this.TYPE,
-        data : data
-      });
+      // verify there is an empty slot
+      let runningWorkflows = await pg.getActiveWorkflows();
+      if( runningWorkflows >= this.MAX_WORKFLOWS_RUNNING ) {
+        result.state = 'pending';
+        await pg.initWorkflow({
+          finWorkflowId,
+          name : finWorkflowName,
+          type : this.TYPE,
+          data : data
+        });
+        return result;
+      } else {
+        await pg.initWorkflow({
+          finWorkflowId,
+          name : finWorkflowName,
+          type : this.TYPE,
+          data : data
+        });
+
+        return this.initWorkflow(finWorkflowId);
+      }
+
+    } catch(e) {
+      logger.error('Error initializing workflow', e);
+      pg.updateWorkflow({finWorkflowId, state: 'error', error: e.message+'\n'+e.stack});
+      throw e;
+    }
+  }
+
+  async initWorkflow(finWorkflowId) {
+    let workflowInfo = await this.getWorkflowInfo(finWorkflowId);
+
+    let finPath = workflowInfo.data.finPath;
+    let data = workflowInfo.data;
+
+    try {
+
+      pg.updateWorkflow({finWorkflowId, state: 'init'});
+      workflowInfo.state = 'init';
+
+      // if the workflow opts out of tmp bucket copy, then just start
+      if( data.uploadToTmpBucket === false ) {
+        await gcs.getGcsFileObjectFromPath('gs://'+path.join(data.tmpGcsBucket, finWorkflowId, 'workflow.json'))
+          .save(JSON.stringify(workflowInfo, null, 2));  
+        this.startWorkflow(workflowInfo);
+        return workflowInfo;
+      }
 
       // sync the file to the tmp bucket
       let finRootDir = path.parse(finPath).dir;
@@ -254,24 +311,28 @@ class FinGcWorkflowModel {
         )
         .then(async () => {
           await gcs.getGcsFileObjectFromPath('gs://'+path.join(data.tmpGcsBucket, finWorkflowId, 'workflow.json'))
-            .save(JSON.stringify(result, null, 2));
-    
-          await gcs.getGcsFileObjectFromPath('gs://'+path.join(data.gcsBucket, finPath, 'workflow.json'))
-            .save(JSON.stringify(result, null, 2));
-    
-          this.startWorkflow(result);
+            .save(JSON.stringify(workflowInfo, null, 2));  
+          this.startWorkflow(workflowInfo);
         })
-        .catch(e => {
+        .catch(async e => {
           logger.error('Error initializing workflow', e);
           pg.updateWorkflow({finWorkflowId, state: 'error', error: e.message+'\n'+e.stack});
         });
 
-      return result;
+      return await this.getWorkflowInfo(finWorkflowId);
     } catch(e) {
       logger.error('Error initializing workflow', e);
       pg.updateWorkflow({finWorkflowId, state: 'error', error: e.message+'\n'+e.stack});
       throw e;
-    }
+  }
+  }
+
+  async writeStateToGcs(finWorkflowId) {
+    let workflowInfo = await pg.getWorkflow(finWorkflowId);
+    let bucketPath = path.join(workflowInfo.data.gcsBucket, 'workflows', workflowInfo.data.finPath, workflow.name+'.json');
+    
+    await gcs.getGcsFileObjectFromPath('gs://'+bucketPath)
+      .save(JSON.stringify(workflowInfo, null, 2));
   }
 
   async startWorkflow(workflowInfo) {
@@ -290,17 +351,17 @@ class FinGcWorkflowModel {
     // TODO: add gcWorkflow id / path
 
     createExecutionProm
-      .then(result => {
+      .then(async result => {
         workflowInfo.data.gcExecution = result[0];
 
-        pg.updateWorkflow({
+        await pg.updateWorkflow({
           finWorkflowId,
           state : 'running',
           data : workflowInfo.data
         });
       })
-      .catch((err) => {
-        pg.updateWorkflow({
+      .catch(async (err) => {
+        await pg.updateWorkflow({
           finWorkflowId, 
           state: 'error', 
           error: e.message+'\n'+e.stack
@@ -395,6 +456,24 @@ class FinGcWorkflowModel {
           data: workflow.data
         });
 
+        if( execution.state === 'SUCCEEDED' ) {
+          await this.writeStateToGcs(workflow.workflow_id);
+          if( workflow.data.notifyOnSuccess ) {
+            let svcPath = workflow.data.notifyOnSuccess;
+            if( !svcPath.startsWith('/') ) {
+              svcPath = '/'+svcPath;
+            }
+
+            let jwt = await keycloak.getServiceAccountToken();
+            api.get({
+              path : workflow.data.finPath+svcPath,
+              host : config.server.url,
+              jwt
+            });
+            await this.reindex(workflow.workflow_id);
+          }
+        }
+
         await this.cleanupWorkflow(workflow.workflow_id);
       } else if( execution.state === 'FAILED' ) {
         await pg.updateWorkflow({
@@ -408,8 +487,13 @@ class FinGcWorkflowModel {
       } else {
         // console.log('HERE', execution.state)
       }
-  
-    
+
+
+      // now check if any pending workflows
+      let pendingWorkflow = await pg.getPendingWorkflow();
+      if( pendingWorkflow ) {
+        this.initWorkflow(pendingWorkflow.workflow_id);
+      }
     }
   }
 

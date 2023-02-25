@@ -10,7 +10,7 @@ app.post('/:workflowName', async (req, res) => {
   let finPath = req.query.fcPath.replace(/\/fcrepo\/rest/, '');
 
   try {
-    let workflowInfo = await workflowModel.initWorkflow(req.params.workflowName, finPath);
+    let workflowInfo = await workflowModel.createWorkflow(req.params.workflowName, finPath);
     res.json(workflowInfo);
   } catch(e) {
     res.status(500).json({

@@ -1,6 +1,6 @@
 const {URL} = require('url');
 const api = require('@ucd-lib/fin-api');
-const {logger, config, jwt, keycloak, FinAC} = require('@ucd-lib/fin-service-utils');
+const {logger, config, jwt, workflow, FinAC} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('./services');
 const proxy = require('../lib/http-proxy');
 const serviceProxy = require('./service-proxy');
@@ -205,9 +205,9 @@ class ProxyModel {
    * @param {Object} res express response object
    */
   async _fcrepoProxyRequest(req, res) {
-    let path = req.originalUrl;
+    let path = decodeURIComponent(req.originalUrl);
     if( this._isMetadataRequest(req) ) {
-      path = path.replace(/fcr:metadata.*/, '');
+      path = path.replace(/\/fcr:metadata$/, '');
     }
 
     let user;
@@ -248,6 +248,11 @@ class ProxyModel {
     // store for serivce headers
     req.fcPath = path;
 
+    // store the workflows for this path, if any
+    // this is an async call which must be done before the proxy request
+    // so that the workflow headers can be added to the response
+    req.workflows = await workflow.postgres.getLatestWorkflowsByPath(path);
+
     // set base user auth
     let fcrepoApiConfig = api.getConfig();
     req.headers['authorization'] = 'Basic '+Buffer.from(fcrepoApiConfig.username+':'+fcrepoApiConfig.password).toString('base64');
@@ -280,6 +285,14 @@ class ProxyModel {
     }
   
     serviceModel.setServiceLinkHeaders(clinks, req.fcPath, types);
+    
+    console.log(req.workflows);
+    if( req.workflows ) {
+      for( let workflow of req.workflows ) {
+        clinks.push(`<${config.server.url}${req.fcPath}/svc:workflow/${workflow.id}>; rel="workflow" type="${workflow.name}"`);
+      }
+    }
+    
     res.headers.link = clinks.join(',');
   }
 

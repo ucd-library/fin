@@ -22,6 +22,11 @@ module.exports = {
 
   dataEnv : env.DATA_ENV,
 
+  serviceAccount : {
+    username : env.FIN_SERVICE_ACCOUNT_NAME,
+    secret : env.FIN_SERVICE_ACCOUNT_SECRET
+  },
+
   server : {
     url : process.env.FIN_URL || 'http://localhost:3000',
     loglevel : process.env.FIN_LOG_LEVEL || 'info',
@@ -129,6 +134,10 @@ module.exports = {
     rootDir : env.FIN_MODEL_ROOT || '/fin/services/models'
   },
 
+  workflow : {
+    finConfigPath : '/fin/workflows/config.json',
+  },
+
   google : {
     serviceAccountExists, 
     serviceAccountFile,
@@ -136,6 +145,13 @@ module.exports = {
     project : env.GOOGLE_CLOUD_PROJECT || gcServiceAccount.project_id,
     location : env.GOOGLE_CLOUD_LOCATION || 'us-central1',
     pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || 'local-dev',
+
+    workflow : {
+      type : 'gc-workflow',
+      maxConcurrentWorkflows : env.GOOGLE_MAX_CONCURRENT_WORKFLOWS || 3,
+      finWorkflowPath : '/fin/workflows/gc'
+    }
+    
   },
 
 }

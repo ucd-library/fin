@@ -14,7 +14,8 @@ module.exports = {
   middleware : {
     finac : require('./lib/fin-ac/middleware.js')
   },
-  seo : require('./lib/seo'),
+  workflow : require('./lib/workflow/index.js'),
+  // seo : require('./lib/seo'),
   keycloak : require('./lib/keycloak.js'),
   models : require('./lib/models.js'),
   gc : require('./lib/gc/index.js')

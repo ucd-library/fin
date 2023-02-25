@@ -1,11 +1,17 @@
 # FIN Server Documentation
 
+Fin is a microservice based Fedora repository (fcrepo).  It is built using NodeJS and Docker.  Fin wraps fcrepo and provides a default set of services and opinions.  The fin wrapper extends the fcrepo API allowing users to add additional services to the fcrepo container.  Fin also provides a default set of services that can be used to extend the fcrepo container.  These services are:
+ - [FinACL](../services/fin-acl)] - An opinionated wrapper around the WebAC implementation.  FinAC provides temporal access control, allowing users access to resources for a limited time.
+ - Extendable Data Models - Both the Fin API layer and Essync service depend on application specific data models.  These models define the fcrepo to Elastic Search document transformation, the Elastic Search indexing schema, and the API layer to interact with the data model. (example, see DAMS services/models directory)
+ - [Gateway](../services/gateway) - Wrapper and proxy
+
 ## Fin Core
 
 There are three services at the core of Fin:
 
-- [Fedora](../fcrepo)
-  - A [Fedora Commons](https://wiki.duraspace.org/display/FEDORA4x/) container with [JWT](https://jwt.io/) authentication and [WebAC](https://www.w3.org/wiki/WebAccessControl) authorization using the [Fedora WebAC plugin](https://wiki.duraspace.org/display/FEDORA4x/WebAC+Authorization+Delegate). 
+- [Fedora](../serivces/fcrepo)
+  - A [Fedora Commons](https://wiki.duraspace.org/display/FEDORA6x/) container
+-  
 - Redis
   - A key/value store [Redis](https://redis.io/) is used for storing sessions, admins, service signatures and available to all other local services to be leveraged for basic storage (ex: the [basic-auth](../services/basic-auth) service uses Redis store username/password information).
 - [Fin Server](../server)

@@ -77,11 +77,47 @@ class WorkflowPostgresUtils {
     return resp.rows;
   }
 
+  async getLatestWorkflowsByPath(path) {
+    path = path.replace(/^\/fcrepo\/rest/, '')
+    .replace(/^\/fcr:metadata$/, '');
+
+    let resp = await this.pg.query(
+      `select name from ${this.schema}.workflow where data->>'finPath' = $1 group by name;`, 
+      [path]
+    );
+    
+    let workflows = [];
+    for( let row of resp.rows ) {
+      let workflow = await this.getLatestWorkflowByPath(path, row.name);
+      workflows.push({name: row.name, id: workflow.workflow_id});
+    }
+
+    return workflows;
+  }
+
+  async getLatestWorkflowByPath(path, workflowName) {
+    let resp = await this.pg.query(
+      `select workflow_id, state from ${this.schema}.workflow where data->>'finPath' = $1 AND name = $2 order by created desc limit 1;`, 
+      [path, workflowName]
+    );
+
+    if( !resp.rows.length ) return null;
+    return resp.rows[0];
+  }
+
   async getActiveWorkflows() {
     let resp = await this.pg.query(
       `SELECT * FROM ${this.schema}.workflow WHERE state = 'running'`
     );
     return resp.rows;
+  }
+
+  async getPendingWorkflow() {
+    let resp = await this.pg.query(
+      `SELECT workflow_id FROM ${this.schema}.workflow WHERE state = 'pending' order by created asc limit 1`
+    );
+    if( !resp.rows.length ) return null;
+    return resp.rows[0];
   }
 
 

@@ -2,7 +2,7 @@ create schema if not exists workflow;
 set search_path=workflow,public;
 
 DO $$ BEGIN
-  CREATE TYPE fin_workflow_state as enum ('init', 'running', 'completed', 'deleted', 'error');
+  CREATE TYPE fin_workflow_state as enum ('pending', 'init', 'running', 'completed', 'deleted', 'error');
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
