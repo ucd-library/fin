@@ -190,7 +190,7 @@ class ServiceModel {
         continue;
       }
 
-      links.push(`<${config.server.url}${fcPath}/svc:${id}>; rel="service" type="${service.type}"`);
+      links.push(`<${config.server.url}${fcPath}/svc:${id}>; rel="service"; type="${service.type}"`);
     }
   }
 

@@ -3,10 +3,6 @@ const config = require('../config.js');
 const logger = require('./logger.js');
 const jwt = require('./jwt.js');
 
-// hack for self signed cert for now...
-if( process.env.LOCAL_KEYCLOAK === 'true' ) {
-  process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
-}
 
 class KeycloakUtils {
 
@@ -17,6 +13,16 @@ class KeycloakUtils {
 
     this.setUser = this.setUser.bind(this);
     this.protect = this.protect.bind(this);
+  }
+
+  initTls() {
+    if( this.tlsInitialized ) return;
+    this.tlsInitialized = true;
+
+    // hack for self signed cert for now...
+    if( process.env.LOCAL_KEYCLOAK === 'true' ) {
+      process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+    }
   }
 
   /**
@@ -30,7 +36,6 @@ class KeycloakUtils {
 
     let resp = await this.loginServiceAccount(config.serviceAccount.username, config.serviceAccount.secret); 
     if( resp.status === 200 ) {
-      console.log(resp.body);
       this.finServiceAccountToken = resp.body.access_token;
 
       setTimeout(() => this.finServiceAccountToken = null, 1000*60*60*24);
@@ -42,6 +47,8 @@ class KeycloakUtils {
   }
 
   async loginServiceAccount(username, secret) {
+    this.initTls();
+
     let apiResp = await fetch(config.oidc.baseUrl+'/protocol/openid-connect/token', {
       method: 'POST',
       headers:{
@@ -66,6 +73,8 @@ class KeycloakUtils {
   }
 
   async verifyActiveToken(token) {
+    this.initTls();
+
     token = token.replace(/^Bearer /i, '');
 
     // 5 second caching

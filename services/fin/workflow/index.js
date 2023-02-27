@@ -5,6 +5,14 @@ const {workflowModel} = gc;
 
 const app = express();
 
+app.get('/reload', async (req, res) => {
+  if( req.query.fcPath !== '/fcrepo/rest' ) {
+    return res.status(403).json({error : 'Must be called from root path /'});
+  }
+  workflowModel.reload();
+  res.json({status : 'ok'});
+});
+
 app.post('/:workflowName', async (req, res) => {
 
   let finPath = req.query.fcPath.replace(/\/fcrepo\/rest/, '');

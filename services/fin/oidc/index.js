@@ -1,7 +1,9 @@
 const express = require('express');
 const { auth } = require('express-openid-connect');
-const {config, keycloak} = require('@ucd-lib/fin-service-utils');
+const {config, keycloak, logger} = require('@ucd-lib/fin-service-utils');
 const bodyParser = require('body-parser');
+
+keycloak.initTls();
 
 const app = express();
 
@@ -49,5 +51,5 @@ app.use(auth({
 }));
 
 app.listen(3000, () => {
-  console.log('listening on port 3000');
+  logger.info('listening on port 3000');
 });

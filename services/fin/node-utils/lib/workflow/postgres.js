@@ -119,7 +119,33 @@ class WorkflowPostgresUtils {
     if( !resp.rows.length ) return null;
     return resp.rows[0];
   }
+  
+  async reloadWorkflow(workflow) {
+    if( typeof workflow.updated === 'string' ) {
+      workflow.updated = new Date(workflow.updated);
+    }
 
+    let currentWorkflow = await this.getWorkflow(workflow.workflow_id);
+
+    if( !currentWorkflow ) {
+      logger.info('workflow '+workflow.workflow_id+': insert');
+      return this.pg.query(
+        `INSERT INTO ${this.schema}.workflow (workflow_id, created, updated, type, name, state, data, error) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, 
+        [workflow.workflow_id, workflow.created, workflow.updated, workflow.type, workflow.name, workflow.state, workflow.data, workflow.error]
+      );
+    }
+
+    if( currentWorkflow.updated.getTime() < workflow.updated.getTime() ) {
+      logger.info('workflow '+workflow.workflow_id+': update');
+      return this.pg.query(
+        `UPDATE ${this.schema}.workflow SET (created, updated, type, name, state, data) VALUES ($1, $2, $3, $4, $5, $6, $7) WHERE workflow_id = $1`, 
+        [workflow.workflow_id, workflow.created, workflow.updated, workflow.type, workflow.name, workflow.state, workflow.data, workflow.error]
+      );
+    }
+
+    logger.info('workflow '+workflow.workflow_id+': no-op');
+    return;
+  }
 
 }
 

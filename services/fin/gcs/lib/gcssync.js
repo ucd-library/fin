@@ -1,6 +1,6 @@
 const {gc, activemq, config} = require('@ucd-lib/fin-service-utils');
-const gcssyncConfig = require('./lib/config.js');
-const init = require('./lib/init.js');
+const gcsConfig = require('./config.js');
+const init = require('./init.js');
 
 const {pubsub, gcs} = gc;
 
@@ -13,8 +13,8 @@ class GcsSync {
     activemq.onMessage(e => this.onFcMessage(e));
     activemq.connect('gssync', '/queue/gssync');
 
-    gcssyncConfig.loaded.then(c => {
-      this.config = c || {};
+    gcsConfig.loaded.then(c => {
+      this.config = (c || {}).sync || {};
       this.config.containers.forEach(container => {
         container.bucket = container.bucket.replace(/\{\{(\w+)\}\}/g, (match, p1) => {
           return process.env[p1] || '';

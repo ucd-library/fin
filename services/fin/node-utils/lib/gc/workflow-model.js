@@ -276,7 +276,7 @@ class FinGcWorkflowModel {
 
     } catch(e) {
       logger.error('Error initializing workflow', e);
-      pg.updateWorkflow({finWorkflowId, state: 'error', error: e.message+'\n'+e.stack});
+      await pg.updateWorkflow({finWorkflowId, state: 'error', error: e.message+'\n'+e.stack});
       throw e;
     }
   }
@@ -322,21 +322,27 @@ class FinGcWorkflowModel {
       return await this.getWorkflowInfo(finWorkflowId);
     } catch(e) {
       logger.error('Error initializing workflow', e);
-      pg.updateWorkflow({finWorkflowId, state: 'error', error: e.message+'\n'+e.stack});
+      await pg.updateWorkflow({finWorkflowId, state: 'error', error: e.message+'\n'+e.stack});
       throw e;
+    }
   }
+
+  setWorkflowError(finWorkflowId, error) {
+    return pg.updateWorkflow({finWorkflowId, state: 'error', error: error.message+'\n'+error.stack});
   }
 
   async writeStateToGcs(finWorkflowId) {
     let workflowInfo = await pg.getWorkflow(finWorkflowId);
-    let bucketPath = path.join(workflowInfo.data.gcsBucket, 'workflows', workflowInfo.data.finPath, workflow.name+'.json');
+    let bucketPath = path.join(workflowInfo.data.gcsBucket, 'workflows', workflowInfo.data.finPath, workflowInfo.name+'.json');
     
+    console.log('writing state to gcs', 'gs://'+bucketPath);
+
     await gcs.getGcsFileObjectFromPath('gs://'+bucketPath)
       .save(JSON.stringify(workflowInfo, null, 2));
   }
 
   async startWorkflow(workflowInfo) {
-    let finWorkflowId = workflowInfo.id;
+    let finWorkflowId = workflowInfo.id || workflowInfo.workflow_id;
     // https://github.com/googleapis/google-cloud-node/blob/main/packages/google-cloud-workflows-executions/samples/generated/v1/executions.create_execution.js#L56
     // https://cloud.google.com/workflows/docs/reference/executions/rest/v1/projects.locations.workflows.executions#Execution
 
@@ -458,20 +464,7 @@ class FinGcWorkflowModel {
 
         if( execution.state === 'SUCCEEDED' ) {
           await this.writeStateToGcs(workflow.workflow_id);
-          if( workflow.data.notifyOnSuccess ) {
-            let svcPath = workflow.data.notifyOnSuccess;
-            if( !svcPath.startsWith('/') ) {
-              svcPath = '/'+svcPath;
-            }
-
-            let jwt = await keycloak.getServiceAccountToken();
-            api.get({
-              path : workflow.data.finPath+svcPath,
-              host : config.server.url,
-              jwt
-            });
-            await this.reindex(workflow.workflow_id);
-          }
+          this.notifyOnSuccess(workflow);
         }
 
         await this.cleanupWorkflow(workflow.workflow_id);
@@ -494,6 +487,67 @@ class FinGcWorkflowModel {
       if( pendingWorkflow ) {
         this.initWorkflow(pendingWorkflow.workflow_id);
       }
+    }
+  }
+
+  async notifyOnSuccess(workflow) {
+    if( !workflow.data.notifyOnSuccess ) return;
+
+    let svcPath = workflow.data.notifyOnSuccess;
+    if( !svcPath.startsWith('/') ) {
+      svcPath = '/'+svcPath;
+    }
+
+    let id = workflow.workflow_id || workflow.id;
+    logger.info('notifying on workflow success '+id+' : ', workflow.data.finPath+svcPath);
+
+    let jwt = await keycloak.getServiceAccountToken();
+    let response = await api.get({
+      path : workflow.data.finPath+svcPath,
+      host : config.gateway.host,
+      jwt
+    });
+
+    logger.info('notify on workflow success response '+id+': '+response.last.statusCode+' '+response.last.statusMessage);
+  }
+
+  async reload() {
+    let buckets = new Set();
+
+    if( this.defaults.gcsBucket ) {
+      buckets.add(this.defaults.gcsBucket);
+    }
+    for( let name in this.definitions ) {
+      if( this.definitions[name].gcsBucket ) {
+        buckets.add(this.definitions[name].gcsBucket);
+      }
+    }
+    buckets = Array.from(buckets);
+
+    logger.info('reloading workflows gcs buckets: '+buckets.join(', '));
+
+    for( let bucket of buckets ) {
+      await this.reloadGcsFolder(bucket, 'workflows');
+    }
+  }
+
+  async reloadGcsFolder(bucket, folder) {
+    if( !folder.startsWith('/') ) {
+      folder = '/'+folder;
+    }
+    let gcsFile = 'gs://'+bucket+folder;
+
+    let resp = await gcs.getGcsFilesInFolder(gcsFile);
+    for( let file of resp.files ) {
+      if( file.name.match(/\.json$/) ) {
+        logger.info('loading workflow: gs://'+bucket+'/'+file.name);
+        let workflow = await gcs.loadFileIntoMemory('gs://'+bucket+'/'+file.name);
+        pg.reloadWorkflow(JSON.parse(workflow));
+      }
+    }
+
+    for( let folder of resp.folders ) {
+      this.reloadGcsFolder(bucket, folder);
     }
   }
 

@@ -289,11 +289,11 @@ class ProxyModel {
     console.log(req.workflows);
     if( req.workflows ) {
       for( let workflow of req.workflows ) {
-        clinks.push(`<${config.server.url}${req.fcPath}/svc:workflow/${workflow.id}>; rel="workflow" type="${workflow.name}"`);
+        clinks.push(`<${config.server.url}${req.fcPath}/svc:workflow/${workflow.id}>; rel="workflow"; type="${workflow.name}"`);
       }
     }
     
-    res.headers.link = clinks.join(',');
+    res.headers.link = clinks.join(', ');
   }
 
   /**

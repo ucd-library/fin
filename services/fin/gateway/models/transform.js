@@ -618,7 +618,8 @@ class TransformService {
         path : pathOrData,
         headers : {
           Accept : api.RDF_FORMATS.JSON_LD,
-        }
+        },
+        host : config.gateway.host
       }
       this.setForwardedHeader(options.headers);
 

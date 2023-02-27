@@ -9,7 +9,7 @@ const {waitUntil, config} = require('@ucd-lib/fin-service-utils');
 class GcsConfig {
 
   constructor() {
-    this.CONFIG_PATH = '/fin/gcssync/config.json';
+    this.CONFIG_PATH = '/fin/gcs/config.json';
     this.loaded = this.load();
     this.config = null;
   }
