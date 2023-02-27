@@ -9,7 +9,7 @@
     "cas": "node cas/index.js",
     "oidc": "node oidc/index.js",
     "essync": "node essync/index.js",
-    "gcssync": "node gcssync/index.js",
+    "gcs": "node gcs/index.js",
     "gateway": "node gateway/index.js",
     "trusted-proxy": "node trusted-proxy/index.js"
   },
