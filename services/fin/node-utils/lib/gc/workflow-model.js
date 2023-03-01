@@ -205,6 +205,19 @@ class FinGcWorkflowModel {
       config.google.serviceAcountEmail;
   }
 
+  getGcWorkflowDefinition(finWorkflowName) {
+    let data = clone(this.definitions[finWorkflowName].data || {});
+    data.gcsBucket = this.getGcsBucket(finWorkflowName);
+    data.tmpGcsBucket = this.getTmpGcsBucket(finWorkflowName);
+    data.notifyOnSuccess = this.getNotifyOnSuccess(finWorkflowName);
+    let gcWorkflowName = this.getGcWorkflowName(finWorkflowName);
+
+    data.finHost = config.server.url;
+    data.gcWorkflowName = gcWorkflowName;
+
+    return data;
+  }
+
   /**
    * @method createWorkflow
    * @description 
@@ -230,18 +243,10 @@ class FinGcWorkflowModel {
     logger.info('init workflow', finWorkflowName, finPath, finWorkflowId);
 
     try {
-      let data = clone(this.definitions[finWorkflowName].data || {});
-      data.gcsBucket = this.getGcsBucket(finWorkflowName);
-      data.tmpGcsBucket = this.getTmpGcsBucket(finWorkflowName);
-      data.notifyOnSuccess = this.getNotifyOnSuccess(finWorkflowName);
+      let data = this.getGcWorkflowDefinition(finWorkflowName);
       data.tmpGcsPath = 'gs://'+data.tmpGcsBucket+'/'+finWorkflowId+'/'+path.parse(finPath).base;
-
-      let gcWorkflowName = this.getGcWorkflowName(finWorkflowName);
-
       data.finPath = finPath;
-      data.finHost = config.server.url;
       data.finWorkflowId = finWorkflowId;
-      data.gcWorkflowName = gcWorkflowName;
 
       let result = {
         id : finWorkflowId,
@@ -511,7 +516,12 @@ class FinGcWorkflowModel {
     logger.info('notify on workflow success response '+id+': '+response.last.statusCode+' '+response.last.statusMessage);
   }
 
-  async reload() {
+  async reload(infoCallback) {
+    if( this.reloadRunning ) {
+      throw new Error('Already reloading workflows');
+    }
+    this.reloadRunning = true;
+
     let buckets = new Set();
 
     if( this.defaults.gcsBucket ) {
@@ -523,12 +533,15 @@ class FinGcWorkflowModel {
       }
     }
     buckets = Array.from(buckets);
+    if( infoCallback ) infoCallback(buckets);
 
     logger.info('reloading workflows gcs buckets: '+buckets.join(', '));
 
     for( let bucket of buckets ) {
       await this.reloadGcsFolder(bucket, 'workflows');
     }
+
+    this.reloadRunning = false;
   }
 
   async reloadGcsFolder(bucket, folder) {

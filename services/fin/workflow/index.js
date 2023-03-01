@@ -9,8 +9,42 @@ app.get('/reload', async (req, res) => {
   if( req.query.fcPath !== '/fcrepo/rest' ) {
     return res.status(403).json({error : 'Must be called from root path /'});
   }
-  workflowModel.reload();
-  res.json({status : 'ok'});
+
+  try {
+    workflowModel.reload(buckets => {
+      res.json({buckets});
+    });
+  } catch(e) {
+    res.status(500).json({
+      error : e.message,
+      stack : e.stack
+    });
+  }
+
+});
+
+app.get('/list', async (req, res) => {
+  if( req.query.fcPath !== '/fcrepo/rest' ) {
+    return res.status(403).json({error : 'Must be called from root path /'});
+  }
+
+  try {
+    let defs = {};
+
+    for( let key in workflowModel.definitions ) {
+      if( workflowModel.definitions[key].type === 'gc-workflow' ) {
+        defs[key] = workflowModel.getGcWorkflowDefinition(key);
+        defs[key].type = 'gc-workflow';
+      }
+    }
+    res.json(defs);
+  } catch(e) {
+    res.status(500).json({
+      error : e.message,
+      stack : e.stack
+    });
+  }
+
 });
 
 app.post('/:workflowName', async (req, res) => {

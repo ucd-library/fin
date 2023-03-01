@@ -10,6 +10,7 @@ program
   .command('auth', 'log in/out of fin instance')
   .command('config', 'setup fin cli')
   .command('http', 'wrapper around standard LDP api')
-  .command('io', 'fin commands for data management via git repositories');
+  .command('io', 'fin commands for data management via git repositories')
+  .command('workflow', 'run fin workflows on containers');
 
 program.parse(process.argv);
