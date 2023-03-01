@@ -555,7 +555,12 @@ class FinGcWorkflowModel {
       if( file.name.match(/\.json$/) ) {
         logger.info('loading workflow: gs://'+bucket+'/'+file.name);
         let workflow = await gcs.loadFileIntoMemory('gs://'+bucket+'/'+file.name);
-        pg.reloadWorkflow(JSON.parse(workflow));
+        workflow = JSON.parse(workflow);
+        let updated = await pg.reloadWorkflow(workflow);
+
+        if( updated ) {
+          await this.notifyOnSuccess(workflow);
+        }
       }
     }
 

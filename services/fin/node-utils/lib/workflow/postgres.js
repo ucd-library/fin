@@ -144,7 +144,7 @@ class WorkflowPostgresUtils {
     }
 
     logger.info('workflow '+workflow.workflow_id+': no-op');
-    return;
+    return null
   }
 
 }
