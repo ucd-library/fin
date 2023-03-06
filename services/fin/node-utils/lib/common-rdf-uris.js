@@ -18,6 +18,7 @@ module.exports = {
 
   PROPERTIES : {
     CONTAINS : 'http://www.w3.org/ns/ldp#contains',
+    HAS_PART : 'http://schema.org/hasPart',
     HAS_MESSAGE_DIGEST : 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest',
     FILENAME : 'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#filename',
     HAS_MIME_TYPE : 'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#hasMimeType',
