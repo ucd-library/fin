@@ -286,7 +286,6 @@ class ProxyModel {
   
     serviceModel.setServiceLinkHeaders(clinks, req.fcPath, types);
     
-    console.log(req.workflows);
     if( req.workflows ) {
       for( let workflow of req.workflows ) {
         clinks.push(`<${config.server.url}${req.fcPath}/svc:workflow/${workflow.id}>; rel="workflow"; type="${workflow.name}"`);

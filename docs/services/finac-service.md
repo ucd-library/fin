@@ -2,7 +2,39 @@
 
 FinAC provides additional access control functionality for container access and discovery leveraging the Fedora LDP's WebAC implementation.
 
-FinAC uses standard WebAC to limit access to the LDP containers and binaries via the `/fcr:acl` endpoint.  However, special `acl:agent` roles allow `Essync` to pull over containers metadata to the Fin discovery layer (Elastic Search API) even if the container is not publicly accessible (`acl:agentClass foaf:agent` has been overridden).
+FinAC uses standard WebAC to limit access to the LDP containers and binaries via the `/fcr:acl` endpoint.  However, special `acl:agent` roles allow `essync` to pull over containers metadata to the Fin discovery layer (Elastic Search API) even if the container is not publicly accessible (`acl:agentClass foaf:agent` has been overridden).
+
+## Setup
+
+Put the following in: `/service/finac`
+
+```json
+{
+  "@id": "",
+  "@type": [
+    "http://digital.ucdavis.edu/schema#Service",
+    "http://digital.ucdavis.edu/schema#ProxyService"
+  ],
+  "urlTemplate": "http://finac:3000{{fcPath}}{{svcPath}}",
+  "description": "Fin WebAC wrapper",
+  "identifier": "finac",
+  "title": "finac",
+  "@context": {
+    "title": {
+      "@id": "http://purl.org/dc/elements/1.1/title"
+    },
+    "identifier": {
+      "@id": "http://purl.org/dc/elements/1.1/identifier"
+    },
+    "urlTemplate": {
+      "@id": "http://digital.ucdavis.edu/schema#urlTemplate"
+    },
+    "description": {
+      "@id": "http://purl.org/dc/elements/1.1/description"
+    }
+  }
+}
+```
 
 ## API
 
