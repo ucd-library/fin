@@ -18,3 +18,9 @@ CREATE TABLE IF NOT EXISTS workflow (
   error TEXT
 );
 CREATE INDEX IF NOT EXISTS workflow_data_finpath_idx ON workflow((data->>'finPath'));
+
+CREATE TABLE IF NOT EXISTS workflow_gcs (
+  workflow_gcs UUID PRIMARY KEY,
+  workflow_id UUID REFERENCES workflow(workflow_id),
+  file_hash TEXT NOT NULL
+);

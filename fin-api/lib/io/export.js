@@ -25,6 +25,13 @@ const OMIT = [
   'http://fedora.info/definitions/fcrepo#ServerManaged'
 ]
 
+const OMIT_F4 = [
+  'http://fedora.info/definitions/v4/repository#ServerManaged',
+  'http://fedora.info/definitions/v4/repository#InboundReferences',
+  'http://www.w3.org/ns/ldp#PreferMembership',
+  'http://www.w3.org/ns/ldp#PreferContainment'
+];
+
 class ExportCollection {
 
   constructor(_api) {
@@ -41,6 +48,7 @@ class ExportCollection {
    * @param {Boolean} options.ignoreMetadata ignore metadata file downloads
    * @param {Boolean} options.exportCollectionParts
    * @param {Boolean} options.dryRun do not download the files
+   * @param {Boolean} options.f4 use fcrepo4 api omit
    * 
    */
   async run(options) {
@@ -227,7 +235,7 @@ class ExportCollection {
       options.currentPath += '/fcr:metadata'
     }
 
-    let diskMetadata = await this.getDiskMetadataFile(options.currentPath, isArchivalGroup);
+    let diskMetadata = await this.getDiskMetadataFile(options.currentPath, isArchivalGroup, options);
     if( diskMetadata === null ) return;
 
     if( options.ignoreMetadata !== true ) {
@@ -251,7 +259,7 @@ class ExportCollection {
         await fs.writeFile(mFile, diskMetadata);
       }
 
-      let aclTTL = await this.getDiskMetadataFile(options.currentPath+'/fcr:acl');
+      let aclTTL = await this.getDiskMetadataFile(options.currentPath+'/fcr:acl', undefined, options);
       if( aclTTL ) {
         console.log(' -> WRITING ACL: '+path.resolve(cdir, 'fcr:acl.jsonld.json').replace(options.fsRoot, ''));
         await fs.writeFile(path.resolve(cdir, 'fcr:acl.jsonld.json'), aclTTL);
@@ -320,13 +328,18 @@ class ExportCollection {
     return path.join(currentDir, container['@id'].split(api.getConfig().fcBasePath)[1])
   }
 
-  async getDiskMetadataFile(fcrepoPath, isArchivalGroup) {
+  async getDiskMetadataFile(fcrepoPath, isArchivalGroup, options = {}) {
     let metadata = await api.get({
       path: fcrepoPath,
       headers : {
         accept : api.RDF_FORMATS.JSON_LD,
-        Prefer : `return=representation; omit="${OMIT.join(' ')}"`
+        Prefer : `return=representation; omit="${options.f4 ? OMIT_F4.join(' ') : OMIT.join(' ')}"`
       }
+    });
+
+    console.log({
+      accept : api.RDF_FORMATS.JSON_LD,
+      Prefer : `return=representation; omit="${options.f4 ? OMIT_F4.join(' ') : OMIT.join(' ')}"`
     });
 
     if( metadata.error ) return '';

@@ -230,13 +230,13 @@ class ProxyModel {
 
         // promote admins to fin-ac roles
         if( roles.has(config.finac.agents.admin) ) {
-          roles.add(config.finac.agents.discovery);
+          roles.add(config.finac.agents.discover);
           roles.add(config.finac.agents.protected);
         } else {
           // see if the user has a temp finac access
           let hasFinacGrant = await finac.hasAccess(path, Array.from(roles));
           if( hasFinacGrant ) {
-            roles.add(config.finac.agents.discovery);
+            roles.add(config.finac.agents.discover);
             roles.add(config.finac.agents.protected);
           }
         }

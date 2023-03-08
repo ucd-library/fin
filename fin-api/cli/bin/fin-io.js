@@ -23,6 +23,7 @@ program
   .option('-d, --dry-run', 'do not download any files')
   .option('-e, --export-collection-parts', 'Export collection hasPart references as well')
   .option('-f, --use-fcpaths', 'Ignore all ArchivalGroups gitsource and export to fs using fcrepo path')
+  .option('--f4', 'Use fcrepo4 omit headers')
   .description('Export collection to Fin filesystem representation')
   .action((rootFcrepoPath, fsPath, options) => {
     fileIo.export({rootFcrepoPath, fsPath, options});

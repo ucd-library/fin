@@ -132,28 +132,28 @@ class ServiceProxy {
 
     // if this is a protected service, only allow admins or people with webac read access
     // to service definition
-    if( service.protected ) {
-      let token = req.token;
-      if( !token ) {
-        res.status(401).send('Protected Service');
-        return false;
-      }
+    // if( service.protected ) {
+    //   let token = req.token;
+    //   if( !token ) {
+    //     res.status(401).send('Protected Service');
+    //     return false;
+    //   }
 
-      let user = jwt.validate(token);
-      if( !user ) {
-        res.status(403).send('Protected Service');
-        return false;
-      }
-      req.user = user;
+    //   let user = jwt.validate(token);
+    //   if( !user ) {
+    //     res.status(403).send('Protected Service');
+    //     return false;
+    //   }
+    //   req.user = user;
 
-      let acl = (user.acl || {}).acl || {};
-      let access = acl['/.services/'+service.id] || '';
+    //   let acl = (user.acl || {}).acl || {};
+    //   let access = acl['/.services/'+service.id] || '';
 
-      if( !user.admin && !access.indexOf('r') > 0 ) {
-        res.status(403).send('Protected Service');
-        return false;
-      }
-    }
+    //   if( !user.admin && !access.indexOf('r') > 0 ) {
+    //     res.status(403).send('Protected Service');
+    //     return false;
+    //   }
+    // }
 
     return true;
   }
@@ -185,39 +185,49 @@ class ServiceProxy {
     } catch(e) {}
 
 
-    // if( req.finServiceInfo.global ) {
-    //   req.finContainer = {access: true};
-    //   return;
-    // }
+    // allow admins to put/post to any container, even if it doesn't exist
+    let binary = false;
+    let links = {};
 
-    // make a head request to get fcrepo statusCode and link headers
-    // var {response} = await _request({
-    //   method : 'HEAD',
-    //   uri : req.finServiceInfo.fcPath
-    // }, req.token);
     let response = await api.head(headOpts);
 
     // if we don't get a 200 range status code from fcrepo, 
     // requesting agent does not have access to this container
-    if( !api.isSuccess(response) ) {
+    if( !api.isSuccess(response) && !this._isAdminPutPost(req) ) {    
       req.finContainer = {access : false, response};
       return;
     }
 
     // parse the link headers, used by following operations
-    let links = {};
     if( response.last.headers.link ) {
       links = api.parseLinkHeader(response.last.headers.link);
     }
 
     // check if binary
-    let binary = false;
     if( links.type ) {
       binary = links.type.find(item => item.url === BINARY) ? true : false;
     }
 
     // we are not a binary container
     req.finContainer = {access: true, binary, links, response, token: req.token};
+  }
+
+  /**
+   * @method _isAdminPutPost
+   * @description check if the requesting agent is an admin and if the request is a PUT or POST
+   * 
+   * @param {Object} req express request 
+   * @returns {Boolean}
+   */
+  _isAdminPutPost(req) {
+    if( !['PUT', 'POST'].includes(req.method) ) {
+      return false;
+    }
+
+    let roles = req.user.roles || [];
+    if( !roles.includes(config.finac.agents.admin) ) return false;
+    
+    return true;
   }
 
   /**
@@ -250,26 +260,5 @@ class ServiceProxy {
 
 }
 
-/**
- * @method _request
- * @private
- * @description Request promise wrapper and authorization wrapper
- */
-// function _request(options, token) {
-//   if( token ) {
-//     if( !options.headers ) options.headers = {};
-//     options.headers.Authorization = `Bearer ${token}`;
-//     options.headers.host = new URL(config.server.url).host;
-//   }
-
-//   options.uri = `http://${config.fcrepo.hostname}:8080${options.uri}`;
-
-//   return new Promise((resolve, reject) => {
-//     request(options, (error, response, body) => {
-//       if( error ) reject(error);
-//       else resolve({response, body});
-//     });
-//   });
-// }
 
 module.exports = new ServiceProxy();
