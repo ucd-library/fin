@@ -1,4 +1,4 @@
-# Google Cloud Storage (GCS) Service
+# Google Cloud Storage (GCS) Access Service
 
 The GCS service allows access to files that are hosted in Google Cloud storage.  The primary reason files may be hosted in GCS; workflows producing derivative products keep the derivative products in GCS and the original files in Fedora.
 
