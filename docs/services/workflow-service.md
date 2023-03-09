@@ -51,3 +51,26 @@ The `data` parameter will automatically have `gcsBucket`, `gcsSubpath`,`tmpGcsBu
 ## GC Workflow Definitions
 
 All workflow definitions stored in `/fin/workflows/gc/[worfklow-name].yaml` will added to GC on start.
+
+# Usage
+
+## Root Paths
+
+  - `GET /svc:workflow/reload`: Reload the workflow definitions from buckets found in `/fin/workflows/config.json`.  Only updates if workflow found in bucket is newer than the one in PostgreSQL.
+  - `GET /svc:workflow/list`: List all workflows
+
+## Container Paths
+   
+   - `POST /[fin-path]/svc:workflow/[workflow-name]`: Start a workflow
+   - `GET /[fin-path]/svc:workflow`: Get all workflows run on path
+   - `GET /[fin-path]/svc:workflow/[workflow-id]`: Get a specific workflow run on path
+
+# Workflow Headers
+
+After a workflow is successfully completed, an additional link header will be added to the response.  The link header will be of the form:
+
+```http
+Link: <[fin-path]/svc:workflow/[workflow-id]>; rel="workflow"; type="[workflow-name]"
+```
+
+This header is often used in data transforms, as they can use the workflow name to determine additional products that have been generated for the container.
