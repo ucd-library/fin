@@ -1,0 +1,75 @@
+steps:
+
+  - name: 'gcr.io/cloud-builders/gsutil'
+    args: ['rsync', 'gs://${_CONFIG_BUCKET}/${_CONFIG_PROJECT}', '/config']
+    volumes:
+    - name: 'config'
+      path: '/config'
+
+  - name: 'gcr.io/$PROJECT_ID/ci-buildnum'
+    args: ['/config/buildnum', '/config/.buildenv']
+    volumes:
+    - name: 'config'
+      path: '/config'
+
+  - name: 'gcr.io/$PROJECT_ID/ci-build-deployment-logger'
+    args: ['/config']
+    env: 
+    - 'REPO_NAME=$REPO_NAME'
+    - 'BRANCH_NAME=$BRANCH_NAME'
+    - '_UCD_LIB_INITIATOR=$_UCD_LIB_INITIATOR'
+    - '_GITHUB_EVENT=$_GITHUB_EVENT'
+    - '_GITHUB_ISSUE_NUMBER=$_GITHUB_ISSUE_NUMBER'
+    - '_GITHUB_REPOSITORY=$_GITHUB_REPOSITORY'
+    - '_GITHUB_PR_USER=$_GITHUB_PR_USER'
+    - '_GITHUB_PR_MERGED_BY=$_GITHUB_PR_MERGED_BY'
+    - 'BUILD_ID=$BUILD_ID'
+    - 'SHORT_SHA=$SHORT_SHA'
+    - 'TAG_NAME=$TAG_NAME'
+    volumes:
+    - name: 'config'
+      path: '/config'
+
+  - name: 'gcr.io/cloud-builders/gsutil'
+    args: ['cp', '/config/buildnum', 'gs://${_CONFIG_BUCKET}/${_CONFIG_PROJECT}/buildnum']
+    volumes:
+    - name: 'config'
+      path: '/config'
+
+  - name: 'gcr.io/cloud-builders/gsutil'
+    args: ['cp', '-r', '/config/${BUILD_ID}', 'gs://${_CONFIG_BUCKET}/${_CONFIG_PROJECT}/${BUILD_ID}']
+    volumes:
+    - name: 'config'
+      path: '/config'
+
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: "bash"
+    args: ["-c", "./devops/pull.sh"]
+
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: "bash"
+    args: ["-c", "./devops/build.sh"]
+    env: 
+      - 'GCLOUD_BUILD=true'
+    volumes:
+    - name: 'config'
+      path: '/config'
+
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: "bash"
+    args: ["-c", "./devops/push.sh"]
+    volumes:
+    - name: 'config'
+      path: '/config'  
+
+substitutions:
+  _CONFIG_BUCKET: ci-build-config
+  _CONFIG_PROJECT: fin
+  _UCD_LIB_INITIATOR: unknown
+  _GITHUB_EVENT: ''
+  _GITHUB_ISSUE_NUMBER: ''
+  _GITHUB_REPOSITORY: ''
+  _GITHUB_PR_USER: ''
+  _GITHUB_PR_MERGED_BY: ''
+
+timeout: 1800s
