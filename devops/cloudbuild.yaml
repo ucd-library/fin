@@ -62,6 +62,10 @@ steps:
   - name: gcr.io/cloud-builders/docker
     entrypoint: "bash"
     args: ["-c", "./devops/push.sh"]
+    env: 
+      - 'SHORT_SHA=$SHORT_SHA'
+      - 'TAG_NAME=$TAG_NAME'
+      - 'BRANCH_NAME=$BRANCH_NAME'
     volumes:
     - name: 'config'
       path: '/config'  
