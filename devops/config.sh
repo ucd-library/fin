@@ -58,7 +58,7 @@ if [[ -z $A6T_REG_HOST ]]; then
   fi
 fi
 
-DOCKER_CACHE_TAG=latest
+DOCKER_CACHE_TAG=$FIN_BRANCH_NAME
 
 # Docker Images
 FCREPO_IMAGE_NAME=$A6T_REG_HOST/fin-fcrepo
