@@ -9,7 +9,7 @@
 set -e
 ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $ROOT_DIR/..
-source config.sh
+source ./devops/config.sh
 
 for image in "${ALL_DOCKER_BUILD_IMAGES[@]}"; do
   docker pull $image:$DOCKER_CACHE_TAG || true

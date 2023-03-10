@@ -11,9 +11,26 @@ else
   BUILD_NUM=-1
 fi
 
+if [[ -z "$BRANCH_NAME" ]]; then
+  FIN_BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
+else
+  FIN_BRANCH_NAME=$BRANCH_NAME
+fi
+
+if [[ -z "$TAG_NAME" ]]; then
+  FIN_TAG_NAME=$(git rev-parse --abbrev-ref HEAD)
+else
+  FIN_TAG_NAME=$TAG_NAME
+fi
+
+if [[ "$FIN_BRANCH_NAME" == "main" ]]; then
+  APP_TAG=$FIN_TAG_NAME
+else
+  APP_TAG=$FIN_BRANCH_NAME
+fi
+
 # Main version number we are tagging the app with. Always update
 # this when you cut a new version of the app!
-APP_TAG=v2.0.0-alpha
 APP_VERSION=${APP_TAG}.${BUILD_NUM}
 
 FIN_REPO_TAG=sandbox

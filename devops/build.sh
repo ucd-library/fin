@@ -3,46 +3,51 @@
 set -e
 ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $ROOT_DIR/..
-source config.sh
+source ./devops/config.sh
 
 echo "Starting docker build "
-FIN_SERVER_REPO_HASH=$(git -C $REPOSITORY_DIR/$FIN_SERVER_REPO_NAME log -1 --pretty=%h)
+
+if [[ -z "$SHORT_SHA" ]]; then
+  FIN_SERVER_REPO_HASH=$(git -C . log -1 --pretty=%h)
+else
+  FIN_SERVER_REPO_HASH=$SHORT_SHA
+fi
 
 # Core Server - fcrepo
 docker build \
   --build-arg FIN_REPO_TAG=${FIN_REPO_TAG} \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
-  -t $FCREPO_IMAGE_NAME:$APP_VERSION \
+  -t $FCREPO_IMAGE_NAME:$APP_TAG \
   --cache-from $FCREPO_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  $REPOSITORY_DIR/$FIN_SERVER_REPO_NAME/services/fcrepo
+  services/fcrepo
 
 # Core Server - postgres
 docker build \
   --build-arg FIN_REPO_TAG=${FIN_REPO_TAG} \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
-  -t $POSTGRES_IMAGE_NAME:$APP_VERSION \
+  -t $POSTGRES_IMAGE_NAME:$APP_TAG \
   --cache-from $POSTGRES_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  $REPOSITORY_DIR/$FIN_SERVER_REPO_NAME/services/postgres
+  services/postgres
 
 # Core Server - server
 docker build \
   --build-arg FIN_REPO_TAG=${FIN_REPO_TAG} \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
-  -t $SERVER_IMAGE_NAME:$APP_VERSION \
+  -t $SERVER_IMAGE_NAME:$APP_TAG \
   --cache-from $SERVER_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  -f $REPOSITORY_DIR/$FIN_SERVER_REPO_NAME/services/fin/Dockerfile \
-  $REPOSITORY_DIR/$FIN_SERVER_REPO_NAME
+  -f services/fin/Dockerfile \
+  .
 
 # Core Server - elastic search
 docker build \
   --build-arg FIN_REPO_TAG=${FIN_REPO_TAG} \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
-  -t $ELASTIC_SEARCH_IMAGE_NAME:$APP_VERSION \
+  -t $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG \
   --cache-from $ELASTIC_SEARCH_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  $REPOSITORY_DIR/$FIN_SERVER_REPO_NAME/services/elastic-search
+  services/elastic-search
 
 # Core - Init services
 docker build \
-  -t $INIT_IMAGE_NAME:$APP_VERSION \
+  -t $INIT_IMAGE_NAME:$APP_TAG \
   --cache-from $INIT_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  $REPOSITORY_DIR/$FIN_SERVER_REPO_NAME/services/init
+  services/init

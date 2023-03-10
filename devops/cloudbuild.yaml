@@ -51,6 +51,10 @@ steps:
     args: ["-c", "./devops/build.sh"]
     env: 
       - 'GCLOUD_BUILD=true'
+      - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
+      - 'SHORT_SHA=$SHORT_SHA'
+      - 'TAG_NAME=$TAG_NAME'
+      - 'BRANCH_NAME=$BRANCH_NAME'
     volumes:
     - name: 'config'
       path: '/config'

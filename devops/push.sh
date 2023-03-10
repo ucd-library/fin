@@ -2,8 +2,8 @@
 
 set -e
 ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-cd $ROOT_DIR
-source ../config.sh
+cd $ROOT_DIR/..
+source ./devops/config.sh
 
 docker push $FCREPO_IMAGE_NAME:$APP_TAG
 docker tag $FCREPO_IMAGE_NAME:$APP_TAG $FCREPO_IMAGE_NAME:$DOCKER_CACHE_TAG
