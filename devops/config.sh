@@ -33,8 +33,6 @@ fi
 # this when you cut a new version of the app!
 APP_VERSION=${APP_TAG}.${BUILD_NUM}
 
-FIN_REPO_TAG=sandbox
-
 #### End main config ####
 
 
