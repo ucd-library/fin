@@ -45,6 +45,11 @@ steps:
   - name: gcr.io/cloud-builders/docker
     entrypoint: "bash"
     args: ["-c", "./devops/pull.sh"]
+    env:
+      - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
+      - 'SHORT_SHA=$SHORT_SHA'
+      - 'TAG_NAME=$TAG_NAME'
+      - 'BRANCH_NAME=$BRANCH_NAME'
 
   - name: gcr.io/cloud-builders/docker
     entrypoint: "bash"
@@ -63,6 +68,7 @@ steps:
     entrypoint: "bash"
     args: ["-c", "./devops/push.sh"]
     env: 
+      - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
       - 'SHORT_SHA=$SHORT_SHA'
       - 'TAG_NAME=$TAG_NAME'
       - 'BRANCH_NAME=$BRANCH_NAME'
