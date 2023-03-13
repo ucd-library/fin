@@ -7,6 +7,13 @@ source ./devops/config.sh
 
 echo "Starting docker build "
 
+echo -e "\nBuilding images:"
+echo "Fcrepo: $FCREPO_IMAGE_NAME:$APP_TAG"
+echo "Postgres: $POSTGRES_IMAGE_NAME:$APP_TAG"
+echo "Base Service: $SERVER_IMAGE_NAME:$APP_TAG"
+echo "ElasticSearch: $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG"
+echo -e "Init: $INIT_IMAGE_NAME:$APP_TAG\n"
+
 if [[ -z "$SHORT_SHA" ]]; then
   FIN_SERVER_REPO_HASH=$(git -C . log -1 --pretty=%h)
 else
