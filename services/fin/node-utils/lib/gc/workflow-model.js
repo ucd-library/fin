@@ -120,7 +120,7 @@ class FinGcWorkflowModel {
         serviceAccount : this.getGoogleCloudServiceAccountEmail(finWorkflowName),
         sourceContents: workflow,
         labels : {
-          'host' : new URL(config.server.url).hostname,
+          'host' : new URL(config.server.url).hostname.replace(/\./g, '-'),
           'project' : 'fin',
         }
       },
