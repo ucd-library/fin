@@ -18,12 +18,12 @@ else
 fi
 
 if [[ -z "$TAG_NAME" ]]; then
-  FIN_TAG_NAME=$(git describe --tags --abbrev=0)
+  FIN_TAG_NAME=$(git describe --tags --abbrev=0) || true
 else
   FIN_TAG_NAME=$TAG_NAME
 fi
 
-if [[ "$FIN_BRANCH_NAME" == "main" ]]; then
+if [[ "$FIN_BRANCH_NAME" == "main" && ! -z "$FIN_TAG_NAME" ]]; then
   APP_TAG=$FIN_TAG_NAME
 else
   APP_TAG=$FIN_BRANCH_NAME
