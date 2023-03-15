@@ -141,7 +141,7 @@ class FinGcWorkflowModel {
   }
 
   getGcWorkflowName(workflowName) {
-    return workflowName+'-'+new URL(config.server.url).hostname;
+    return workflowName+'-'+new URL(config.server.url).hostname.replace(/\./g, '-');
   }
 
   replaceEnvVars(params={}) {
@@ -569,6 +569,10 @@ class FinGcWorkflowModel {
     }
   }
 
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 module.exports = new FinGcWorkflowModel();
