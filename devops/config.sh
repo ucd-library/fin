@@ -18,7 +18,7 @@ else
 fi
 
 if [[ -z "$TAG_NAME" ]]; then
-  FIN_TAG_NAME=$(git rev-parse --abbrev-ref HEAD)
+  FIN_TAG_NAME=$(git describe --tags --abbrev=0)
 else
   FIN_TAG_NAME=$TAG_NAME
 fi

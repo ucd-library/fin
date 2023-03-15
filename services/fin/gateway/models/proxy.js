@@ -1,6 +1,6 @@
 const {URL} = require('url');
 const api = require('@ucd-lib/fin-api');
-const {logger, config, jwt, workflow, FinAC} = require('@ucd-lib/fin-service-utils');
+const {logger, config, jwt, workflow, FinAC, FinGroups, RDF_URIS} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('./services');
 const proxy = require('../lib/http-proxy');
 const serviceProxy = require('./service-proxy');
@@ -8,6 +8,9 @@ const forwardedHeader = require('../lib/forwarded-header');
 const authenticationServiceProxy = require('./service-proxy/authentication-service');
 const clientServiceProxy = require('./service-proxy/client-service');
 const finac = new FinAC();
+
+// TODO: uncomment to enable finGroups
+// const finGroups = new FinGroups();
 
 const FIN_URL = new URL(config.server.url);
 
@@ -253,6 +256,9 @@ class ProxyModel {
     // so that the workflow headers can be added to the response
     req.workflows = await workflow.postgres.getLatestWorkflowsByPath(path);
 
+    // TODO: uncomment to enable finGroups
+    // req.finGroup = await finGroups.get(path);
+
     // set base user auth
     let fcrepoApiConfig = api.getConfig();
     req.headers['authorization'] = 'Basic '+Buffer.from(fcrepoApiConfig.username+':'+fcrepoApiConfig.password).toString('base64');
@@ -285,7 +291,12 @@ class ProxyModel {
     }
   
     serviceModel.setServiceLinkHeaders(clinks, req.fcPath, types);
-    
+
+    // TODO: uncomment to enable finGroups
+    // if( req.finGroup ) {
+    //   clinks.push(`<${config.server.url}/fcrepo/rest${req.finGroup}>; rel="fin-group"; type="${RDF_URIS.TYPES.FIN_GROUP}"`);
+    // }
+
     if( req.workflows ) {
       for( let workflow of req.workflows ) {
         clinks.push(`<${config.server.url}${req.fcPath}/svc:workflow/${workflow.id}>; rel="workflow"; type="${workflow.name}"`);

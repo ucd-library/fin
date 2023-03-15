@@ -5,20 +5,25 @@ ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $ROOT_DIR/..
 source ./devops/config.sh
 
-echo "Starting docker build "
-
-echo -e "\nBuilding images:"
-echo "Fcrepo: $FCREPO_IMAGE_NAME:$APP_TAG"
-echo "Postgres: $POSTGRES_IMAGE_NAME:$APP_TAG"
-echo "Base Service: $SERVER_IMAGE_NAME:$APP_TAG"
-echo "ElasticSearch: $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG"
-echo -e "Init: $INIT_IMAGE_NAME:$APP_TAG\n"
+echo -e "Starting docker build: $APP_VERSION\n"
 
 if [[ -z "$SHORT_SHA" ]]; then
   FIN_SERVER_REPO_HASH=$(git -C . log -1 --pretty=%h)
 else
   FIN_SERVER_REPO_HASH=$SHORT_SHA
 fi
+
+echo "Fin Repository:"
+echo "Branch: $FIN_BRANCH_NAME"
+echo "Tag: $FIN_TAG_NAME"
+echo "SHA: $FIN_SERVER_REPO_HASH"
+
+echo -e "\nBuilding images:"
+echo    "Fcrepo        : $FCREPO_IMAGE_NAME:$APP_TAG"
+echo    "Postgres      : $POSTGRES_IMAGE_NAME:$APP_TAG"
+echo    "Base Service  : $SERVER_IMAGE_NAME:$APP_TAG"
+echo    "ElasticSearch : $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG"
+echo -e "Init          : $INIT_IMAGE_NAME:$APP_TAG\n"
 
 # Core Server - fcrepo
 docker build \

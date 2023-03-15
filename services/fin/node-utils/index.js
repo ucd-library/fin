@@ -11,6 +11,7 @@ module.exports = {
   ElasticSearchModel : require('./lib/elastic-search/index.js'),
   esClient : require('./lib/elastic-search/client.js'),
   FinAC : require('./lib/fin-ac/index.js'),
+  FinGroup : require('./lib/fin-groups.js'),
   middleware : {
     finac : require('./lib/fin-ac/middleware.js')
   },

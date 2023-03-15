@@ -13,7 +13,8 @@ module.exports = {
     FIN_IO_INDIRECT : 'http://digital.ucdavis.edu/schema#FinIoIndirectReference',
     FIN_IO_GCS_METADATA : 'http://digital.ucdavis.edu/schema#FinIoGcsMetadata',
     WEBAC : 'http://fedora.info/definitions/v4/webac#Acl',
-    ARCHIVAL_GROUP : 'http://fedora.info/definitions/v4/repository#ArchivalGroup'
+    ARCHIVAL_GROUP : 'http://fedora.info/definitions/v4/repository#ArchivalGroup',
+    FIN_GROUP : 'http://digital.ucdavis.edu/schema#FinGroup'
   },
 
   PROPERTIES : {
