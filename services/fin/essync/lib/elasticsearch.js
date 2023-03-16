@@ -215,7 +215,7 @@ class ElasticSearchModel {
    * @return {Promise} resolves to record
    */
   async getChildren(id, index) {
-    let result = await this.esClient({
+    let result = await this.esClient.search({
       index,
       body : {
         from: 0,
