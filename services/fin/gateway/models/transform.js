@@ -8,7 +8,10 @@ const path = require('path');
 const NULL_VALUE = '';
 const FIN_URL = new URL(config.server.url);
 const ROOT_DIR = path.join(__dirname, 'loaded-transforms');
-let finUrlRegex = new RegExp(`^${config.server.url}${config.fcrepo.root}`);
+
+// ensure that both http and https are supported
+let finUrl = new URL(config.server.url);
+let finUrlRegex = new RegExp(`^https?://${finUrl.host}${config.fcrepo.root}`);
 
 const BLACK_LIST_LABEL_ATTRS = ['http://schema.org/hasPart', 'http://schema.org/associatedMedia', 
 'http://www.w3.org/ns/ldp#contains', 'http://schema.org/workExample'];

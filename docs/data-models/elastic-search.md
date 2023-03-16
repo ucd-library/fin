@@ -48,6 +48,9 @@ class ItemModel extends ElasticSearchModel {
   constructor() {
     // base name for model and elastic search indexes
     super('item');
+
+    // the transform service to use for this model.
+    this.transformService = 'es-item-transform'
   }
 
   // you must override this function.  It should return true if the id or
@@ -74,6 +77,28 @@ This model exposes standard functions for interacting with fin Elastic Search do
   - `delete` - Delete a node in a document
   - `getEsRoles` - get the finac roles for this document
   - `getDefaultIndexConfig` - get the default elastic search index config for this document.  the mappings are set from the `schema.json` file.
+
+### Overriding getDefaultIndexConfig()
+
+ex:
+
+```javascript
+class MyAppsBaseEsModel extends ElasticSearchModel {
+  getDefaultIndexConfig(schema) {
+    let newIndexName = `${this.modelName}-${Date.now()}`;
+
+    return {
+      index: newIndexName,
+      body : {
+        settings : {
+          // your new settings here
+        },
+        mappings : schema
+      }
+    }
+  }
+}
+```
 
 ## Schema
 

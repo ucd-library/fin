@@ -12,11 +12,31 @@ class GitWrapper {
     if( this.cache[id] ) return Object.assign({}, this.cache[id]);
 
     try {
+      let tag = '';
+      try {
+        tag = await this.getTagName(opts);
+      } catch(e) {}
+
+      let shortSha = '';
+      try {
+        shortSha = await this.getShortSha(opts);
+      } catch(e) {}
+
+      let branch = '';
+      try {
+        branch = await this.getBranchName(opts);
+      } catch(e) {}
+
+      let repo = '';
+      try {
+        repo = await this.getRepoName(opts);
+      } catch(e) {}
+
       let gitInfo = {
-        shortSha : await this.getShortSha(opts),
-        branch : await this.getBranchName(opts),
-        tag : await this.getTagName(opts),
-        repo : await this.getRepoName(opts),
+        shortSha,
+        branch,
+        tag,
+        repo,
         rootDir : await this.getRootDir(cwd, opts)
       }
       this.cache[id] = Object.assign({}, gitInfo);
@@ -51,6 +71,8 @@ class GitWrapper {
   }
 
   async getRootDir(cwd='', opts) {
+    opts = Object.assign({}, opts);
+    if( cwd ) opts.cwd = cwd;
     let {stdout, stderr} = await _exec('git rev-parse --show-toplevel', opts);
     return stdout.trim();
   }
