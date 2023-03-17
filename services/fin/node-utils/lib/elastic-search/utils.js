@@ -19,10 +19,12 @@ class Utils {
     });
   }
 
-  singleNode(id, graph) {
+  singleNode(id, graph={}) {
     if( graph['@graph'] ) graph = graph['@graph'];
     if( graph.node ) graph = graph.node;
-    return [graph.find(node => node['@id'] === id)];
+    let node = graph.find(node => node['@id'] === id);
+    if( !node ) return [];
+    return [node];
   }
 
 }

@@ -76,6 +76,7 @@ class ElasticSearchModel {
     let result = finSearch.esResultToDamsResult(esResult, searchDocument);
 
     result.results.forEach(item => {
+      if( item._source ) item = item._source;
       if( options.compact ) utils.compactAllTypes(item);
       if( options.singleNode ) item['@graph'] = utils.singleNode(item.id, item['@graph']);
     });
