@@ -77,7 +77,7 @@ class ElasticSearchModel {
 
     result.results.forEach(item => {
       if( options.compact ) utils.compactAllTypes(item);
-      if( options.singleNode ) item.node = utils.singleNode(item.id, item.node);
+      if( options.singleNode ) item.graph = utils.singleNode(item.id, item['@graph']);
     });
     
     if( options.debug ) {
