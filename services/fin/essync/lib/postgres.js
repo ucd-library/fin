@@ -85,7 +85,7 @@ class EssyncPostgresUtils {
    * @param {Array<String>} args.update_types
    * @param {String} args.action
    * @param {String} args.message
-   * @param {Object} args.gitsource
+   * @param {Object} args.source
    * 
    * @return {Promise}
    */
@@ -95,16 +95,16 @@ class EssyncPostgresUtils {
   if( resp.rows.length ) {
     await this.pg.query(`
         UPDATE ${this.schema}.update_status 
-          SET (event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, model, gitsource, updated) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          SET (event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, model, source, updated) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         WHERE 
           PATH = $1
-        ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, args.message, args.response, args.tranformService, args.model, args.gitsource, new Date().toISOString()]
+        ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, args.message, args.response, args.tranformService, args.model, args.source, new Date().toISOString()]
       );
     } else {
       await this.pg.query(`
-        INSERT INTO ${this.schema}.update_status (path, event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, model, gitsource) 
+        INSERT INTO ${this.schema}.update_status (path, event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, model, source) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, args.message, args.response, args.tranformService, args.model, args.gitsource]
+      ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, args.message, args.response, args.tranformService, args.model, args.source]
       );
     }
   }

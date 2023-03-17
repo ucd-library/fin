@@ -53,11 +53,11 @@ class ItemModel extends ElasticSearchModel {
     this.transformService = 'es-item-transform'
   }
 
-  // you must override this function.  It should return true if the id or
-  // or the types array bind to the model.  The fin standard practice is to 
+  // you must override this function.  It should return true if the id 
+  // to the model.  The fin standard practice is to 
   // bind a model to a root path in the ldp. In this case all `/item` paths
   // would bind to this model.
-  is(id, types=[]) {
+  is(id) {
     if( id.match(/^\/item\//) ) return true;
     return false;
   }
@@ -109,13 +109,23 @@ The schema is the Elastic Search mappings for the data model.  It should be defi
   "dynamic": false,
 
   "properties": {
-    "title": {
+    "@id": {
+      "type": "keyword"
+    },
+
+    "@graph.@id": {
+      "type": "keyword"
+    },
+
+    "@graph.name": {
       "type": "text"
     },
-    "description": {
+
+    "@graph.description": {
       "type": "text"
     },
-    "date": {
+
+    "@graph.date": {
       "type": "date"
     }
   }

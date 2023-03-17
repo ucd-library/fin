@@ -12,27 +12,34 @@ Essync comes pre-configured.  All you need to do is extend the base `fin` servic
 
 When create/update event for fcrepo resources are received, essync will attempt to find a data model that binds to the resource (via the `is()` method).  If a model is found, essync will use the provided `transformService` property from the model as the transform service to access to resource.  Ex.  If the `transformService` property is `es-item-transform` and the fin container path is `/foo/bar`, essync will use the `/fcrepo/rest/foo/bar/svc:es-item-transform` to retrieve the resource from fcrepo.
 
-The transform service needs to respond with JSON document that can be thought of as a graph node.  The graph node should have a `_` property which contains a `esId` property used to add like nodes to the same document in ElasticSearch.
+The transform service needs to respond with JSONLD document.  The JSONLD document should have an `@graph` property which is an array of nodes, and contain a `@id` property used to add like nodes to the same document in ElasticSearch.
 
 Ex.  Given two containers `/foo/bar` and `/foo/baz` with the following transform service response:
 
 ```json
 {
-  "_": {
-    "esId": "1234"
-  },
-  "@id": "/foo/bar",
-  "name": "bar"
+  "@id": "1234",
+  "@graph" : {
+    "@id": "/foo/bar",
+    "name": "bar"
+  }
 }
 ```
 
 ```json
 {
-  "_": {
-    "esId": "1234"
-  },
-  "@id": "/foo/baz",
-  "name": "baz"
+  "@id": "1234",
+  "@graph" : {
+    "@id": "/foo/baz",
+    "name": "baz",
+    "_": {
+      "source" : {
+        "type" : "git",
+        "branch" : "main",
+        "commit" : "1234"
+      }
+    }
+  }
 }
 ```
 
@@ -40,27 +47,32 @@ The resulting document in ElasticSearch would look like:
 
 ```json
 {
-  "id": "1234",
-  "node": [
+  "@id": "1234",
+  "@graph": [
     {
-      "_": {
-        "esId": "1234"
-      },
       "@id": "/foo/bar",
-      "name": "bar"
+      "name": "bar",
+      "_" : {
+        "update" : "2018-01-01T00:00:00.000Z"
+      }
     },
     {
-      "_": {
-        "esId": "1234"
-      },
       "@id": "/foo/baz",
-      "name": "baz"
+      "name": "baz",
+      "_" : {
+        "update" : "2018-01-01T00:00:00.000Z",
+        "source" : {
+          "type" : "git",
+          "branch" : "main",
+          "commit" : "1234"
+        }
+      }
     }
   ]
 }
 ```
 
-Note.  It's `fin` standard practice to but any node `metadata` in the `_` property.  So feel free to add any additional metadata to the `_` object.
+Note.  It's `fin` standard practice to put any node `metadata` in the `_` property.  So feel free to add any additional metadata to the `_` object.
 
 ## Debugging
 
@@ -88,4 +100,4 @@ Table columns:
   - `model` - data model used to process the event
   - `message` - additional message about what essync did
   - `es_response` - Elasticsearch response from the update/delete request
-  - `gitsource` - the `fin io` gitsource information for the record. This will store anything in the transformed containers `_.gitsource` property.
+  - `source` - This will store anything in the transformed containers `source` property or the first node with a `_.source` property.

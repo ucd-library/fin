@@ -91,13 +91,15 @@ class ElasticSearchModel {
   async update(jsonld, index) {
     if( !jsonld ) throw new Error('jsonld is null');
 
-    if( !jsonld._ ) jsonld._ = {};
-    jsonld._.updated = new Date();
+    for( let node of jsonld['@graph'] ) {
+      if( !node._ ) node._ = {};
+      node._.updated = new Date();
+    }
 
     let names = await models.names();
     for( let name of names ) {
       let {model} = await models.get(name);
-      if( !await model.is(jsonld['@id'], jsonld['@type']) ) continue;
+      if( !await model.is(jsonld['@id']) ) continue;
 
       logger.info(`ES Indexer updating ${name} container: ${jsonld['@id']} in es index: ${index|| model.writeIndexAlias}`);
       return model.update(jsonld, index);
@@ -222,7 +224,7 @@ class ElasticSearchModel {
         size: 10000,
         query: {
           wildcard : {
-            'node.@id' : {
+            '@graph.@id' : {
               value : id+'/*'
             }
           }

@@ -175,37 +175,54 @@ class EsSync {
       }
 
       jsonld = JSON.parse(response.data.body);
-
-      // TODO: move search for root node instead of first node
-      if( jsonld['@graph'] ) {
-        jsonld = jsonld['@graph'][0];
-      }
-
-      // store gitsource if we have it
-      if( !jsonld._ ) jsonld._ = {};
-      e.gitsource = jsonld._.gitsource;
       
       // cleanup id path
-      if( jsonld['@id'].match(/\/fcrepo\/rest\//) ) {
-        jsonld['@id'] = jsonld['@id'].split('/fcrepo/rest')[1];
-      }
+      // if( jsonld['@id'].match(/\/fcrepo\/rest\//) ) {
+      //   jsonld['@id'] = jsonld['@id'].split('/fcrepo/rest')[1];
+      // }
 
       // if no esId, we don't add to elastic search
-      if( !jsonld._.esId ) {
-        logger.info('Container '+e.path+' ignored, no jsonld._.esId provided');
+      if( !jsonld['@graph'] || !jsonld['@id']) {
+        logger.info('Container '+e.path+' ignored, no jsonld["@graph"] or jsonld["@id"] provided');
 
         e.action = 'ignored';
-        e.message = 'no jsonld._.esId provided';
+        e.message = 'no jsonld["@graph"] or jsonld["@id"] provided';
         await indexer.remove(e.path);
         await postgres.updateStatus(e);
         return;
       }
 
+      if( !Array.isArray(jsonld['@graph']) || !jsonld['@graph'].length ) {
+        logger.info('Container '+e.path+' ignored, jsonld["@graph"] contains no nodes');
+
+        e.action = 'ignored';
+        e.message = 'jsonld["@graph"] contains no nodes';
+        await indexer.remove(e.path);
+        await postgres.updateStatus(e);
+        return;
+      }
+
+      // store source if we have it
+      if( jsonld.source ) {
+        e.source = jsonld.source;
+      } else {
+        for( let node of jsonld['@graph'] ) {
+          if( node._ && node._.source ) {
+            e.source = node._.source;
+            break;
+          }
+        }
+      }
+
       // set some of the fcrepo event information
-      jsonld._.fcrepoEvent = {
-        id : e.event_id,
-        timestamp : e.event_timestamp,
-        updateType : e.update_types
+      for( let node of jsonld['@graph'] ) {
+        if( !node._ ) node._ = {};
+
+        node._.event = {
+          id : e.event_id,
+          timestamp : e.event_timestamp,
+          updateType : e.update_types
+        }
       }
 
       let result = await indexer.update(jsonld);

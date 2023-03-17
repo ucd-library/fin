@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS update_status (
   model TEXT,
   message TEXT,
   es_response JSONB,
-  gitsource JSONB
+  source JSONB
 );
 CREATE INDEX IF NOT EXISTS update_status_path_idx ON update_status (path);
 CREATE INDEX IF NOT EXISTS update_status_action_idx ON update_status (action);

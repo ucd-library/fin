@@ -63,7 +63,7 @@ class ElasticSearchModel {
     if( !searchDocument.sort ) {
       searchDocument.sort = [
         '_score',
-        { 'node.name.raw' : 'asc' }
+        { '@graph.name.raw' : 'asc' }
       ]
     }
 
@@ -89,7 +89,7 @@ class ElasticSearchModel {
    * @method get
    * @description get a object by id
    * 
-   * @param {String} id node.identifier or node.@id
+   * @param {String} id @graph.identifier or @graph.@id
    * 
    * @returns {Promise} resolves to elasticsearch result
    */
@@ -104,8 +104,8 @@ class ElasticSearchModel {
         query: {
           bool : {
             should : [
-              {term : {'node.identifier.raw' : id.replace(this.pathRegex, '')}},
-              {term: {'node.@id': id}}
+              {term : {'@graph.identifier.raw' : id.replace(this.pathRegex, '')}},
+              {term: {'@graph.@id': id}}
             ]
           }
         }
@@ -237,8 +237,8 @@ class ElasticSearchModel {
       await this.client.index({
         index,
         op_type : 'create',
-        id : jsonld._.esId,
-        body: {id: jsonld._.esId, node: [], roles: []}
+        id : jsonld['@id'],
+        body: {'@id': jsonld['@id'], '@graph': [], roles: []}
       });
     } catch(e) {}
 
@@ -257,13 +257,15 @@ class ElasticSearchModel {
 
     let response = await this.client.update({
       index,
-      id : jsonld._.esId,
+      id : jsonld['@id'],
       script : {
         source : `
-        ctx._source.node.removeIf((Map item) -> { item['@id'] == params.node['@id'] });
-        ctx._source.node.add(params.node);
+        for (def node : params.nodes) {
+          ctx._source['@graph'].removeIf((Map item) -> { item['@id'] == node['@id'] });
+          ctx._source['@graph'].add(node);
+        }
         ctx._source.roles = params.roles;`,
-        params : {node:jsonld, roles}
+        params : {nodes:jsonld['@graph'], roles}
       }
     });
     response['@id'] = jsonld['@id'];
@@ -281,7 +283,7 @@ class ElasticSearchModel {
       query: {
         bool : {
           filter : [
-            {term: {'node.@id': id}}
+            {term: {'@graph.@id': id}}
           ]
         }
       }
@@ -306,7 +308,7 @@ class ElasticSearchModel {
         index,
         id : doc._id,
         script : {
-          source : `ctx._source.node.removeIf((Map item) -> { item['@id'] == params['id'] });`,
+          source : `ctx._source['@graph'].removeIf((Map item) -> { item['@id'] == params['id'] });`,
           params : {id}
         }
       });
@@ -318,7 +320,7 @@ class ElasticSearchModel {
       });
       
       // if the document is empty, remove
-      if( response._source && response._source.node && response._source.node.length === 0 ) {
+      if( response._source && response._source['@graph'] && response._source['@graph'].length === 0 ) {
         logger.info(`ES Indexer removing ${this.moduleName} document: ${doc._id}.  No nodes left in graph`);
         await this.client.delete({
           index,
@@ -330,7 +332,7 @@ class ElasticSearchModel {
 
   async getEsRoles(jsonld) {
     let roles = [];
-    let acl = await finac.getAccess(jsonld._.esId, false)
+    let acl = await finac.getAccess(jsonld['@id'], false)
     if( acl.protected === true ) {
       acl.readAuthorizations.forEach(role => {
         if( !config.finac.agents[role] ) {
@@ -347,7 +349,7 @@ class ElasticSearchModel {
         // protected is only accessible by agents with promoted role
         // as well as admins
         if( role === config.finac.agents.protected ) {
-          roles.push(config.finac.agents.protected+'-'+jsonld._.esId);
+          roles.push(config.finac.agents.protected+'-'+jsonld['@id']);
           roles.push(config.finac.agents.admin);
           
           // add collection access roles
