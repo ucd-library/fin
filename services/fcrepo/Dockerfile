@@ -12,6 +12,6 @@ COPY tomcat-users.xml $CATALINA_HOME/conf/tomcat-users.xml
 ENV FEDORA_USER_USERNAME=fedoraUser
 ENV FEDORA_USER_PASSWORD=fedoraUser
 
-COPY activemq.xml $CATALINA_HOME/webapps/fcrepo/WEB-INF/classes/activemq.xml
+COPY activemq.xml $CATALINA_HOME/webapps/fcrepo/WEB-INF/classes/config/activemq.xml
 
 ENV CATALINA_OPTS="-Dfcrepo.config.file=/etc/fin/fcrepo.properties"
