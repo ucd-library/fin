@@ -1,6 +1,15 @@
 # Fin Configuration 
 
-The following are the standard environmental variables used by Fin and it's core services.
+The following are the standard environmental variables used by Fin and it's core services. Developers, all config properties can be seen here: [config.js](../services/fin/node-utils/config.js) 
+
+  - [Base Config](#base-config)
+  - [Authentication](#authentication)
+  - [Google Cloud Config](#google-cloud-config)
+  - [Postgres Config](#postgres-config)
+  - [ElasticSearch Config](#elasticsearch-config)
+  - [Redis Config](#redis-config)
+
+# Base Config
 
 ## FIN_URL (required)
 
@@ -8,35 +17,33 @@ Default: http://localhost:3000
 
 This should be the root url (domain name) of your Fin service. 
 
-## JWT_SECRET (required)
+## DATA_ENV
 
-Secret used to encode all Fin JWT tokens
+Default: local-dev
 
-## JWT_ISSUER (required)
+Used for accessing data environments.  Example in the GCS config definitions you can
+say `dams-client-{{DATA_ENV}}`, which will resolve to `dams-client-local-dev` or `dams-client-prod` depending on the value of `DATA_ENV` and which environment you are running in.
 
-Issuer to be used when validating JWT tokens.  ex: library.ucdavis.edu
+## CLIENT_ENV
 
-## JWT_TTL (time in seconds)
+Default: dev
 
-Default: 1 day
+Should be used be your client application.  Normally `prod` serves your production 
+build of the client app.  Everything else serves the dev build.  But this is not
+implemented by fin, you must implement it in your client app.
 
-How long should the JWT token be valid
-
-## JWT_COOKIE_NAME
-
-Default: fin-jwt
-
-Name of cookie to store JWT token
-
-## FCREPO_HOST
-
-Default: fcrepo
-
-Host name of the `fcrepo` service
-
-## FIN_LOG_LEVEL
+## LOG_LEVEL FIN_LOG_LEVEL
 
 Default: info
+
+Used to set the log level for all services.  Either env var will work.
+
+## FIN_MODEL_ROOT
+
+Default: /fin/services/models
+
+Path to the directory where your fin data models are stored.
+
 
 ## FIN_COOKIE_SECRET
 
@@ -54,21 +61,137 @@ Comma separated list of origins you would like to grant access to FIN.  Requests
 
 [Read more](./cors.md)
 
-## FIN_CACHE_EXPIRE (time in seconds)
+# Authentication
 
-Default: 12 hours
+## JWT_SECRET (required)
 
-How long to cache GET requests to /fcrepo containers
+Secret used for talking to OIDC provider (keycloak)
 
-## CAS_URL
+## JWT_ISSUER (required)
 
-Example: https://cas.ucdavis.edu/cas
+Issuer used for talking to OIDC provider (keycloak)
 
-Used by the AuthorizationService CAS
+## JWT_COOKIE_NAME
 
-## CAS_AGENT_DOMAIN
+Default: fin-jwt
 
-Defaults to the root domain of the CAS_URL.  So if the CAS_URL = `https://cas.ucdavis.edu/cas`, the CAS_AGENT_DOMAIN will be `ucdavis.edu`.  A user logging into the UC Davis CAS with username alice would login to Fin as alice@ucdavis.edu.
+Name of cookie to store JWT token
+
+## JWT_JWKS_URI (required)
+
+URL to the JWKS endpoint of the OIDC provider (keycloak)
+
+## OIDC_CLIENT_ID (required)
+
+Client ID of the OIDC provider client (keycloak)
+
+## OIDC_CLIENT_SECRET (required)
+
+Client secret of the OIDC provider client (keycloak)
+
+## OIDC_BASE_URL (required)
+
+Base URL of the OIDC provider realm (keycloak)
+
+## OIDC_SCOPES
+
+Default: roles openid profile email
+
+Scopes to request in token
+
+## OIDC_FIN_LDP_SERVICE_NAME
+
+Default: keycloak-oidc
+
+Name of the OIDC auth services (so container name in `docker compose` speak) that is used to authenticate against keycloak.
+
+## FIN_SERVICE_ACCOUNT_NAME
+
+Service account name used to authenticate to the OIDC provider (keycloak). For keycloak, this is the username of the service account.
+
+## FIN_SERVICE_ACCOUNT_PASSWORD
+
+Service account password used to authenticate to the OIDC provider (keycloak). For keycloak, this is the password of the service account.  This should be a 512 character string.
+
+```bash
+openssl rand -base64 512
+```
+
+# Google Cloud Config
+
+## GOOGLE_APPLICATION_CREDENTIALS
+
+Default: /etc/fin/service-account.json
+
+Path to the service account json file.  This is used by any service to authenticate to GCS.
+
+## GOOGLE_SERVICE_ACCOUNT_EMAIL
+
+Service account to use for GCS.  If not set, the service account specified in the GOOGLE_APPLICATION_CREDENTIALS file will be used.
+
+## GOOGLE_CLOUD_PROJECT
+
+Google Cloud Project ID.  If not set, the project ID specified in the GOOGLE_APPLICATION_CREDENTIALS file will be used.
+
+## GOOGLE_CLOUD_LOCATION
+
+Default: us-central1
+
+Location of GCS services.
+
+## GOOGLE_PUBSUB_SUBSCRIPTION_NAME
+
+Name to use for pubsub subscriptions.  If not set, the default subscription name will be set to `DATA_ENV`, which defaults to
+`local-dev` if not set. 
+
+## GOOGLE_MAX_CONCURRENT_WORKFLOWS
+
+Default: 3
+
+Set the maximum number of concurrent workflows to run.  This is used by the workflow service to limit the number of workflows that can be running at once.  This only applies to workflows of type `gc-workflow`.
+
+# Postgres Config
+
+## PG_HOST
+
+Default: postgres
+
+## PG_PORT
+
+Default: 5432
+
+## PG_USER
+
+Default: postgres
+
+## PG_DATABASE
+
+Default: fcrepo
+
+
+# ElasticSearch Config
+
+## ES_HOST
+
+Default: elasticsearch
+
+## ES_PORT
+
+Default: 9200
+
+## ELASTIC_USERNAME
+
+Default: elastic
+
+## ELASTIC_PASSWORD
+
+Default: elastic
+
+## ES_LOG_LEVEL
+
+Default: error
+
+# Redis Config
 
 ## REDIS_HOST
 
@@ -78,9 +201,10 @@ Default: redis
 
 Default: 6379
 
-## BASIC_AUTH_AGENT_DOMAIN
+# Fcrepo Config
 
-Default: local
+## FCREPO_HOST
 
-Used by the basic-auth service.  Domain to append to agent (username) string.  ex: bob@local
+Default: fcrepo
 
+Host name of the `fcrepo` service

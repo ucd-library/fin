@@ -9,6 +9,10 @@ const FinAC = require('../fin-ac/index.js');
 
 const finac = new FinAC();
 
+/**
+ * @class ElasticSearchModel
+ * @description Base class for fin ElasticSearch data models.
+ */
 class ElasticSearchModel {
 
   constructor(modelName) {
@@ -68,7 +72,7 @@ class ElasticSearchModel {
     }
 
     let esBody = finSearch.searchDocumentToEsBody(searchDocument);
-    let esResult = await this.esSearch(esBody, {}, index);
+    let esResult = await this.esSearch(esBody, {admin: options.admin}, index);
     let result = finSearch.esResultToDamsResult(esResult, searchDocument);
 
     result.results.forEach(item => {
@@ -224,6 +228,14 @@ class ElasticSearchModel {
     } else {
       options._source_excludes = config.elasticsearch.fields.exclude.join(',');
     }
+
+    if( options.admin ) {
+      delete options.admin;
+      if( options._source_excludes && options._source_excludes.includes('roles') ) {
+        options._source_excludes.splice(options._source_excludes.indexOf('roles'), 1);
+      }
+    }
+    
 
     return this.client.search(options);
   }

@@ -38,6 +38,8 @@ module.exports = router;
 
 The model is the business logic for the data model.  It should be defined in a separate file, and exported as the `model` property of the data model.  Elastic Search models should extend the `ElasticSearchModel` which is part of the `@ucd-lib/fin-service-utils` package.
 
+Developers, [see full ElasticSearchModel source here](../../services/fin/node-utils/lib/elastic-search/index.js)
+
 The most basic model would look something like this:
 
 ```javascript

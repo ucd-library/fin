@@ -38,11 +38,10 @@ module.exports = {
 
   server : {
     url : process.env.FIN_URL || 'http://localhost:3000',
-    loglevel : process.env.FIN_LOG_LEVEL || 'info',
+    loglevel : process.env.LOG_LEVEL || process.env.FIN_LOG_LEVEL || 'info',
     cookieSecret : process.env.FIN_COOKIE_SECRET || 'changeme',
     cookieMaxAge : process.env.FIN_COOKIE_MAX_AGE ? parseInt(process.env.SERVER_COOKIE_MAX_AGE) : (1000 * 60 * 60 * 24 * 7),
-    allowOrigins : (process.env.FIN_ALLOW_ORIGINS || '').split(',').filter(domain => domain !== '').map(domain => domain.trim()),
-    cacheExpireTime : process.env.FIN_CACHE_EXPIRE || (60*60*12)
+    allowOrigins : (process.env.FIN_ALLOW_ORIGINS || '').split(',').filter(domain => domain !== '').map(domain => domain.trim())
   },
 
   gateway : {
@@ -85,7 +84,7 @@ module.exports = {
     clientId : env.OIDC_CLIENT_ID,
     baseUrl : env.OIDC_BASE_URL,
     secret : env.OIDC_SECRET,
-    scopes : env.OIDC_SCOPES || 'roles openid profile email acr',
+    scopes : env.OIDC_SCOPES || 'roles openid profile email',
     finLdpServiceName : env.OIDC_FIN_LDP_SERVICE_NAME || 'keycloak-oidc',
     roleIgnoreList : [
       "default-roles-dams",
@@ -129,13 +128,15 @@ module.exports = {
     ],
     fields : {
       exclude : [
-        'node.indexableContent', 
-        'node.createdBy', 'node.lastModifiedBy', 'node._', 'node.textIndexable'
+        'roles',
+        '@graph.indexableContent', 
+        '@graph.createdBy', '@graph.lastModifiedBy', '@graph._', '@graph.textIndexable'
       ],
       excludeCompact : [
-        'node.indexableContent', 
-        'node.createdBy', 'node.lastModifiedBy', 'node._',
-        'node.image', 'node.textIndexable', 'node.lastModified'
+        'roles',
+        '@graph.indexableContent', 
+        '@graph.createdBy', '@graph.lastModifiedBy', '@graph._',
+        '@graph.image', '@graph.textIndexable', '@graph.lastModified'
       ]
     }
   },
@@ -160,7 +161,7 @@ module.exports = {
     serviceAcountEmail : env.GOOGLE_SERVICE_ACCOUNT_EMAIL || gcServiceAccount.client_email,
     project : env.GOOGLE_CLOUD_PROJECT || gcServiceAccount.project_id,
     location : env.GOOGLE_CLOUD_LOCATION || 'us-central1',
-    pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || 'local-dev',
+    pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || env.DATA_ENV,
 
     workflow : {
       type : 'gc-workflow',
