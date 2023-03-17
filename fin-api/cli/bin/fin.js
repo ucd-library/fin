@@ -11,6 +11,7 @@ program
   .command('config', 'setup fin cli')
   .command('http', 'wrapper around standard LDP api')
   .command('io', 'fin commands for data management via git repositories')
+  .command('reindex', 'start the reindex process on a container')
   .command('workflow', 'run fin workflows on containers');
 
 program.parse(process.argv);

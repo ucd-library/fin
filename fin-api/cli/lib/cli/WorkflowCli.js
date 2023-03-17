@@ -1,12 +1,5 @@
-const api = require('../../..');
 const http = require('./HttpCli');
-const fs = require('fs');
-const inquirer = require('inquirer');
-
 const Logger = require('../lib/logger');
-const prefixutils = require('../lib/prefixutils');
-const location = require('../lib/location');
-const config = require('../lib/config');
 
 /**
  * @class WorkflowCli
