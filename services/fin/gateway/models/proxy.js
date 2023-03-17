@@ -213,40 +213,12 @@ class ProxyModel {
       path = path.replace(/\/fcr:metadata$/, '');
     }
 
-    let user;
-    req.headers['x-fin-principal'] = 'fedoraUser';
-    try {
-      user = req.user;
-
-      // TODO: handle admins
-      // See fcrepo.properties for this value
-      if( user ) {
-        let roles = new Set();
-        roles.add('fedoraUser');
-
-        if( user.username ) roles.add(user.username);
-        if( user.preferred_username ) roles.add(user.preferred_username);
-
-        if( user.roles && Array.isArray(user.roles) ) {
-          user.roles.forEach(role => roles.add(role));
-        }
-
-        // promote admins to fin-ac roles
-        if( roles.has(config.finac.agents.admin) ) {
-          roles.add(config.finac.agents.discover);
-          roles.add(config.finac.agents.protected);
-        } else {
-          // see if the user has a temp finac access
-          let hasFinacGrant = await finac.hasAccess(path, Array.from(roles));
-          if( hasFinacGrant ) {
-            roles.add(config.finac.agents.discover);
-            roles.add(config.finac.agents.protected);
-          }
-        }
-
-        req.headers['x-fin-principal'] = Array.from(roles).join(',');
-      }
-    } catch(e) {}
+    // set fcrepo fin principal headers (see fcrepo config)
+    if( req.user && req.user.roles ) {
+      req.headers['x-fin-principal'] = req.user.roles.join(',');
+    } else { 
+      req.headers['x-fin-principal'] = 'fedoraUser';
+    }
 
     // store for serivce headers
     req.fcPath = path;

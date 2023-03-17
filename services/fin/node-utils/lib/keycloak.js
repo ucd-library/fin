@@ -2,7 +2,8 @@ const fetch = require('node-fetch');
 const config = require('../config.js');
 const logger = require('./logger.js');
 const jwt = require('./jwt.js');
-
+const FinAC = require('./fin-ac/index.js');
+const finac = new FinAC();
 
 class KeycloakUtils {
 
@@ -148,11 +149,48 @@ class KeycloakUtils {
     if( !token ) return next();
 
     let resp = await this.verifyActiveToken(token);
-    if( resp.active !== true ) return next();
 
-    req.user = resp.user;
-    if( !resp.user.roles ) resp.user.roles = [];
-    req.headers['x-fin-user'] = JSON.stringify(resp.user);
+    if( resp.active !== true ) return next();
+    let user = resp.user;
+
+    req.user = user;
+
+    // override roles
+    let roles = new Set();
+    roles.add('fedoraUser');
+
+    if( user.username ) roles.add(user.username);
+    if( user.preferred_username ) roles.add(user.preferred_username);
+
+    if( user.roles && Array.isArray(user.roles) ) {
+      user.roles.forEach(role => roles.add(role));
+    }
+
+    if( user.realmRoles && Array.isArray(user.realmRoles) ) {
+      user.realmRoles.forEach(role => roles.add(role));
+      delete user.realmRoles;
+    }
+
+    // promote admins to fin-ac roles
+    if( roles.has(config.finac.agents.admin) ) {
+      roles.add(config.finac.agents.discover);
+      roles.add(config.finac.agents.protected);
+    } 
+
+    // see if the user has a temp finac access
+    let path = decodeURIComponent(req.originalUrl)
+      .replace(/^\/fcrepo\/rest/, '')
+      .replace(/\/fcr:[a-z]+$/, '');
+    let hasFinacGrant = await finac.hasAccess(path, Array.from(roles));
+    if( hasFinacGrant ) {
+      roles.add(config.finac.agents.discover);
+      roles.add(config.finac.agents.protected);
+    }
+
+    user.roles = Array.from(roles)
+      .filter(role => config.oidc.roleIgnoreList.includes(role) === false);
+
+    req.headers['x-fin-user'] = JSON.stringify(user);
 
     next();
   }

@@ -1,4 +1,4 @@
-const {config, logger, activemq, models} = require('@ucd-lib/fin-service-utils');
+const {config, logger, activemq, models, RDF_URIS} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const indexer = require('./elasticsearch');
 const postgres = require('./postgres');
@@ -110,6 +110,16 @@ class EsSync {
         return;
       }
 
+      // check for binary
+      if( e.container_types.includes(RDF_URIS.TYPES.BINARY) && !e.path.match(/\/fcr:metadata$/) ) {
+        logger.info('Ignoring container '+e.path+'. Is a raw binary');
+
+        e.action = 'ignored';
+        e.message = 'raw binary'
+        await postgres.updateStatus(e);
+        return;
+      }
+
       // check for ignore types
       for( let type of config.essync.ignoreTypes ) {
         // check for binary
@@ -179,13 +189,13 @@ class EsSync {
       if( jsonld['@id'].match(/\/fcrepo\/rest\//) ) {
         jsonld['@id'] = jsonld['@id'].split('/fcrepo/rest')[1];
       }
-     
+
       // if no esId, we don't add to elastic search
       if( !jsonld._.esId ) {
-        logger.info('Container '+e.path+' is not part of an archival group or a binary container (no jsonld._.esId provided)');
+        logger.info('Container '+e.path+' ignored, no jsonld._.esId provided');
 
         e.action = 'ignored';
-        e.message = 'not a archival group or binary container type';
+        e.message = 'no jsonld._.esId provided';
         await indexer.remove(e.path);
         await postgres.updateStatus(e);
         return;

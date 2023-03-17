@@ -3,6 +3,13 @@ const path = require('path');
 const env = process.env;
 const COMMON_URI = require('./lib/common-rdf-uris');
 
+function processArray(value) {
+  if( value && value.length ) {
+    return value.split(/,|\s/).map(item => item.trim());
+  }
+  return null;
+}
+
 var fcrepoHostname = process.env.FCREPO_HOST || 'fcrepo';
 var esHostname = process.env.ES_HOST || 'elasticsearch';
 var esPort = process.env.ES_PORT || 9200;
@@ -14,6 +21,8 @@ if( serviceAccountExists && !env.GOOGLE_APPLICATION_CREDENTIALS ) {
   env.GOOGLE_APPLICATION_CREDENTIALS = serviceAccountFile;
   gcServiceAccount = JSON.parse(fs.readFileSync(serviceAccountFile, 'utf-8'));
 }
+
+let essyncIgnoreEnv = processArray(process.env.ESSYNC_IGNORE_TYPES);
 
 // make sure this is set for gcssync templates
 if( !env.DATA_ENV ) env.DATA_ENV = 'local-dev';
@@ -77,7 +86,15 @@ module.exports = {
     baseUrl : env.OIDC_BASE_URL,
     secret : env.OIDC_SECRET,
     scopes : env.OIDC_SCOPES || 'roles openid profile email acr',
-    finLdpServiceName : env.OIDC_FIN_LDP_SERVICE_NAME || 'keycloak-oidc'
+    finLdpServiceName : env.OIDC_FIN_LDP_SERVICE_NAME || 'keycloak-oidc',
+    roleIgnoreList : [
+      "default-roles-dams",
+      "uma_authorization",
+      "manage-account",
+      "manage-account-links",
+      "view-profile",
+      "offline_access"
+    ]
   },
 
   finac : {
@@ -91,8 +108,7 @@ module.exports = {
   },
 
   essync : {
-    ignoreTypes : [
-      COMMON_URI.TYPES.BINARY,
+    ignoreTypes : essyncIgnoreEnv || [
       COMMON_URI.TYPES.FIN_IO_INDIRECT,
       COMMON_URI.TYPES.WEBAC
     ]
