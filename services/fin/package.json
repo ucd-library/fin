@@ -11,7 +11,8 @@
     "essync": "node essync/index.js",
     "gcs": "node gcs/index.js",
     "gateway": "node gateway/index.js",
-    "trusted-proxy": "node trusted-proxy/index.js"
+    "trusted-proxy": "node trusted-proxy/index.js",
+    "workflow": "node workflow/index.js"
   },
   "author": "jrmerz@ucdavis.edu",
   "license": "MIT",

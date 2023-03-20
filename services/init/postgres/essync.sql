@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS update_status (
   event_timestamp timestamp NOT NULL,
   action TEXT NOT NULL,
   transform_service TEXT,
-  model TEXT,
+  model TEXT DEFAULT '',
   message TEXT,
   es_response JSONB,
   source JSONB,

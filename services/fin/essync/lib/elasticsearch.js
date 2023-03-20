@@ -91,9 +91,14 @@ class ElasticSearchModel {
   async update(modelName, jsonld, index) {
     if( !jsonld ) throw new Error('jsonld is null');
 
-    for( let node of jsonld['@graph'] ) {
-      if( !node._ ) node._ = {};
-      node._.updated = new Date();
+    if( jsonld['@graph'] ) {
+      for( let node of jsonld['@graph'] ) {
+        if( !node._ ) node._ = {};
+        node._.updated = new Date();
+      }
+    } else {
+      if( !jsonld._ ) jsonld._ = {};
+      jsonld._.updated = new Date();
     }
 
     let {model} = await models.get(modelName);

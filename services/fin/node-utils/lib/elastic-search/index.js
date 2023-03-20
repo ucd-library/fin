@@ -23,7 +23,15 @@ class ElasticSearchModel {
     this.readIndexAlias = this.modelName+'-read';
     this.writeIndexAlias = this.modelName+'-write';
 
+    // this data model should work with essync
     this.syncMethod = 'essync';
+
+    // the transform function should return a json-ld object
+    // with a @graph property and the graph array should not 
+    // be empty.  This adds additional sanity checks for essync.
+    // If you want to disable this, set this to false and your 
+    // model can harvest any transform result.
+    this.expectGraph = true;
 
     this.pg = pg;
     this.client = es;

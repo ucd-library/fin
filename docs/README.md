@@ -21,7 +21,7 @@ Here are the major microservices at the core of Fin:
 # Topics
 
   - [Fin Service Documentation](./services)
-  - [Fin Service Types](./services-types)
+  - [Fin Service Types](./service-types)
   - [Fin Data Models](./data-models)
   - [Fin Config](./env-config.md)
   - Other Tech Bits

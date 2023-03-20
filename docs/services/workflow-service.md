@@ -65,6 +65,16 @@ All workflow definitions stored in `/fin/workflows/gc/[worfklow-name].yaml` will
    - `GET /[fin-path]/svc:workflow`: Get all workflows run on path
    - `GET /[fin-path]/svc:workflow/[workflow-id]`: Get a specific workflow run on path
 
+### CLI Usage
+
+```bash
+fin workflow list
+fin workflow reload
+fin workflow start [fin-path] my-workflow
+fin workflow get [fin-path]
+fin workflow get [fin-path] [workflow-id]
+```
+
 # Workflow Headers
 
 After a workflow is successfully completed, an additional link header will be added to the response.  The link header will be of the form:

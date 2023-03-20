@@ -91,7 +91,7 @@ class EssyncPostgresUtils {
    * @return {Promise}
    */
   async updateStatus(args) {
-    if( !args.model ) args.model = null;
+    if( !args.model ) args.model = '';
     let resp = await this.pg.query(`SELECT path FROM ${this.schema}.update_status where path = $1 and model = $2;`, [args.path, args.model]);
 
     if( resp.rows.length ) {
@@ -100,11 +100,11 @@ class EssyncPostgresUtils {
       let values = '$3, $4, $5, $6, $7, $8, $9, $10, $11, $12';
       let where = 'PATH = $1 and model = $2';
 
-      if( !args.model ) {
-        attrs = 'model, event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, source, updated';
-        values = '$2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12';
-        where = 'PATH = $1';
-      }
+      // if( !args.model ) {
+      //   attrs = 'model, event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, source, updated';
+      //   values = '$2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12';
+      //   where = 'PATH = $1';
+      // }
 
       await this.pg.query(`
         UPDATE ${this.schema}.update_status 

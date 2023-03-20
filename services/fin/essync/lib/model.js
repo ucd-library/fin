@@ -157,9 +157,10 @@ class EsSync {
         return;
       }
 
+      let modelEvent = {};
       for( let response of responses ) {
         try {
-          let modelEvent = Object.assign({}, e);
+          modelEvent = Object.assign({}, e);
 
           // set transform service used.
           modelEvent.tranformService = response.service;
@@ -186,29 +187,34 @@ class EsSync {
           //   jsonld['@id'] = jsonld['@id'].split('/fcrepo/rest')[1];
           // }
 
+          console.log('jsonld', jsonld)
+
           // if no esId, we don't add to elastic search
-          if( !jsonld['@graph'] || !jsonld['@id']) {
-            logger.info('Container '+modelEvent.path+' ignored, no jsonld["@graph"] or jsonld["@id"] provided');
+          let model = await models.get(response.model);
+          if( model.expectGraph === true ) {
+            if( !jsonld['@graph'] || !jsonld['@id']) {
+              logger.info('Container '+modelEvent.path+' ignored, no jsonld["@graph"] or jsonld["@id"] provided');
 
-            modelEvent.action = 'ignored';
-            modelEvent.message = 'no jsonld["@graph"] or jsonld["@id"] provided';
-            this.remove(modelEvent);
-            continue;
-          }
+              modelEvent.action = 'ignored';
+              modelEvent.message = 'no jsonld["@graph"] or jsonld["@id"] provided';
+              await this.remove(modelEvent);
+              continue;
+            }
 
-          if( !Array.isArray(jsonld['@graph']) || !jsonld['@graph'].length ) {
-            logger.info('Container '+modelEvent.path+' ignored, jsonld["@graph"] contains no nodes');
+            if( !Array.isArray(jsonld['@graph']) || !jsonld['@graph'].length ) {
+              logger.info('Container '+modelEvent.path+' ignored, jsonld["@graph"] contains no nodes');
 
-            modelEvent.action = 'ignored';
-            modelEvent.message = 'jsonld["@graph"] contains no nodes';
-            await this.remove(modelEvent);
-            continue;
+              modelEvent.action = 'ignored';
+              modelEvent.message = 'jsonld["@graph"] contains no nodes';
+              await this.remove(modelEvent);
+              continue;
+            }
           }
 
           // store source if we have it
           if( jsonld.source ) {
             modelEvent.source = jsonld.source;
-          } else {
+          } else if( jsonld['@graph'] ) {
             for( let node of jsonld['@graph'] ) {
               if( node._ && node._.source ) {
                 modelEvent.source = node._.source;
@@ -218,10 +224,19 @@ class EsSync {
           }
 
           // set some of the fcrepo event information
-          for( let node of jsonld['@graph'] ) {
-            if( !node._ ) node._ = {};
-
-            node._.event = {
+          if( jsonld['@graph'] ) {
+            for( let node of jsonld['@graph'] ) {
+              if( !node._ ) node._ = {};
+  
+              node._.event = {
+                id : e.event_id,
+                timestamp : e.event_timestamp,
+                updateType : e.update_types
+              }
+            }
+          } else {
+            if( !jsonld._ ) jsonld._ = {};
+            jsonld._.event = {
               id : e.event_id,
               timestamp : e.event_timestamp,
               updateType : e.update_types
@@ -232,10 +247,10 @@ class EsSync {
 
           await this.update(modelEvent, jsonld);
         } catch(error) {
-          logger.error('Failed to update: '+e.path, error);
-          e.action = 'error';
-          e.message = error.message+'\n'+error.stack;
-          await postgres.updateStatus(e);
+          logger.error('Failed to update: '+modelEvent.path, error);
+          modelEvent.action = 'error';
+          modelEvent.message = error.message+'\n'+error.stack;
+          await postgres.updateStatus(modelEvent);
         }
       }
     } catch(error) {
@@ -310,14 +325,16 @@ class EsSync {
 
     let responses = [];
 
+    
     for( let name of modelNames ) {
       let {model} = await models.get(name);
 
       if( !model.hasSyncMethod('essync') ) continue;
       if( !(await model.is(path)) ) continue;
 
+      let servicePath = '';
       if( model.transformService ) {
-        path = path+`/svc:${model.transformService}`;
+        servicePath = path+`/svc:${model.transformService}`;
       } else {
         headers = {
           accept : api.GET_JSON_ACCEPT.COMPACTED
@@ -328,11 +345,12 @@ class EsSync {
 
       var response = await api.get({
         host : config.gateway.host,
-        path, headers
+        path : servicePath || path, 
+        headers
       });
   
       response.model = modelName;
-      response.service = config.server.url+config.fcrepo.root+path;
+      response.service = config.server.url+config.fcrepo.root+(servicePath || path);
       responses.push(response);
     }
 
