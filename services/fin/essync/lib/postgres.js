@@ -81,6 +81,7 @@ class EssyncPostgresUtils {
    * @param {String} arg.event_id
    * @param {Date} args.event_timestamp
    * @param {String} args.path
+   * @param {String} args.model
    * @param {Array<String>} args.container_types
    * @param {Array<String>} args.update_types
    * @param {String} args.action
@@ -90,29 +91,46 @@ class EssyncPostgresUtils {
    * @return {Promise}
    */
   async updateStatus(args) {
-  let resp = await this.pg.query(`SELECT path FROM ${this.schema}.update_status where path = $1;`, [args.path]);
+    if( !args.model ) args.model = null;
+    let resp = await this.pg.query(`SELECT path FROM ${this.schema}.update_status where path = $1 and model = $2;`, [args.path, args.model]);
 
-  if( resp.rows.length ) {
-    await this.pg.query(`
+    if( resp.rows.length ) {
+      // if there is a model provided, only update model / path combo.  Otherwise update all path entries
+      let attrs = 'event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, source, updated';
+      let values = '$3, $4, $5, $6, $7, $8, $9, $10, $11, $12';
+      let where = 'PATH = $1 and model = $2';
+
+      if( !args.model ) {
+        attrs = 'model, event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, source, updated';
+        values = '$2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12';
+        where = 'PATH = $1';
+      }
+
+      await this.pg.query(`
         UPDATE ${this.schema}.update_status 
-          SET (event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, model, source, updated) = ($2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          SET 
+            (${attrs}) = (${values})
         WHERE 
-          PATH = $1
-        ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, args.message, args.response, args.tranformService, args.model, args.source, new Date().toISOString()]
+          ${where}
+        ;`, [args.path, args.model, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, 
+            args.message, args.response, args.tranformService, args.source, new Date().toISOString()]
       );
     } else {
       await this.pg.query(`
-        INSERT INTO ${this.schema}.update_status (path, event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, model, source) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, args.message, args.response, args.tranformService, args.model, args.source]
+        INSERT INTO ${this.schema}.update_status 
+          (path, event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, model, source) 
+        VALUES 
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, args.message, 
+          args.response, args.tranformService, args.model, args.source]
       );
     }
   }
 
-  async getStatus(path) {
-    let response = await this.pg.query(`select * from ${this.schema}.update_status where path = $1`, [path]);
+  async getStatus(path, model=null) {
+    let response = await this.pg.query(`select * from ${this.schema}.update_status where path = $1 and model = $2`, [path, model]);
     if( !response.rows.length ) return null;
-    return response.rows[0];
+    return response.rows;
   }
 
 

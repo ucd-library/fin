@@ -104,9 +104,9 @@ class EsSync {
       if( this.isDelete(e) ) {
         logger.info('Container '+e.path+' was removed from LDP, removing from index');
 
+        e.message = 'Container was removed from LDP';
         e.action = 'delete';
-        await indexer.remove(e.path);
-        await postgres.updateStatus(e);
+        await this.remove(e);
         return;
       }
 
@@ -131,7 +131,7 @@ class EsSync {
           await postgres.updateStatus(e);
 
           if( !e.path.match(/\/fcr:[a-z]+/) ) {
-            await indexer.remove(e.path);
+            await this.remove(e);
           }
 
           // JM - Not removing path, as the /fcr:metadata container is also mapped to this path
@@ -144,92 +144,100 @@ class EsSync {
         e.container_types = await this.getContainerTypes(e.path);
       }
 
-      let response = await this.getTransformedContainer(e.path, e.container_types);
+      let responses = await this.getTransformedContainer(e.path, e.container_types);
 
-      if( !response ) {
+      if( !responses ) {
         logger.info('Container '+e.path+' did not have a registered model, ignoring');
 
         e.action = 'ignored';
         e.message = 'no model for container'
+        await this.remove(e);
         await indexer.remove(e.path);
         await postgres.updateStatus(e);
         return;
       }
 
-      // set transform service used.
-      e.tranformService = response.service;
-      e.model = response.model;
+      for( let response of responses ) {
+        try {
+          let modelEvent = Object.assign({}, e);
 
-      // under this condition, the acl may have been updated.  Remove item and any 
-      // child items in elastic search.  We need to do it here so we can mark PG why we
-      // did it.
-      if( response.data.statusCode !== 200 ) {
-        logger.info('Container '+e.path+' was publicly inaccessible ('+response.data.statusCode+') from LDP, removing from index. url='+response.data.request.url);
+          // set transform service used.
+          modelEvent.tranformService = response.service;
+          modelEvent.model = response.model;
 
-        e.action = 'ignored';
-        e.message = 'inaccessible'
-        await indexer.remove(e.path);
-        await postgres.updateStatus(e);
-        await this.removeInaccessableChildrenInEs(e);
-        return;
-      }
+          // under this condition, the acl may have been updated.  Remove item and any 
+          // child items in elastic search.  We need to do it here so we can mark PG why we
+          // did it.
+          if( response.data.statusCode !== 200 ) {
+            logger.info('Container '+e.path+' was publicly inaccessible ('+response.data.statusCode+') from LDP, removing from index. url='+response.data.request.url);
 
-      jsonld = JSON.parse(response.data.body);
-      
-      // cleanup id path
-      // if( jsonld['@id'].match(/\/fcrepo\/rest\//) ) {
-      //   jsonld['@id'] = jsonld['@id'].split('/fcrepo/rest')[1];
-      // }
+            modelEvent.action = 'ignored';
+            modelEvent.message = 'inaccessible';
 
-      // if no esId, we don't add to elastic search
-      if( !jsonld['@graph'] || !jsonld['@id']) {
-        logger.info('Container '+e.path+' ignored, no jsonld["@graph"] or jsonld["@id"] provided');
-
-        e.action = 'ignored';
-        e.message = 'no jsonld["@graph"] or jsonld["@id"] provided';
-        await indexer.remove(e.path);
-        await postgres.updateStatus(e);
-        return;
-      }
-
-      if( !Array.isArray(jsonld['@graph']) || !jsonld['@graph'].length ) {
-        logger.info('Container '+e.path+' ignored, jsonld["@graph"] contains no nodes');
-
-        e.action = 'ignored';
-        e.message = 'jsonld["@graph"] contains no nodes';
-        await indexer.remove(e.path);
-        await postgres.updateStatus(e);
-        return;
-      }
-
-      // store source if we have it
-      if( jsonld.source ) {
-        e.source = jsonld.source;
-      } else {
-        for( let node of jsonld['@graph'] ) {
-          if( node._ && node._.source ) {
-            e.source = node._.source;
-            break;
+            await this.remove(modelEvent);
+            await this.removeInaccessableChildrenInEs(modelEvent);
+            continue;
           }
+
+          jsonld = JSON.parse(response.data.body);
+          
+          // cleanup id path
+          // if( jsonld['@id'].match(/\/fcrepo\/rest\//) ) {
+          //   jsonld['@id'] = jsonld['@id'].split('/fcrepo/rest')[1];
+          // }
+
+          // if no esId, we don't add to elastic search
+          if( !jsonld['@graph'] || !jsonld['@id']) {
+            logger.info('Container '+modelEvent.path+' ignored, no jsonld["@graph"] or jsonld["@id"] provided');
+
+            modelEvent.action = 'ignored';
+            modelEvent.message = 'no jsonld["@graph"] or jsonld["@id"] provided';
+            this.remove(modelEvent);
+            continue;
+          }
+
+          if( !Array.isArray(jsonld['@graph']) || !jsonld['@graph'].length ) {
+            logger.info('Container '+modelEvent.path+' ignored, jsonld["@graph"] contains no nodes');
+
+            modelEvent.action = 'ignored';
+            modelEvent.message = 'jsonld["@graph"] contains no nodes';
+            await this.remove(modelEvent);
+            continue;
+          }
+
+          // store source if we have it
+          if( jsonld.source ) {
+            modelEvent.source = jsonld.source;
+          } else {
+            for( let node of jsonld['@graph'] ) {
+              if( node._ && node._.source ) {
+                modelEvent.source = node._.source;
+                break;
+              }
+            }
+          }
+
+          // set some of the fcrepo event information
+          for( let node of jsonld['@graph'] ) {
+            if( !node._ ) node._ = {};
+
+            node._.event = {
+              id : e.event_id,
+              timestamp : e.event_timestamp,
+              updateType : e.update_types
+            }
+          }
+
+          modelEvent.action = 'updated';
+
+          await this.update(modelEvent, jsonld);
+        } catch(error) {
+          logger.error('Failed to update: '+e.path, error);
+          e.action = 'error';
+          e.message = error.message+'\n'+error.stack;
+          await postgres.updateStatus(e);
         }
       }
-
-      // set some of the fcrepo event information
-      for( let node of jsonld['@graph'] ) {
-        if( !node._ ) node._ = {};
-
-        node._.event = {
-          id : e.event_id,
-          timestamp : e.event_timestamp,
-          updateType : e.update_types
-        }
-      }
-
-      let result = await indexer.update(jsonld);
-
-      e.action = 'updated';
-      e.response = JSON.stringify(result.response);
-      await postgres.updateStatus(e);
     } catch(error) {
       logger.error('Failed to update: '+e.path, error);
       e.action = 'error';
@@ -291,7 +299,7 @@ class EsSync {
    * 
    * @returns {Promise}
    */
-  async getTransformedContainer(path='', types=[]) {
+  async getTransformedContainer(path='') {
     path = path.replace(/\/fcr:(metadata|acl)$/, '');
 
     let headers = {};
@@ -299,11 +307,14 @@ class EsSync {
     let modelName = '';
 
     let modelNames = await models.names();
+
+    let responses = [];
+
     for( let name of modelNames ) {
       let {model} = await models.get(name);
 
-      if( model.syncMethod !== 'essync' ) continue;
-      if( !(await model.is(path, types)) ) continue;
+      if( !model.hasSyncMethod('essync') ) continue;
+      if( !(await model.is(path)) ) continue;
 
       if( model.transformService ) {
         path = path+`/svc:${model.transformService}`;
@@ -315,21 +326,50 @@ class EsSync {
 
       modelName = name;
 
-      found = true;
-      break;
+      var response = await api.get({
+        host : config.gateway.host,
+        path, headers
+      });
+  
+      response.model = modelName;
+      response.service = config.server.url+config.fcrepo.root+path;
+      responses.push(response);
+    }
+
+    if( responses.length ) {
+      return responses;
     }
 
     // we don't have a essync model for this container
-    if( found === false ) return null;
+    return null;
+  }
 
-    var response = await api.get({
-      host : config.gateway.host,
-      path, headers
-    });
+  /**
+   * @method remove
+   * @description trigger data model(s) removal method.  Log the event and result
+   */
+  async remove(event) {
+    let results = await indexer.remove(event.path);
+    if( !results ) return;
 
-    response.model = modelName;
-    response.service = config.server.url+config.fcrepo.root+path;
-    return response;
+    for( let result of results ) {
+      let status = Object.assign({}, event);
+      status.response = result.esResult;
+      status.model = result.model;
+      await postgres.updateStatus(status);
+    }
+  }
+
+  /**
+   * @method update
+   * @description trigger data model(s) update method.  Log the event and result
+   */
+  async update(event, jsonld) {
+    let esResult = await indexer.update(event.model, jsonld);
+
+    let status = Object.assign({}, event);
+    status.response = JSON.stringify(esResult);
+    await postgres.updateStatus(status);
   }
 
   /**
@@ -351,11 +391,10 @@ class EsSync {
 
       e.action = 'ignored';
       e.message = e.path+' inaccessible'
-      await indexer.remove(path);
-  
       let fakeEvent = Object.assign({}, e);
-      e.path = path;
-      await postgres.updateStatus(fakeEvent);
+      fakeEvent.path = path;
+
+      await this.remove(fakeEvent);
     }
     
 
@@ -373,11 +412,10 @@ class EsSync {
 
         e.action = 'ignored';
         e.message = 'parent '+path+' inaccessible'
-        await indexer.remove(node['@id']);
-    
         let fakeEvent = Object.assign({}, e);
-        e.path = node['@id'];
-        await postgres.updateStatus(fakeEvent);
+        fakeEvent.path = node['@id'];
+
+        await this.remove(fakeEvent);
       }
     }
   }

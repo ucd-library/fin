@@ -88,7 +88,7 @@ class ElasticSearchModel {
    * 
    * @returns {Promise}
    */
-  async update(jsonld, index) {
+  async update(modelName, jsonld, index) {
     if( !jsonld ) throw new Error('jsonld is null');
 
     for( let node of jsonld['@graph'] ) {
@@ -96,16 +96,10 @@ class ElasticSearchModel {
       node._.updated = new Date();
     }
 
-    let names = await models.names();
-    for( let name of names ) {
-      let {model} = await models.get(name);
-      if( !await model.is(jsonld['@id']) ) continue;
+    let {model} = await models.get(modelName);
+    logger.info(`ES Indexer updating ${modelName} container: ${jsonld['@id']} in es index: ${index|| model.writeIndexAlias}`);
 
-      logger.info(`ES Indexer updating ${name} container: ${jsonld['@id']} in es index: ${index|| model.writeIndexAlias}`);
-      return model.update(jsonld, index);
-    }
-
-    logger.warn(`ES Indexer not updating ${jsonld['@id']}, no model found`);
+    return model.update(jsonld, index);
   }
 
   /**
@@ -118,13 +112,16 @@ class ElasticSearchModel {
    */
   async remove(path='', index) {
     let names = await models.names();
+    let updates = [];
+
     for( let name of names ) {
       let {model} = await models.get(name);
       if( !await model.is(path) ) continue;
 
       logger.info(`ES Indexer remove ${name} container: ${path} from es index: ${index || model.writeIndexAlias}`);
-      return model.remove(path, index);
+      updates.push({model: name, esResult: await model.remove(path, index)});
     }
+    if( updates.length ) updates;
 
     logger.warn(`ES Indexer not removing ${path}, no model found`);
   }
