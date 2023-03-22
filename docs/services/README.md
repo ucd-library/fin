@@ -2,8 +2,8 @@
 
  - [Label Service](./label-service.md) - A service for storing/accessing labels for uri's.
  - [FinAC Service](./finac-service.md) - An opinionated layer for managing WebAC access control.
- - [Elastic Search Service](./essync-service.md) - A service for managing Elastic Search indexes.
- - [Essync Service](./essync-service.md) - A service for synchronizing fcrepo containers to Elastic Search.
+ - [Elastic Search Index Management Service](./es-index-management-service.md) - A service for managing Elastic Search indexes.
+ - [DbSync Service](./dbsync-service.md) - A service for synchronizing fcrepo containers to external databases.
  - [API Service](./api-service.md) - Extendable API for data models.
  - [Client Service](./client-service.md) - Expose an application UI
  - [GCS Service](./gcs-service.md) - Google Cloud Storage access service

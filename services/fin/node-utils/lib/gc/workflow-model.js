@@ -88,13 +88,15 @@ class FinGcWorkflowModel {
     let workflow = res.last.body;
 
     let finWorkflowName = workflowName;
-    workflowName = this.getGcWorkflowName(workflowName);
-    let parent = this.getGcWorkflowParentParam(workflowName);
+    let gcWorkflowName = this.getGcWorkflowName(workflowName);
+    let parent = this.getGcWorkflowParentParam(finWorkflowName);
 
     // check if worflow already exists
     let request = {
       name: parent
     };
+
+    console.log(request)
 
     let gcWorkflowContent = null;
     try {
@@ -108,40 +110,42 @@ class FinGcWorkflowModel {
       let finSha = crypto.createHash('sha256').update(gcWorkflowContent).digest('hex');
 
       if( gcSha === finSha ) {
-        logger.info('GC workflow definition already exists and is up to date: '+workflowName);
+        logger.info('GC workflow definition already exists and is up to date: '+gcWorkflowName);
         return;
       }
     }
 
     request = {
-      parent: this.getGcWorkflowParentParam(workflowName, true),
+      parent: this.getGcWorkflowParentParam(finWorkflowName, true),
       workflow : {
-        name : this.getGcWorkflowParentParam(workflowName),
+        name : this.getGcWorkflowParentParam(finWorkflowName),
         serviceAccount : this.getGoogleCloudServiceAccountEmail(finWorkflowName),
         sourceContents: workflow,
         labels : {
-          'host' : new URL(config.server.url).hostname.replace(/\./g, '-'),
-          'project' : 'fin',
+          'env' : config.google.workflow.env,
+          'project' : config.projectName
         }
       },
-      workflowId : workflowName
+      workflowId : gcWorkflowName
     };
 
     if( gcWorkflowContent !== null ) {
-      logger.info('Updating GC workflow: '+workflowName);
+      logger.info('Updating GC workflow: '+gcWorkflowName);
+      logger.debug(request);
       const [operation] = await this.wClient.updateWorkflow(request);
       let [response] = await operation.promise();
-      // console.log(response);
+      console.debug('Update GC workflow response: ', response);
     } else {
-      logger.info('Creating GC workflow: '+workflowName);
+      logger.info('Creating GC workflow: '+gcWorkflowName);
+      logger.debug(request);
       const [operation] = await this.wClient.createWorkflow(request);
       let [response] = await operation.promise();
-      // console.log(response);
+      console.debug('Create GC workflow response: ', response);
     }
   }
 
   getGcWorkflowName(workflowName) {
-    return workflowName+'-'+new URL(config.server.url).hostname.replace(/\./g, '-');
+    return workflowName+'-'+config.google.workflow.env;
   }
 
   replaceEnvVars(params={}) {
@@ -202,6 +206,7 @@ class FinGcWorkflowModel {
   getGoogleCloudServiceAccountEmail(workflowName) {
     return this.definitions[workflowName].gcServiceAcountEmail ||
       this.defaults.gcServiceAcountEmail ||
+      config.google.workflow.serviceAcountEmail ||
       config.google.serviceAcountEmail;
   }
 
@@ -371,7 +376,7 @@ class FinGcWorkflowModel {
           data : workflowInfo.data
         });
       })
-      .catch(async (err) => {
+      .catch(async (e) => {
         await pg.updateWorkflow({
           finWorkflowId, 
           state: 'error', 
@@ -383,14 +388,15 @@ class FinGcWorkflowModel {
 
   getGcWorkflowParentParam(workflowName, noWorkflowName=false) {
     let finWorkflowName = workflowName;
-    if( finWorkflowName.match(new RegExp('-'+new URL(config.server.url).hostname+'$')) ) {
-      finWorkflowName = finWorkflowName.replace(new RegExp('-'+new URL(config.server.url).hostname+'$'), '')
+    if( finWorkflowName.match(new RegExp('-'+config.google.workflow.env+'$')) ) {
+      finWorkflowName = finWorkflowName.replace(new RegExp('-'+config.google.workflow.env+'$'), '')
     }
+    let gcWorkflowName = this.getGcWorkflowName(finWorkflowName);
 
     if( noWorkflowName === true ) {
       return `projects/${this.getGoogleCloudProjectId(finWorkflowName)}/locations/${this.getGoogleCloudLocation(finWorkflowName)}`;
     }
-    return this.wClient.workflowPath(this.getGoogleCloudProjectId(finWorkflowName), this.getGoogleCloudLocation(finWorkflowName), workflowName);
+    return this.wClient.workflowPath(this.getGoogleCloudProjectId(finWorkflowName), this.getGoogleCloudLocation(finWorkflowName), gcWorkflowName);
   }
 
   async cleanupWorkflow(workflowId) {

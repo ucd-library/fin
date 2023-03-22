@@ -17,12 +17,19 @@ Default: http://localhost:3000
 
 This should be the root url (domain name) of your Fin service. 
 
-## DATA_ENV
+## GCS_BUCKET_ENV
 
 Default: local-dev
 
-Used for accessing data environments.  Example in the GCS config definitions you can
-say `dams-client-{{DATA_ENV}}`, which will resolve to `dams-client-local-dev` or `dams-client-prod` depending on the value of `DATA_ENV` and which environment you are running in.
+Used for accessing Google Cloud Storage data environments.  Example in the GCS config definitions you can
+say `dams-client-{{GCS_BUCKET_ENV}}`, which will resolve to `dams-client-local-dev` or `dams-client-prod` depending on the value of `GCS_BUCKET_ENV` and which environment you are running in.
+
+## WORKFLOW_ENV
+
+Default: local-dev
+
+Used for accessing Google Cloud Workflow environments.  Example in the GCS config definitions you can
+say `dams-client-{{GCS_BUCKET_ENV}}`, which will resolve to `dams-client-local-dev` or `dams-client-prod` depending on the value of `GCS_BUCKET_ENV` and which environment you are running in.
 
 ## CLIENT_ENV
 
@@ -141,7 +148,7 @@ Location of GCS services.
 
 ## GOOGLE_PUBSUB_SUBSCRIPTION_NAME
 
-Name to use for pubsub subscriptions.  If not set, the default subscription name will be set to `DATA_ENV`, which defaults to
+Name to use for pubsub subscriptions.  If not set, the default subscription name will be set to `GCS_BUCKET_ENV`, which defaults to
 `local-dev` if not set. 
 
 ## GOOGLE_MAX_CONCURRENT_WORKFLOWS

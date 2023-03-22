@@ -12,7 +12,7 @@ Add the following to `/fin/gcs/config.json`
 {
   "sync" : {
     "containers" : [{
-      "bucket" : "dams-client-{{DATA_ENV}}",
+      "bucket" : "dams-client-{{GCS_BUCKET_ENV}}",
       "basePath" : "/application/ucd-lib-client/item",
       "direction" : "fcrepo-to-gcs",
       "initDataHydration" : true
@@ -21,14 +21,14 @@ Add the following to `/fin/gcs/config.json`
 }
 ```
 
-In this config example, the container `/application/ucd-lib-client/item` as well as it's children will be synced to the GCS bucket `dams-client-{{DATA_ENV}}`.  The `initDataHydration` flag will cause the service to sync all files from GCS to Fedora on cold start where no data is present in `/application/ucd-lib-client/item`.
+In this config example, the container `/application/ucd-lib-client/item` as well as it's children will be synced to the GCS bucket `dams-client-{{GCS_BUCKET_ENV}}`.  The `initDataHydration` flag will cause the service to sync all files from GCS to Fedora on cold start where no data is present in `/application/ucd-lib-client/item`.
 
 ### Config Properties
 
   - `bucket` - the GCS bucket to sync to/from.  
-    - You can use environment variables in the bucket name, surrounded by `{{` and `}}`.  For example, `dams-client-{{DATA_ENV}}` will be replaced with `dams-client-dev` if the `DATA_ENV` environment variable is set to `dev`.
+    - You can use environment variables in the bucket name, surrounded by `{{` and `}}`.  For example, `dams-client-{{GCS_BUCKET_ENV}}` will be replaced with `dams-client-dev` if the `GCS_BUCKET_ENV` environment variable is set to `dev`.
     - If the direction is `gcs-to-fcrepo`, you need to enable PubSub events on the bucket, see PubSub section below.
-  - `basePath` - the base path to sync.  This path will be used to determine the path to sync to/from GCS.  For example, if the `basePath` is `/application/ucd-lib-client/item` and the path to sync is `/application/ucd-lib-client/item`, the file will be synced to/from `gs://dams-client-{{DATA_ENV}}/application/ucd-lib-client/item`.
+  - `basePath` - the base path to sync.  This path will be used to determine the path to sync to/from GCS.  For example, if the `basePath` is `/application/ucd-lib-client/item` and the path to sync is `/application/ucd-lib-client/item`, the file will be synced to/from `gs://dams-client-{{GCS_BUCKET_ENV}}/application/ucd-lib-client/item`.
   - `direction` - the direction to sync.  Can be `fcrepo-to-gcs` or `gcs-to-fcrepo`.
   - `initDataHydration` - if true, the service will sync all files from GCS to Fedora on cold start where no data is present in the `basePath`.  This is useful for initial data hydration or if you want to sync all files from GCS to Fedora.
 

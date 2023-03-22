@@ -45,7 +45,8 @@ COPY ${FIN_REPO_API_ROOT}/cli cli
 # Services Code
 WORKDIR ${FIN_SERVICE_ROOT}
 COPY ${FIN_REPO_SERVICE_ROOT}/api api
-COPY ${FIN_REPO_SERVICE_ROOT}/essync essync
+COPY ${FIN_REPO_SERVICE_ROOT}/dbsync dbsync
+COPY ${FIN_REPO_SERVICE_ROOT}/es-index-management es-index-management
 COPY ${FIN_REPO_SERVICE_ROOT}/fin-ac fin-ac
 COPY ${FIN_REPO_SERVICE_ROOT}/gateway gateway
 COPY ${FIN_REPO_SERVICE_ROOT}/gcs gcs

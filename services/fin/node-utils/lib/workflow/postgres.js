@@ -77,6 +77,16 @@ class WorkflowPostgresUtils {
     return resp.rows;
   }
 
+  async getWorkflowNamesForPath(path) {
+    let resp = await this.pg.query(
+      `select distinct name from ${this.schema}.workflow where data->>'finPath' = $1`, 
+      [path]
+    );
+
+    if( !resp.rows.length ) return [];
+    return resp.rows.map(row => row.name);
+  }
+
   async getLatestWorkflowsByPath(path) {
     path = path.replace(/^\/fcrepo\/rest/, '')
     .replace(/^\/fcr:metadata$/, '');

@@ -2,7 +2,7 @@
 
 FinAC provides additional access control functionality for container access and discovery leveraging the Fedora LDP's WebAC implementation.
 
-FinAC uses standard WebAC to limit access to the LDP containers and binaries via the `/fcr:acl` endpoint.  However, special `acl:agent` roles allow `essync` to pull over containers metadata to the Fin discovery layer (Elastic Search API) even if the container is not publicly accessible (`acl:agentClass foaf:agent` has been overridden).
+FinAC uses standard WebAC to limit access to the LDP containers and binaries via the `/fcr:acl` endpoint.  However, special `acl:agent` roles allow `dbsync` to pull over containers metadata to the external database (ex: ElasticSearch) even if the container is not publicly accessible (`acl:agentClass foaf:agent` has been overridden).
 
 ## Setup
 
@@ -47,14 +47,14 @@ The FinAC provides a service layer (`/svc:finac`) for:
 
 All endpoints will modify the container root `ArchivalGroup` container if it exists.  Otherwise the specified path will be used. 
 
-## Elastic Search Roles  
+## External Database Roles  
 
-When `essync` queries the LDP for container metadata, the query uses the defined FinAC agents.  So only public containers, or containers protected with specified FinAC agents will be added to elastic search.  There are two agents the `essync` will use:
+When `dbsync` queries the LDP for container metadata, the query uses the defined FinAC agents.  So only public containers, or containers protected with specified FinAC agents will be added to external databases.  There are two agents the `dbsync` will use:
 
- - `discovery`: this agent will allow `essync` to access the container.  The Elastic Search document will be given the role of `public`, allowing anyone to discover the container metadata via the Fin API.
- - `protected`: this agent will allow `essync` to access the container.  The Elastic Search document will be given the role of `protected-[pathname]` where `[pathname]` is the uri path of the container minus `/fcrepo/rest` (Fin standard practice).  Additionally, the `admin` role will be added to the elastic search document.
+ - `discovery`: this agent will allow `dbsync` to access the container.  The document should be given the role of `public`, allowing anyone to discover the container metadata via the external database.
+ - `protected`: this agent will allow `dbsync` to access the container.  The document should be given the role of `protected-[fin path]` where `[fin path]` is the uri path of the container minus `/fcrepo/rest` (Fin standard practice).  Additionally, the `admin` role should be added to the document.
 
-When a user queries the discovery layer (Fin API), if the user has been temporarily granted `protected` access to a LDP path via `PUT [path]/svc:finac`, the users role list will include `protected-[pathname]` for all protected FinAC grants.  The users role list will still include all roles granted via the JWT token.
+When a user queries the external databse, if the user has been temporarily granted `protected` access to a LDP path via `PUT [path]/svc:finac`, the users role list will include `protected-[pathname]` for all protected FinAC grants.  The users role list will still include all roles granted via the JWT token.
 
 ## User LDP Roles
 
@@ -71,44 +71,44 @@ Here is a list of agents/roles and how they affect various parts of the Fin depl
 
 - LDP access:
   - users with this role are promoted to `discovery` and `protected` by the gateway
-- essync access:
-  - none.  You must assign `discovery` or `protected` to make the container available to `essync` and therefore the search API.
+- dbsync access:
+  - none.  You must assign `discovery` or `protected` to make the container available to `dbsync` and therefore the external database.
 - API access:
-  - no special grants via FinAC.  However, the `admin` role is added to all `protected` elastic search documents.
+  - no special grants via FinAC.  However, the `admin` role should be added to all `protected` documents.
 
 ## protected
 
 - LDP Access:
   - If a user has been temporarily granted access to the specified path via FinAC PUT, the user will be promoted to the `protected` agent.
-- essync access:
-  - yes.  This container will be accessible via `essync` and therefore the search API.
+- dbsync access:
+  - yes.  This container will be accessible via `dbsync` and therefore the external database.
 - API access:
-  - If a user as been granted `protected` access to the specified path, the user will be able to access to Elastic Search record.  Under the hood, this is accomplished by assigning both the user and the Elastic Search record the role of `protected-[pathname]`. The `admin` role will be added to the document as well.
+  - If a user as been granted `protected` access to the specified path, the user will be able to access to document.  Under the hood, this is accomplished by assigning both the user and the document the role of `protected-[pathname]`. The `admin` role will be added to the document as well.
 
 ## discovery
 
 - LDP Access
   - If a user has been temporarily granted access to the specified path via FinAC PUT, the user will be promoted to the `discovery` agent.
-- essync access:
-  - yes.  This container will be accessible via `essync` and therefore the search API.
+- dbsync access:
+  - yes.  This container will be accessible via `dbsync` and therefore the external database.
 - API access:
-  - yes.  All containers with the `discovery` agent in the LDP will be marked with the `public` role in the Elastic Search record.
+  - yes.  All containers with the `discovery` agent in the LDP will be marked with the `public` role in the document.
 
 ## public
 
 - LDP Access
   - This is the default `acl:agentClass foaf:Agent` WebAC agent for `/item` and `/collection` containers. All users can access.
-- essync access
+- dbsync access
   - yes, it's public
 - API access:
-  - yes, it's public.  All Elastic Search records will be marked with the `public` role.
+  - yes, it's public.  All documents should be marked with the `public` role.
 
 ## All other WebAC agents
 
 - LDP Access
   - Standard WebAC.  The user must be granted this agent via the JWT token `roles` parameter.
-- essync access
+- dbsync access
   - no.  unless the container has been assigned the `protected` or `discovery` agent as well.
 - API access:
-  - no.  unless the container has been assigned the `protected` or `discovery` agent as well.  At which point see above.  However, if the `protected` or `discovery` is attached, then any user with the additional role will be able to access the Elastic Search document without the temporary promotion via the `/svc:finac` API, providing a way for permanent grants.
+  - no.  unless the container has been assigned the `protected` or `discovery` agent as well.  At which point see above.  However, if the `protected` or `discovery` is attached, then any user with the additional role will be able to access the document without the temporary promotion via the `/svc:finac` API, providing a way for permanent grants.
    - ex: WebAC agents: `protected` and `library`.  Now any user with the `library` role in their JWT Token can always access the container via the LDP as well as the search API.

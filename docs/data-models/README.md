@@ -18,6 +18,6 @@ COPY models /fin/services/models
 
 Fin will always look for models in the `/fin/services/models` directory.
 
-## Data Models and Sync Services
+## Data Models and DBSync Service
 
-Data models are designed to be used with sync services.  Sync services are responsible for keeping data in the backend data store (ex: Elastic Search) up to date with the data in Fedora.  A sync service will load all models that have return true from the `hasSyncMethod([sync-service-name])` method.  Then when a ActiveMQ update message comes in, the `is(id)` method is called.  If the `is()` method returns true, the models `update()` or `remove()` method is called to update the backend data store.
+Data models are designed to be used with sync services.  The dbsync service is responsible for keeping data in the backend data store (ex: Elastic Search) up to date with the data in Fedora.  When a ActiveMQ update message comes in, the `is(id, types, workflows)` method is called.  If the `is()` method returns true, the models `update()` or `remove()` method is called to update the backend data store.

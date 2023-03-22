@@ -19,9 +19,3 @@ $ fin service create \
   --url http://ucd-lib-client:8000 \
   ucd-lib-client ClientService
 ```
-
-## Demo
-
-You can see a demo ClientService [here](../../services/ucd-lib-client).  This is a demo if the UC Davis DAMS.
-
-Note, since the UC Davis DAMS is powered by Elasticsearch (via a WebhookService indexer [essync](../../services/essync) service that listens to Fedora events and adds the data to Elasticsearch), there is nothing about this client that is special to Fin.  ie it's just a NodeJS/ExpressJS web server serving a UI that hits against a Elasticsearch instance.

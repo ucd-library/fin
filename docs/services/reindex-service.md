@@ -2,7 +2,7 @@
 
 The reindex service crawls the Fedora repository and sends reindex events all resources.  This is useful for reindexing the repository after a mapping update or model change.
 
-The reindex service is part of the `essync` container, however this service only crawls the LDP container hierarchy and triggers ActiveMQ reindex events for each resource.  The actual reindexing action should be taken by any service listening to ActiveMQ events.  By default the `essync` container listens to ActiveMQ events and reindexes the resource when it receives a reindex event.
+The reindex service is part of the `dbsync` container, however this service only crawls the LDP container hierarchy and triggers ActiveMQ reindex events for each resource.  The actual reindexing action should be taken by any service listening to ActiveMQ events.  By default the `dbsync` container listens to ActiveMQ events and reindexes the resource when it receives a reindex event.
 
 By default the reindex service will crawl the all `ldp:contains` properties.  Additional properties can be crawled by adding the `follow` query parameter.  The `follow` query parameter should be a comma seperated list of schema.org properties.  The reindex service will then crawl the `follow` properties as well as `ldp:contains` properties.  Ex: `?follow=hasPart`
 
@@ -17,7 +17,7 @@ Put the following in: `/service/reindex`
     "http://digital.ucdavis.edu/schema#Service",
     "http://digital.ucdavis.edu/schema#ProxyService"
   ],
-  "urlTemplate": "http://essync:3000/reindex/{{fcPath}}{{svcPath}}",
+  "urlTemplate": "http://dbsync:3000/reindex/{{fcPath}}{{svcPath}}",
   "description": "Reindex item or collection",
   "identifier": "reindex",
   "title": "reindex",

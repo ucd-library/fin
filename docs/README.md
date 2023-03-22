@@ -15,7 +15,7 @@ Here are the major microservices at the core of Fin:
 - FinAC - An opinionated WebAC wrapper
 - GCS - A Google Cloud Storage service for accessing binary data
 - Keycloak - An authentication service that integrates with Keycloak
-- Essync - A service for syncing data between Fcrepo and ElasticSearch
+- Dbsync - A service for syncing data between Fcrepo and external databases using [Fin Data Models](./data-models)
 - Workflow - A service for managing and monitoring 3rd party workflow frameworks
 
 # Topics

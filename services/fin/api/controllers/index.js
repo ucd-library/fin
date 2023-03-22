@@ -13,7 +13,7 @@ const {logger, models} = require('@ucd-lib/fin-service-utils');
 })();
 
 
-// TODO: move to their own service, similar to essync reindex
+// TODO: move to their own service, similar to dbsync reindex
 // router.use('/tar', require('./tar'));
 // router.use('/zip', require('./zip'));
 

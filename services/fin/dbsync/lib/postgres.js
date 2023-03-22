@@ -1,9 +1,9 @@
 const {pg, logger} = require('@ucd-lib/fin-service-utils');
 
-class EssyncPostgresUtils {
+class DbSyncPostgresUtils {
 
   constructor() {
-    this.schema = 'essync';
+    this.schema = 'dbsync';
     this.pg = pg;
   }
 
@@ -33,13 +33,13 @@ class EssyncPostgresUtils {
   }
 
   async nextLogItem() {
-    let resp = await this.pg.query(`SELECT * FROM ${this.schema}.update_log order by updated limit 1`);
+    let resp = await this.pg.query(`SELECT * FROM ${this.schema}.event_queue order by updated limit 1`);
     if( !resp.rows.length ) return null;
     return resp.rows[0];
   }
 
   async clearLog(eventId) {
-    await this.pg.query(`DELETE FROM ${this.schema}.update_log WHERE event_id = $1`, [eventId]);
+    await this.pg.query(`DELETE FROM ${this.schema}.event_queue WHERE event_id = $1`, [eventId]);
   }
 
   /**
@@ -56,18 +56,18 @@ class EssyncPostgresUtils {
    * @return {Promise}
    */
   async log(args) {
-    let resp = await this.pg.query(`SELECT path FROM ${this.schema}.update_log where path = $1;`, [args.path]);
+    let resp = await this.pg.query(`SELECT path FROM ${this.schema}.event_queue where path = $1;`, [args.path]);
 
     if( resp.rows.length ) {
       await this.pg.query(`
-      UPDATE ${this.schema}.update_log 
+      UPDATE ${this.schema}.event_queue 
         SET (event_id, event_timestamp, container_types, update_types, updated) = ($2, $3, $4, $5, $6)
       WHERE 
         PATH = $1
     ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, new Date().toISOString()]);
     } else {
       await this.pg.query(`
-        INSERT INTO ${this.schema}.update_log (path, event_id, event_timestamp, container_types, update_types) 
+        INSERT INTO ${this.schema}.event_queue (path, event_id, event_timestamp, container_types, update_types) 
         VALUES ($1, $2, $3, $4, $5)
       ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types]);
     }
@@ -96,12 +96,12 @@ class EssyncPostgresUtils {
 
     if( resp.rows.length ) {
       // if there is a model provided, only update model / path combo.  Otherwise update all path entries
-      let attrs = 'event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, source, updated';
+      let attrs = 'event_id, event_timestamp, container_types, update_types, action, message, db_response, transform_service, source, updated';
       let values = '$3, $4, $5, $6, $7, $8, $9, $10, $11, $12';
       let where = 'PATH = $1 and model = $2';
 
       // if( !args.model ) {
-      //   attrs = 'model, event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, source, updated';
+      //   attrs = 'model, event_id, event_timestamp, container_types, update_types, action, message, db_response, transform_service, source, updated';
       //   values = '$2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12';
       //   where = 'PATH = $1';
       // }
@@ -113,27 +113,32 @@ class EssyncPostgresUtils {
         WHERE 
           ${where}
         ;`, [args.path, args.model, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, 
-            args.message, args.response, args.tranformService, args.source, new Date().toISOString()]
+            args.message, args.dbResponse, args.tranformService, args.source, new Date().toISOString()]
       );
     } else {
       await this.pg.query(`
         INSERT INTO ${this.schema}.update_status 
-          (path, event_id, event_timestamp, container_types, update_types, action, message, es_response, transform_service, model, source) 
+          (path, event_id, event_timestamp, container_types, update_types, action, message, db_response, transform_service, model, source) 
         VALUES 
           ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, args.message, 
-          args.response, args.tranformService, args.model, args.source]
+          args.dbResponse, args.tranformService, args.model, args.source]
       );
     }
   }
 
-  async getStatus(path, model=null) {
+  async getStatusByModel(path, model=null) {
     let response = await this.pg.query(`select * from ${this.schema}.update_status where path = $1 and model = $2`, [path, model]);
     if( !response.rows.length ) return null;
     return response.rows;
   }
 
+  async getStatus(path) {
+    let response = await this.pg.query(`select * from ${this.schema}.update_status where path = $1`, [path]);
+    if( !response.rows.length ) return null;
+    return response.rows;
+  }
 
 }
 
-module.exports = new EssyncPostgresUtils();
+module.exports = new DbSyncPostgresUtils();

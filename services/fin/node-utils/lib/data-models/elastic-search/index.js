@@ -1,62 +1,23 @@
 const es = require('./client.js');
-const config = require('../../config.js');
+const config = require('../../../config.js');
 const finSearch = require('./fin-search.js');
-const pg = require('../pg.js');
-const logger = require('../logger.js');
+const logger = require('../../logger.js');
 const api = require('@ucd-lib/fin-api');
-const utils = require('./utils.js');
-const FinAC = require('../fin-ac/index.js');
-
-const finac = new FinAC();
+const FinDataModel = require('../FinDataModel.js');
 
 /**
- * @class ElasticSearchModel
- * @description Base class for fin ElasticSearch data models.
+ * @class FinEsDataModel
+ * @description Base class for FinEsDataModel data models.
  */
-class ElasticSearchModel {
+class FinEsDataModel extends FinDataModel {
 
   constructor(modelName) {
-    this.id = modelName;
-    this.modelName = modelName;
-    this.pathRegex = new RegExp('^/'+modelName+'/');
+    super(modelName);
+    
+    this.readIndexAlias = modelName+'-read';
+    this.writeIndexAlias = modelName+'-write';
 
-    this.readIndexAlias = this.modelName+'-read';
-    this.writeIndexAlias = this.modelName+'-write';
-
-    // this data model should work with essync
-    this.syncMethod = 'essync';
-
-    // the transform function should return a json-ld object
-    // with a @graph property and the graph array should not 
-    // be empty.  This adds additional sanity checks for essync.
-    // If you want to disable this, set this to false and your 
-    // model can harvest any transform result.
-    this.expectGraph = true;
-
-    this.pg = pg;
     this.client = es;
-    this.pg.connect();
-  }
-
-  hasSyncMethod(method) {
-    let methods = this.syncMethod;
-    if( !Array.isArray(methods) ) {
-      methods = [methods];
-    }
-    return methods.includes(method);
-  }
-
-  /**
-   * @method is
-   * @description Given a fin container id (path without /fcrepo/rest), and possibly
-   * a list of types, return if this model is for this container or not 
-   * 
-   * @param {String} id fin path 
-   * @param {Array} types array of rdf types.  NOTE!  this may be empty when types exist!
-   * If you need types and this is param is empty, request types from fcrepo via HTTP HEAD.
-   */
-  is(id, types) {
-    throw new Error('is(id, types) has not been implemented for model: '+this.modelName);
   }
 
   /**
@@ -85,8 +46,8 @@ class ElasticSearchModel {
 
     result.results.forEach(item => {
       if( item._source ) item = item._source;
-      if( options.compact ) utils.compactAllTypes(item);
-      if( options.singleNode ) item['@graph'] = utils.singleNode(item['@id'], item['@graph']);
+      if( options.compact ) this.utils.compactAllTypes(item);
+      if( options.singleNode ) item['@graph'] = this.utils.singleNode(item['@id'], item['@graph']);
     });
     
     if( options.debug ) {
@@ -111,13 +72,17 @@ class ElasticSearchModel {
     if( opts.admin ) _source_excludes = false;
     else if( opts.compact ) _source_excludes = 'compact';
 
+    let identifier = id.replace(/^\//, '').split('/');
+    identifier.shift();
+    identifier = '/'+identifier.join('/');
+
     let result = await this.esSearch({
         from: 0,
         size: 1,
         query: {
           bool : {
             should : [
-              {term : {'@graph.identifier.raw' : id.replace(this.pathRegex, '')}},
+              {term : {'@graph.identifier.raw' : identifier}},
               {term: {'@graph.@id': id}}
             ]
           }
@@ -130,8 +95,8 @@ class ElasticSearchModel {
     if( result.hits.total.value >= 1 ) {
       result = result.hits.hits[0]._source;
 
-      if( opts.compact ) utils.compactAllTypes(result);
-      if( opts.singleNode ) result['@graph'] = utils.singleNode(id, result['@graph']);
+      if( opts.compact ) this.utils.compactAllTypes(result);
+      if( opts.singleNode ) result['@graph'] = this.utils.singleNode(id, result['@graph']);
     } else {
       return null;
     }
@@ -160,14 +125,14 @@ class ElasticSearchModel {
       }
       
       try {
-        result.essync = {};
-        let response = await this.pg.query('select * from essync.update_status where path = $1', [id]);
-        if( response.rows.length ) result.essync[id] = response.rows[0];
+        result.dbsync = {};
+        let response = await this.pg.query('select * from dbsync.update_status where path = $1', [id]);
+        if( response.rows.length ) result.dbsync[id] = response.rows[0];
 
-        response = await this.pg.query('select * from essync.update_status where path = $1', [id+'/fcr:metadata']);
-        if( response.rows.length ) result.essync[id+'/fcr:metadata'] = response.rows[0];
+        response = await this.pg.query('select * from dbsync.update_status where path = $1', [id+'/fcr:metadata']);
+        if( response.rows.length ) result.dbsync[id+'/fcr:metadata'] = response.rows[0];
       } catch(e) {
-        result.essync = {
+        result.dbsync = {
           message : e.message,
           stack : e.stack
         }
@@ -251,7 +216,7 @@ class ElasticSearchModel {
 
   async update(jsonld, index) {
     if( !index ) index = this.writeIndexAlias;
-    let roles = await this.getEsRoles(jsonld);
+    let roles = await this.getAccessRoles(jsonld);
 
     // ensure the base recoder exists
     try {
@@ -351,7 +316,105 @@ class ElasticSearchModel {
     }
   }
 
-  async getEsRoles(jsonld) {
+  /**
+   * @method ensureIndex
+   * @description make sure given index exists in elastic search
+   * 
+   * @returns {Promise}
+   */
+  async ensureIndex() {
+    let exits = await this.client.indices.existsAlias({name: this.readIndexAlias});
+    if( exits ) return;
+
+    logger.info(`No alias exists for ${this.id}, creating...`);
+
+    let indexName = await this.createIndex();
+    this.setAlias(indexName, this.readIndexAlias);
+    this.setAlias(indexName, this.writeIndexAlias);
+    
+    logger.info(`Index ${indexName} created pointing with aliases ${this.readIndexAlias} and ${this.writeIndexAlias}`);
+  }
+
+  /**
+   * @method createIndex
+   * @description create new new index with a unique name based on alias name
+   * 
+   * @param {String} name model name to base index name off of
+   * 
+   * @returns {Promise} resolves to string, new index name
+   */
+  async createIndex() {
+    let indexDef = this.getDefaultIndexConfig();
+    await this.client.indices.create(indexDef);
+
+    return indexDef.index;
+  }
+
+    /**
+   * @method getCurrentIndexes
+   * @description given a index alias name, find all real indexes that use this name.
+   * This is done by querying for all indexes that regex for the alias name.  The indexers
+   * index name creation always uses the alias name in the index.
+   * 
+   * @param {String} alias name of alias to find real indexes for
+   * @return {Promise} resolves to array of index names
+   */
+  async getCurrentIndexes(alias) {
+    var re = new RegExp('^'+alias);
+    var results = [];
+
+    try {
+      var resp = await this.client.cat.indices({v: true, format: 'json'});
+      resp.forEach((i) => {
+        if( i.index.match(re) ) {
+          results.push(i);
+        }
+      })
+    } catch(e) {
+      throw e;
+    }
+
+    return results;
+  }
+
+  async setAlias(indexName, alias) {
+    if( !alias.startsWith(this.modelName+'-') ) {
+      alias = this.modelName + '-' + alias;
+    }
+
+    // remove all current pointers
+    let exits = await this.client.indices.existsAlias({name: alias});
+    if( exits ) {
+      let currentAliases = await this.client.indices.getAlias({name: alias});
+      for( let index in currentAliases ) {
+        console.log('Removing: ', {index, name: alias})
+        await this.client.indices.deleteAlias({index, name: alias});
+      }
+    }
+
+    return this.client.indices.putAlias({index: indexName, name: alias});
+  }
+
+  async recreateIndex(indexSource) {
+    // create new index
+    let indexDest = await this.createIndex();
+    
+    // set new index as new write source
+    await this.setAlias(indexDest, this.writeIndexAlias);
+
+    // now copy over source indexes data
+    let response = this.esClient.reindex({ 
+      wait_for_completion : false,
+      body: { 
+        source: { index: indexSource }, 
+        dest: { index: indexDest }
+      }
+    });
+
+    return {destination: indexDest, response}
+  }
+
+  async getAccessRoles(jsonld) {
     let roles = [];
     let acl = await finac.getAccess(jsonld['@id'], false)
     if( acl.protected === true ) {
@@ -397,6 +460,9 @@ class ElasticSearchModel {
   }
 
   getDefaultIndexConfig(schema) {
+    if( !schema ) {
+      schema = this.schema;
+    }
     var newIndexName = `${this.modelName}-${Date.now()}`;
 
     return {
@@ -435,4 +501,4 @@ class ElasticSearchModel {
 
 }
 
-module.exports = ElasticSearchModel;
+module.exports = FinEsDataModel;

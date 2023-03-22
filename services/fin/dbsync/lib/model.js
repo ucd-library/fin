@@ -1,0 +1,469 @@
+const {config, logger, activemq, models, RDF_URIS, workflow} = require('@ucd-lib/fin-service-utils');
+const api = require('@ucd-lib/fin-api');
+const postgres = require('./postgres');
+const clone = require('clone');
+
+class DbSync {
+
+  constructor() {
+    activemq.onMessage(e => this.handleMessage(e));
+    activemq.connect('dbsync', '/queue/dbsync');
+
+    this.UPDATE_TYPES = {
+      UPDATE : ['Create', 'Update'],
+      DELETE : ['Delete', 'Purge']
+    }
+
+    postgres.connect()
+      .then(() => this.readLoop());
+  }
+
+  async readLoop() {
+    let item = await postgres.nextLogItem();
+    
+    if( !item ) {
+      setTimeout(() => this.readLoop(), 500);
+      return;
+    }
+
+    await this.updateContainer(item);
+    await postgres.clearLog(item.event_id);
+
+    this.readLoop();
+  }
+
+  /**
+   * @method handleMessage
+   * 
+   */
+  async handleMessage(msg) {
+    if( msg.headers['edu.ucdavis.library.eventType'] ) {
+      let eventType = msg.headers['edu.ucdavis.library.eventType'];
+      await postgres.log({
+        event_id : msg.headers['message-id'],
+        event_timestamp : new Date(parseInt(msg.headers.timestamp)).toISOString(),
+        path : msg.body['@id'],
+        container_types : msg.body['@type'],
+        update_types : [eventType]
+      });
+      return;
+    }
+
+    await postgres.log({
+      event_id : msg.headers['org.fcrepo.jms.eventID'],
+      event_timestamp : new Date(parseInt(msg.headers['org.fcrepo.jms.timestamp'])).toISOString(),
+      path : msg.headers['org.fcrepo.jms.identifier'],
+      container_types : msg.headers['org.fcrepo.jms.resourceType']
+        .split(',')
+        .map(item => item.trim())
+        .filter(item => item),
+      update_types : msg.body.type
+    });
+  }
+
+  // isUpdate(e) {
+  //   return e.update_types.find(item => this.UPDATE_TYPES.UPDATE.includes(item)) ? true : false;
+  // }
+
+  isDelete(e) {
+    return e.update_types.find(item => this.UPDATE_TYPES.DELETE.includes(item)) ? true : false;
+  }
+
+  /**
+   * @method item
+   * @description called been buffer event timer fires
+   * 
+   * @param {Object} e event payload from log table
+   */
+  async updateContainer(e) {
+    let jsonld = {};
+
+    // update elasticsearch
+    try {
+
+      // hack.  on delete fedora doesn't send the types.  so we have to sniff from path
+      if( e.container_types.includes(this.WEBAC_CONTAINER) || e.path.match(/\/fcr:acl$/) ) {
+        let rootPath = e.path.replace(/\/fcr:acl$/, '');
+        let containerTypes = await this.getContainerTypes(rootPath);
+        
+        logger.info('ACL '+e.path+' updated, sending rendex event for: '+rootPath);
+
+        // send a reindex event for root container
+        await activemq.sendMessage(
+          {
+            '@id' : rootPath,
+            '@type' : containerTypes
+          },
+          {'edu.ucdavis.library.eventType' : 'Reindex'}
+        );
+      }
+
+      if( !e.container_types ) {
+        e.container_types = await this.getContainerTypes(e.path);
+      }
+
+      e.workflows = (await workflow.postgres.getWorkflowNamesForPath(e.path))
+        .map(item => item.name);
+
+      let boundedModels = this.getModelsForEvent(e);
+
+      if( !boundedModels.length ) {
+        logger.info('Container '+e.path+' did not have a registered model, ignoring');
+
+        e.action = 'ignored';
+        e.message = 'no model for container';
+        await postgres.updateStatus(e);
+        return;
+      } else {
+        // TODO: remove the no bounded models entry
+      }
+
+      let transformCache = new Map();
+      for( let model of boundedModels ) {
+        await this.updateModelContainer(e, model, transformCache);
+      }
+
+    } catch(error) {
+      logger.error('Failed to update: '+e.path, error);
+      e.action = 'error';
+      e.message = error.message+'\n'+error.stack;
+      await postgres.updateStatus(e);
+    }
+  }
+
+  async updateModelContainer(event, model, transformCache) {
+    try {
+      event = clone(event);
+      event.model = model.id;
+
+      // check update_type is delete.
+      if( this.isDelete(event) ) {
+        logger.info('Container '+event.path+' was removed from LDP, removing from index');
+
+        event.message = 'Container was removed from LDP';
+        event.action = 'delete';
+        await this.remove(event, model);
+        return;
+      }
+
+      // check for binary
+      if( model.container_types.includes(RDF_URIS.TYPES.BINARY) && !model.path.match(/\/fcr:metadata$/) ) {
+        logger.info('Ignoring container '+event.path+'. Is a raw binary');
+
+        event.action = 'ignored';
+        event.message = 'raw binary'
+        await postgres.updateStatus(event);
+        return;
+      }
+
+      // check for ignore types
+      for( let type of config.dbsync.ignoreTypes ) {
+        // check for binary
+        if( model.container_types.includes(type) ) {
+          logger.info('Ignoring container '+model.path+'. Is of ignored type: '+type);
+
+          model.action = 'ignored';
+          model.message = type+' container';
+          await postgres.updateStatus(model);
+
+          if( !model.path.match(/\/fcr:[a-z]+/) ) {
+            await this.remove(event, model);
+          }
+
+          // JM - Not removing path, as the /fcr:metadata container is also mapped to this path
+          // return indexer.remove(e.path);   
+          return;
+        }
+      }
+
+      let response = await this.getTransformedContainer(event, model, transformCache);
+
+      // set transform service used.
+      event.tranformService = response.service;
+
+      // under this condition, the acl may have been updated.  Remove item and any 
+      // child items in elastic search.  We need to do it here so we can mark PG why we
+      // did it.
+      if( response.data.statusCode !== 200 ) {
+        logger.info('Container '+event.path+' was publicly inaccessible ('+response.data.statusCode+') from LDP, removing from index. url='+response.data.request.url);
+
+        event.action = 'ignored';
+        event.message = 'inaccessible';
+
+        await this.remove(event, model);
+        await this.removeInaccessableChildrenInEs(event, model);
+        return;
+      }
+
+      jsonld = JSON.parse(response.data.body);
+      
+
+      // if no esId, we don't add to elastic search
+      if( model.expectGraph === true ) {
+        if( !jsonld['@graph'] || !jsonld['@id']) {
+          logger.info('Container '+event.path+' ignored, no jsonld["@graph"] or jsonld["@id"] provided');
+
+          event.action = 'ignored';
+          event.message = 'no jsonld["@graph"] or jsonld["@id"] provided';
+          await this.remove(event, model);
+          return;
+        }
+
+        if( !Array.isArray(jsonld['@graph']) || !jsonld['@graph'].length ) {
+          logger.info('Container '+event.path+' ignored, jsonld["@graph"] contains no nodes');
+
+          event.action = 'ignored';
+          event.message = 'jsonld["@graph"] contains no nodes';
+          await this.remove(event, model);
+          return;
+        }
+      }
+
+      // store source if we have it
+      if( jsonld.source ) {
+        event.source = jsonld.source;
+      } else if( jsonld['@graph'] ) {
+        for( let node of jsonld['@graph'] ) {
+          if( node._ && node._.source ) {
+            event.source = node._.source;
+            break;
+          }
+        }
+      }
+
+      // set some of the fcrepo event information
+      if( jsonld['@graph'] ) {
+        for( let node of jsonld['@graph'] ) {
+          if( !node._ ) node._ = {};
+
+          node._.event = {
+            id : event.event_id,
+            timestamp : event.event_timestamp,
+            updateType : event.update_types
+          }
+        }
+      } else {
+        if( !jsonld._ ) jsonld._ = {};
+        jsonld._.event = {
+          id : event.event_id,
+          timestamp : event.event_timestamp,
+          updateType : event.update_types
+        }
+      }
+
+      event.action = 'updated';
+
+      await this.update(event, model, jsonld);
+    } catch(error) {
+      logger.error('Failed to update: '+event.path, error);
+      event.action = 'error';
+      event.message = error.message+'\n'+error.stack;
+      await postgres.updateStatus(event);
+    }
+  }
+
+  /**
+   * @method getContainerTypes
+   * @description given an event, lookup container types from fcrepo, fallback to postgres.  This 
+   * is mostly for delete events, as we don't have the container types in the event. 
+   * 
+   * @param {Object} event 
+   * @param {String} path 
+   * @returns 
+   */
+  async getContainerTypes(event, path) {
+    if( event.container_types ) return event.container_types;
+
+    if( !this.isDelete(event) ) {
+
+      let response = await api.head({
+        path,
+        directAccess : true,
+        superuser : true,
+        host: config.fcrepo.host
+      });
+
+      if( response.data.statusCode === 200 ) {
+        var link = response.last.headers['link'];
+        if( link ) {
+          link = api.parseLinkHeader(link);
+          return link.type || [];
+        }
+      }
+    }
+
+    // fallback, check if there is a last now container type in postgres
+    let status = await postgres.getStatus(path);
+    if( !status ) return [];
+
+    for( let item of status ) {
+      if( item.container_types ) {
+        return item.container_types;
+      }
+    }
+
+    return [];
+  }
+
+  /**
+   * @method isDotPath
+   * @description given a path string from getPath, does any section of the path start
+   * with a .
+   * 
+   * @param {String} path
+   * 
+   * @returns {Boolean}
+   */
+  // isDotPath(path) {
+  //   if( path.match(/^http/) ) {
+  //     let urlInfo = new URL(path);
+  //     path = urlInfo.pathname;
+  //   }
+    
+  //   path = path.split('/');
+  //   for( var i = 0; i < path.length; i++ ) {
+  //     if( path[i].match(/^\./) ) {
+  //       return path[i];
+  //     }
+  //   }
+
+  //   return null;
+  // }
+
+  /**
+   * @method getTransformedContainer
+   * @description get a es object for container at specified path. 
+   * 
+   * @param {Object} event ActiveMQ event
+   * @param {FinDataModel} model fin data model
+   * @param {Map} transformCache
+   * 
+   * @returns {Promise}
+   */
+  async getTransformedContainer(event, model, transformCache) {
+    let path = event.path.replace(/\/fcr:(metadata|acl)$/, '');
+
+    let headers = {};
+
+    let servicePath = '';
+    if( model.transformService ) {
+      servicePath = path+`/svc:${model.transformService}`;
+    } else {
+      headers = {
+        accept : api.GET_JSON_ACCEPT.COMPACTED
+      }
+    }
+
+    if( transformCache.has(servicePath || path) ) {
+      return transformCache.get(servicePath || path);
+    }
+
+    var response = await api.get({
+      host : config.gateway.host,
+      path : servicePath || path, 
+      headers
+    });
+
+    response.service = config.server.url+config.fcrepo.root+(servicePath || path);
+
+    // set cache for any other models that use this path/transform service combo
+    transformCache.set(servicePath || path, response);
+
+    return response;
+  }
+
+  /**
+   * @method remove
+   * @description trigger data model(s) removal method.  Log the event and result
+   */
+  async remove(event, model) {
+    event.dbResponse = await model.remove(event.path);
+    await postgres.updateStatus(event);
+  }
+
+  /**
+   * @method update
+   * @description trigger data model(s) update method.  Log the event and result
+   */
+  async update(event, model, json) {
+    if( !json ) throw new Error('update data is null');
+
+    if( json['@graph'] ) {
+      for( let node of json['@graph'] ) {
+        if( !node._ ) node._ = {};
+        node._.updated = new Date();
+      }
+    } else {
+      if( !json._ ) json._ = {};
+      json._.updated = new Date();
+    }
+
+    event.dbResponse = await model.update(json);
+    await postgres.updateStatus(event);
+  }
+
+  async getModelsForEvent(event) {
+    let result = [];
+
+    let modelNames = await models.names();
+    for( let name of modelNames ) {
+      let {model} = await models.get(name);
+      let isModel = await model.is(event.path, event.container_types, event.workflows);
+      if( !isModel ) continue;
+      result.push(model);
+    }
+  
+    return result;
+  }
+
+  /**
+   * @method removeInaccessableChildrenInEs
+   * @description for use when a parent path becomes inaccessible.  Remove all children nodes
+   * from elastic search
+   * 
+   * @param {Object} e fcrepo update event 
+   */
+  async removeInaccessableChildrenInEs(e, model) {
+    let path = e.path;
+    if( path.match(/\/fcr:.+$/) ) {
+      path = path.replace(/\/fcr:.+$/, '');
+    }
+
+    // if something like /fcr:acl was updated, make sure the container is updated
+    if( path !== e.path ) {
+      logger.info('Container '+e.path+' was publicly inaccessible from LDP, removing '+path+' from index.');
+
+      e.action = 'ignored';
+      e.message = e.path+' inaccessible'
+      let fakeEvent = Object.assign({}, e);
+      fakeEvent.path = path;
+
+      await this.remove(fakeEvent, model);
+    }
+    
+
+    // ask elastic search for all child paths
+    // TODO: needs to be generic wrapper
+    let children = await indexer.getChildren(path);
+
+    for( let child of children ) {
+      for( let node of child.node ) {
+        // make sure we are only remove paths that container parent
+        if( !node['@id'] ) continue;
+        if( !node['@id'].startsWith(path) ) continue;
+
+        logger.info('Container '+path+' was publicly inaccessible from LDP, removing child '+node['@id']+' from index.');
+
+        e.action = 'ignored';
+        e.message = 'parent '+path+' inaccessible'
+        let fakeEvent = Object.assign({}, e);
+        fakeEvent.path = node['@id'];
+
+        await this.remove(fakeEvent, model);
+      }
+    }
+  }
+
+}
+
+module.exports = new DbSync();

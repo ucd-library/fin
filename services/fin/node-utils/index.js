@@ -8,15 +8,14 @@ module.exports = {
   utils : require('./lib/utils'),
   waitUntil : require('./lib/wait-until'),
   RDF_URIS : require('./lib/common-rdf-uris.js'),
-  ElasticSearchModel : require('./lib/elastic-search/index.js'),
-  esClient : require('./lib/elastic-search/client.js'),
+  dataModels : require('./lib/data-models/index.js'),
+  esClient : require('./lib/data-models/elastic-search/client.js'),
   FinAC : require('./lib/fin-ac/index.js'),
   FinGroup : require('./lib/fin-groups.js'),
   middleware : {
     finac : require('./lib/fin-ac/middleware.js')
   },
   workflow : require('./lib/workflow/index.js'),
-  // seo : require('./lib/seo'),
   keycloak : require('./lib/keycloak.js'),
   models : require('./lib/models.js'),
   gc : require('./lib/gc/index.js')

@@ -22,14 +22,15 @@ if( serviceAccountExists && !env.GOOGLE_APPLICATION_CREDENTIALS ) {
   gcServiceAccount = JSON.parse(fs.readFileSync(serviceAccountFile, 'utf-8'));
 }
 
-let essyncIgnoreEnv = processArray(process.env.ESSYNC_IGNORE_TYPES);
+let dbsyncIgnoreEnv = processArray(process.env.DBSYNC_IGNORE_TYPES);
 
 // make sure this is set for gcssync templates
-if( !env.DATA_ENV ) env.DATA_ENV = 'local-dev';
+if( !env.GCS_BUCKET_ENV ) env.GCS_BUCKET_ENV = 'local-dev';
+if( !env.WORKFLOW_ENV ) env.WORKFLOW_ENV = 'local-dev';
 
 module.exports = {
 
-  dataEnv : env.DATA_ENV,
+  projectName : env.PROJECT_NAME || 'fin',
 
   serviceAccount : {
     username : env.FIN_SERVICE_ACCOUNT_NAME,
@@ -68,7 +69,7 @@ module.exports = {
     port : env.PG_PORT || 5432,
     user : env.PG_USER || 'postgres',
     database : env.PG_DATABASE || 'fcrepo',
-    searchPath : ['public', 'essync', 'label_service', 'finac']
+    searchPath : ['public', 'dbsync', 'label_service', 'finac']
   },
 
   jwt : {
@@ -106,8 +107,8 @@ module.exports = {
     defaultAccessTime : 60 * 60 * 3 // 3 hours
   },
 
-  essync : {
-    ignoreTypes : essyncIgnoreEnv || [
+  dbsync : {
+    ignoreTypes : dbsyncIgnoreEnv || [
       COMMON_URI.TYPES.FIN_IO_INDIRECT,
       COMMON_URI.TYPES.WEBAC
     ]
@@ -161,14 +162,17 @@ module.exports = {
     serviceAcountEmail : env.GOOGLE_SERVICE_ACCOUNT_EMAIL || gcServiceAccount.client_email,
     project : env.GOOGLE_CLOUD_PROJECT || gcServiceAccount.project_id,
     location : env.GOOGLE_CLOUD_LOCATION || 'us-central1',
-    pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || env.DATA_ENV,
+    pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || env.GCS_BUCKET_ENV,
+    gcsBucketEnv : env.GCS_BUCKET_ENV,
 
     workflow : {
       type : 'gc-workflow',
+      env : env.WORKFLOW_ENV,
+      serviceAccountEmail : env.GOOGLE_CLOUD_WORKFLOW_SERVICE_ACCOUNT_EMAIL || env.GOOGLE_SERVICE_ACCOUNT_EMAIL || gcServiceAccount.client_email,
       maxConcurrentWorkflows : env.GOOGLE_MAX_CONCURRENT_WORKFLOWS || 3,
       finWorkflowPath : '/fin/workflows/gc'
     }
-    
+
   },
 
 }

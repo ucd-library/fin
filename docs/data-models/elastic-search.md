@@ -73,7 +73,6 @@ This model exposes standard functions for interacting with fin Elastic Search do
 
   - `search` - Search for documents
   - `get` - Get a single document
-  - `hasSyncMethod` - Required for ALL models in fin.  This is already wired up to work with `essync`
   - `all` - Get all documents, via batched callbacks
   - `update` - Update a node in a document
   - `delete` - Delete a node in a document
