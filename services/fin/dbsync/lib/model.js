@@ -187,7 +187,7 @@ class DbSync {
         event.message = 'inaccessible';
 
         await this.remove(event, model);
-        await this.removeInaccessableChildrenInEs(event, model);
+        await this.removeInaccessableChildren(event, model);
         return;
       }
 
@@ -415,13 +415,13 @@ class DbSync {
   }
 
   /**
-   * @method removeInaccessableChildrenInEs
+   * @method removeInaccessableChildren
    * @description for use when a parent path becomes inaccessible.  Remove all children nodes
    * from elastic search
    * 
    * @param {Object} e fcrepo update event 
    */
-  async removeInaccessableChildrenInEs(e, model) {
+  async removeInaccessableChildren(e, model) {
     let path = e.path;
     if( path.match(/\/fcr:.+$/) ) {
       path = path.replace(/\/fcr:.+$/, '');
@@ -431,34 +431,26 @@ class DbSync {
     if( path !== e.path ) {
       logger.info('Container '+e.path+' was publicly inaccessible from LDP, removing '+path+' from index.');
 
-      e.action = 'ignored';
-      e.message = e.path+' inaccessible'
       let fakeEvent = Object.assign({}, e);
+      fakeEvent.action = 'ignored';
+      fakeEvent.message = e.path+' inaccessible'
       fakeEvent.path = path;
 
       await this.remove(fakeEvent, model);
     }
-    
 
-    // ask elastic search for all child paths
-    // TODO: needs to be generic wrapper
-    let children = await indexer.getChildren(path);
+    // ask postgres for all children of this path
+    let children = await postgres.getChildren(path);
 
-    for( let child of children ) {
-      for( let node of child.node ) {
-        // make sure we are only remove paths that container parent
-        if( !node['@id'] ) continue;
-        if( !node['@id'].startsWith(path) ) continue;
+    for( let childPath of children ) {
+      logger.info('Container '+path+' was publicly inaccessible from LDP, removing child '+childPath+' from index.');
+      let fakeEvent = Object.assign({}, e);
 
-        logger.info('Container '+path+' was publicly inaccessible from LDP, removing child '+node['@id']+' from index.');
+      fakeEvent.action = 'ignored';
+      fakeEvent.message = 'parent '+path+' inaccessible'
+      fakeEvent.path = childPath;
 
-        e.action = 'ignored';
-        e.message = 'parent '+path+' inaccessible'
-        let fakeEvent = Object.assign({}, e);
-        fakeEvent.path = node['@id'];
-
-        await this.remove(fakeEvent, model);
-      }
+      await this.remove(fakeEvent, model);
     }
   }
 

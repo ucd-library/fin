@@ -145,6 +145,13 @@ class DbSyncPostgresUtils {
     return response;
   }
 
+  async getChildren(path) {
+    if( !path.endsWith('/') ) path = path + '/';
+    let response = await this.pg.query(`select distinct path from ${this.schema}.update_status where path like $1`, [path + '%']);
+    if( !response.rows.length ) return null;
+    return response.rows.map(r => r.path);
+  }
+
 }
 
 module.exports = new DbSyncPostgresUtils();
