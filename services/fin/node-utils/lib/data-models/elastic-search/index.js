@@ -254,9 +254,8 @@ class FinEsDataModel extends FinDataModel {
         params : {nodes:jsonld['@graph'], roles}
       }
     });
-    response['@id'] = jsonld['@id'];
 
-    return {index, id: jsonld['@id'], response};
+    return response;
   }
 
   async remove(id, index) {
@@ -285,12 +284,13 @@ class FinEsDataModel extends FinDataModel {
       hits = response.hits.hits;
     }
 
-    if( !hits.length ) return;
+    if( !hits.length ) return {message: 'no-op'};
 
+    let result = [];
     for( let doc of hits ) {
       logger.info(`ES Indexer removing ${this.moduleName} container: ${id} from ${doc._id}`);
         
-      await this.client.update({
+      let r = await this.client.update({
         index,
         id : doc._id,
         script : {
@@ -298,6 +298,7 @@ class FinEsDataModel extends FinDataModel {
           params : {id}
         }
       });
+      result.push(r);
 
       // now see if document is empty
       response = await this.client.get({
@@ -308,12 +309,15 @@ class FinEsDataModel extends FinDataModel {
       // if the document is empty, remove
       if( response._source && response._source['@graph'] && response._source['@graph'].length === 0 ) {
         logger.info(`ES Indexer removing ${this.moduleName} document: ${doc._id}.  No nodes left in graph`);
-        await this.client.delete({
+        r = await this.client.delete({
           index,
           id : doc._id
         });
+        result.push(r);
       }
     }
+
+    return {deletes: result};
   }
 
   /**
@@ -416,7 +420,7 @@ class FinEsDataModel extends FinDataModel {
 
   async getAccessRoles(jsonld) {
     let roles = [];
-    let acl = await finac.getAccess(jsonld['@id'], false)
+    let acl = await this.finac.getAccess(jsonld['@id'], false)
     if( acl.protected === true ) {
       acl.readAuthorizations.forEach(role => {
         if( !config.finac.agents[role] ) {

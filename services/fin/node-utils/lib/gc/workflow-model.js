@@ -96,8 +96,6 @@ class FinGcWorkflowModel {
       name: parent
     };
 
-    console.log(request)
-
     let gcWorkflowContent = null;
     try {
       gcWorkflowContent = (await this.wClient.getWorkflow(request))[0].sourceContents;

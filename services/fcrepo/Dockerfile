@@ -1,4 +1,4 @@
-FROM fcrepo/fcrepo:6.3.0
+FROM fcrepo/fcrepo:6.4.0
 
 RUN mkdir -p /etc/fin
 COPY fcrepo.properties /etc/fin/fcrepo.properties

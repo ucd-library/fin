@@ -96,8 +96,8 @@ class DbSyncPostgresUtils {
 
     if( resp.rows.length ) {
       // if there is a model provided, only update model / path combo.  Otherwise update all path entries
-      let attrs = 'event_id, event_timestamp, container_types, update_types, action, message, db_response, transform_service, source, updated';
-      let values = '$3, $4, $5, $6, $7, $8, $9, $10, $11, $12';
+      let attrs = 'event_id, event_timestamp, container_types, update_types, workflow_types, action, message, db_response, transform_service, source, updated';
+      let values = '$3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13';
       let where = 'PATH = $1 and model = $2';
 
       // if( !args.model ) {
@@ -112,16 +112,16 @@ class DbSyncPostgresUtils {
             (${attrs}) = (${values})
         WHERE 
           ${where}
-        ;`, [args.path, args.model, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, 
+        ;`, [args.path, args.model, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.workflow_types, args.action, 
             args.message, args.dbResponse, args.tranformService, args.source, new Date().toISOString()]
       );
     } else {
       await this.pg.query(`
         INSERT INTO ${this.schema}.update_status 
-          (path, event_id, event_timestamp, container_types, update_types, action, message, db_response, transform_service, model, source) 
+          (path, event_id, event_timestamp, container_types, update_types, workflow_types, action, message, db_response, transform_service, model, source) 
         VALUES 
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.action, args.message, 
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.workflow_types, args.action, args.message, 
           args.dbResponse, args.tranformService, args.model, args.source]
       );
     }
@@ -137,6 +137,12 @@ class DbSyncPostgresUtils {
     let response = await this.pg.query(`select * from ${this.schema}.update_status where path = $1`, [path]);
     if( !response.rows.length ) return null;
     return response.rows;
+  }
+
+  async cleanUpStatus(path, currentModels) {
+    let models = currentModels.map(m => `'${m}'`).join(',');
+    let response = await this.pg.query(`delete from ${this.schema}.update_status where path = $1 and model not in (${models})`, [path]);
+    return response;
   }
 
 }

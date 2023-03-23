@@ -79,7 +79,7 @@ class WorkflowPostgresUtils {
 
   async getWorkflowNamesForPath(path) {
     let resp = await this.pg.query(
-      `select distinct name from ${this.schema}.workflow where data->>'finPath' = $1`, 
+      `select distinct name from ${this.schema}.workflow where state = 'completed' and data->>'finPath' = $1`, 
       [path]
     );
 

@@ -76,8 +76,6 @@ class DbSync {
    * @param {Object} e event payload from log table
    */
   async updateContainer(e) {
-    let jsonld = {};
-
     // update elasticsearch
     try {
 
@@ -98,14 +96,11 @@ class DbSync {
         );
       }
 
-      if( !e.container_types ) {
-        e.container_types = await this.getContainerTypes(e.path);
-      }
+      e.container_types = await this.getContainerTypes(e);
 
-      e.workflows = (await workflow.postgres.getWorkflowNamesForPath(e.path))
-        .map(item => item.name);
+      e.workflow_types = await workflow.postgres.getWorkflowNamesForPath(e.path.replace(/\/fcr:[a-z]+$/, ''));
 
-      let boundedModels = this.getModelsForEvent(e);
+      let boundedModels = await this.getModelsForEvent(e);
 
       if( !boundedModels.length ) {
         logger.info('Container '+e.path+' did not have a registered model, ignoring');
@@ -115,7 +110,8 @@ class DbSync {
         await postgres.updateStatus(e);
         return;
       } else {
-        // TODO: remove the no bounded models entry
+        // TODO: remove old model entries that are no longer bound
+        await postgres.cleanUpStatus(e.path, boundedModels);
       }
 
       let transformCache = new Map();
@@ -147,7 +143,7 @@ class DbSync {
       }
 
       // check for binary
-      if( model.container_types.includes(RDF_URIS.TYPES.BINARY) && !model.path.match(/\/fcr:metadata$/) ) {
+      if( event.container_types.includes(RDF_URIS.TYPES.BINARY) && !event.path.match(/\/fcr:metadata$/) ) {
         logger.info('Ignoring container '+event.path+'. Is a raw binary');
 
         event.action = 'ignored';
@@ -159,14 +155,14 @@ class DbSync {
       // check for ignore types
       for( let type of config.dbsync.ignoreTypes ) {
         // check for binary
-        if( model.container_types.includes(type) ) {
-          logger.info('Ignoring container '+model.path+'. Is of ignored type: '+type);
+        if( event.container_types.includes(type) ) {
+          logger.info('Ignoring container '+event.path+'. Is of ignored type: '+type);
 
-          model.action = 'ignored';
-          model.message = type+' container';
-          await postgres.updateStatus(model);
+          event.action = 'ignored';
+          event.message = type+' container';
+          await postgres.updateStatus(event);
 
-          if( !model.path.match(/\/fcr:[a-z]+/) ) {
+          if( !event.path.match(/\/fcr:[a-z]+/) ) {
             await this.remove(event, model);
           }
 
@@ -195,7 +191,7 @@ class DbSync {
         return;
       }
 
-      jsonld = JSON.parse(response.data.body);
+      let jsonld = JSON.parse(response.data.body);
       
 
       // if no esId, we don't add to elastic search
@@ -271,13 +267,15 @@ class DbSync {
    * @param {String} path 
    * @returns 
    */
-  async getContainerTypes(event, path) {
-    if( event.container_types ) return event.container_types;
+  async getContainerTypes(event) {
+    if( event.container_types && event.container_types.length ) {
+      return event.container_types;
+    }
 
     if( !this.isDelete(event) ) {
 
       let response = await api.head({
-        path,
+        path : event.path,
         directAccess : true,
         superuser : true,
         host: config.fcrepo.host
@@ -293,7 +291,7 @@ class DbSync {
     }
 
     // fallback, check if there is a last now container type in postgres
-    let status = await postgres.getStatus(path);
+    let status = await postgres.getStatus(event.path);
     if( !status ) return [];
 
     for( let item of status ) {
@@ -408,11 +406,11 @@ class DbSync {
     let modelNames = await models.names();
     for( let name of modelNames ) {
       let {model} = await models.get(name);
-      let isModel = await model.is(event.path, event.container_types, event.workflows);
+      let isModel = model.is(event.path, event.container_types, event.workflow_types);
       if( !isModel ) continue;
       result.push(model);
     }
-  
+
     return result;
   }
 

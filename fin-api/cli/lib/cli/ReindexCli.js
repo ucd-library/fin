@@ -54,7 +54,7 @@ class ReindexCli {
     }
 
     let state = data.status;
-    let lastPing = {};
+    let lastPing = data;
 
     while( state == 'crawling' ) {
       await sleep(2000);
@@ -72,7 +72,8 @@ class ReindexCli {
       state = lastPing.status;
     }
 
-    Logger.log(lastPing);
+
+    Logger.log(JSON.stringify(lastPing, null, 2));
   }
 
   /**

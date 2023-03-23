@@ -37,7 +37,12 @@ class GcsConfig {
     });
 
     if( res.last.statusCode === 200 ) {
-      this.config = JSON.parse(res.last.body);
+      let body = res.last.body.replace(/\{\{(\w+)\}\}/g, (match, p1) => {
+        return process.env[p1] || '';
+      });
+      console.log(body);
+
+      this.config = JSON.parse(body);
       this.requestLoopPromise = null;
       this.requestLoopPromiseResolve(this.config);
     } else {
