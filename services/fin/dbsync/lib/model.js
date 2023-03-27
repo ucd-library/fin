@@ -2,12 +2,14 @@ const {config, logger, activemq, models, RDF_URIS, workflow} = require('@ucd-lib
 const api = require('@ucd-lib/fin-api');
 const postgres = require('./postgres');
 const clone = require('clone');
+const uuid = require('uuid');
 
 class DbSync {
 
   constructor() {
+    this.id = uuid.v4().split('-').shift();
     activemq.onMessage(e => this.handleMessage(e));
-    activemq.connect('dbsync', '/queue/dbsync');
+    activemq.connect('dbsync-'+this.id, '/queue/dbsync');
 
     this.UPDATE_TYPES = {
       UPDATE : ['Create', 'Update'],
@@ -19,7 +21,7 @@ class DbSync {
   }
 
   async readLoop() {
-    let item = await postgres.nextLogItem();
+    let item = await postgres.nextMessage();
     
     if( !item ) {
       setTimeout(() => this.readLoop(), 500);
@@ -27,7 +29,7 @@ class DbSync {
     }
 
     await this.updateContainer(item);
-    await postgres.clearLog(item.event_id);
+    await postgres.clearMessage(item.event_id);
 
     this.readLoop();
   }
@@ -39,7 +41,7 @@ class DbSync {
   async handleMessage(msg) {
     if( msg.headers['edu.ucdavis.library.eventType'] ) {
       let eventType = msg.headers['edu.ucdavis.library.eventType'];
-      await postgres.log({
+      await postgres.queue({
         event_id : msg.headers['message-id'],
         event_timestamp : new Date(parseInt(msg.headers.timestamp)).toISOString(),
         path : msg.body['@id'],
@@ -49,7 +51,7 @@ class DbSync {
       return;
     }
 
-    await postgres.log({
+    await postgres.queue({
       event_id : msg.headers['org.fcrepo.jms.eventID'],
       event_timestamp : new Date(parseInt(msg.headers['org.fcrepo.jms.timestamp'])).toISOString(),
       path : msg.headers['org.fcrepo.jms.identifier'],

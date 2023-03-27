@@ -1,6 +1,8 @@
 const express = require('express');
+const os = require('os');
 const {config, logger, keycloak} = require('@ucd-lib/fin-service-utils');
 const ReindexCrawler = require('./lib/reindex-crawler.js');
+const postgres = require('./lib/postgres.js');
 const api = require('@ucd-lib/fin-api');
 require('./lib/model');
 
@@ -11,27 +13,24 @@ api.setConfig({
 });
 
 
-// simple, in mem, for now
-let statusCache = {};
-
 const app = express();
 
 
-// TODO: add admin check
 app.get(/^\/reindex\/.*/, keycloak.protect(['admin']), async (req, res) => {
-  let path = req.path.replace( /^\/reindex\//, '/');
-  let cache = statusCache[path];
+  let path = req.path.replace( /^\/reindex\//, '/')
+               .replace(/^\/fcrepo\/rest\//, '/');
+
+  let status = await postgres.getReindexCrawlStatus(path);
 
   if( req.query.status === 'true' ) {
-    if( cache ) {
-      res.json(cache);
-    } else {
-      res.json({status: 'none'});
-    }
+    if( !status ) status = {status : 'none'};
+    res.json(status);
     return;
   }
-  if( cache && cache.status === 'crawling' ) {
-    return res.json(cache);
+
+  if( status && status.state === 'crawling' ) {
+    res.status(400).json({error: true, message: 'Crawl already in progress for: '+path});
+    return;
   }
 
   try {
@@ -42,17 +41,9 @@ app.get(/^\/reindex\/.*/, keycloak.protect(['admin']), async (req, res) => {
         .filter(item => item)
     });
 
-    statusCache[path] = {
-      status : 'crawling',
-      startTime : new Date().toISOString(),
-      options : crawler.options
-    }
+    crawler.reindex();
 
     res.redirect(req.headers['x-fin-original-url'].replace(/\?.*/, '')+'?status=true');
-
-    statusCache[path].paths = await crawler.reindex()
-    statusCache[path].status = 'crawl-complete';
-    statusCache[path].completedTime = new Date().toISOString();
   } catch(e) {
     onError(res, e);
   }

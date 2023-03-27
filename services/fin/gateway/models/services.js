@@ -9,6 +9,7 @@ const util = require('util');
 const redis = require('../lib/redisClient')();
 const jwt = require('jsonwebtoken');
 const label = require('../models/label');
+const uuid = require('uuid');
 
 jsonld.frame = util.promisify(jsonld.frame);
 
@@ -31,6 +32,7 @@ class ServiceModel {
 
   constructor() {
     this.reloadTimer = -1;
+    this.id = uuid.v4().split('-').shift();
     
     this.services = {};
     this.secrets = {};
@@ -56,7 +58,7 @@ class ServiceModel {
 
     // listen for service definition updates
     activemq.onMessage(e => this._onFcrepoEvent(e));
-    activemq.connect('gateway', '/queue/gateway');
+    activemq.connect('gateway-'+this.id, '/topic/fedora');
 
     await this.waitForFcRepoServices();
     await this.reload();

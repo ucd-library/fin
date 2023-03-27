@@ -74,6 +74,7 @@ class MessageConsumer {
     }
 
     if( clientName ) {
+      this.clientName = clientName;
       connectOptions.connectHeaders['client-id'] = clientName;
     }
     if( queue ) {
@@ -112,7 +113,7 @@ class MessageConsumer {
    */
   init() {
     if( !this.client ) return;
-    logger.info('STOMP client connected to server', subscribeHeaders);
+    logger.info('STOMP client connected to server', this.clientName, subscribeHeaders);
 
 
     this.client.subscribe(subscribeHeaders, async (error, message) => {

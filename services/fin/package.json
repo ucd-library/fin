@@ -45,7 +45,7 @@
     "redis": "^4.3.1",
     "request": "^2.88.2",
     "stompit": "^1.0.0",
-    "tar-stream": "^2.2.0"
-  },
-  "devDependencies": {}
+    "tar-stream": "^2.2.0",
+    "uuid": "^9.0.0"
+  }
 }

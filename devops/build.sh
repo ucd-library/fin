@@ -21,6 +21,7 @@ echo "SHA: $FIN_SERVER_REPO_HASH"
 echo -e "\nBuilding images:"
 echo    "Fcrepo        : $FCREPO_IMAGE_NAME:$APP_TAG"
 echo    "Postgres      : $POSTGRES_IMAGE_NAME:$APP_TAG"
+echo    "Apache LB     : $LB_IMAGE_NAME:$APP_TAG"
 echo    "Base Service  : $SERVER_IMAGE_NAME:$APP_TAG"
 echo    "ElasticSearch : $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG"
 echo -e "Init          : $INIT_IMAGE_NAME:$APP_TAG\n"
@@ -44,6 +45,16 @@ docker build \
   -t $POSTGRES_IMAGE_NAME:$APP_TAG \
   --cache-from $POSTGRES_IMAGE_NAME:$DOCKER_CACHE_TAG \
   services/postgres
+
+# Core Server - apache lb
+docker build \
+  --build-arg FIN_APP_VERSION=${APP_VERSION} \
+  --build-arg FIN_REPO_TAG=${FIN_TAG_NAME} \
+  --build-arg FIN_BRANCH_NAME=${FIN_BRANCH_NAME} \
+  --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
+  -t $LB_IMAGE_NAME:$APP_TAG \
+  --cache-from $LB_IMAGE_NAME:$DOCKER_CACHE_TAG \
+  services/load-balancer
 
 # Core Server - server
 docker build \

@@ -5,7 +5,7 @@ const api = require('@ucd-lib/fin-api');
 const fs = require('fs-extra');
 const logger = require('../logger.js');
 const waitUntil = require('../wait-until.js');
-const uuid = require('uuid/v4');
+const uuid = require('uuid');
 const clone = require('clone');
 const config = require('../../config.js');
 const crypto = require('crypto');
@@ -242,7 +242,7 @@ class FinGcWorkflowModel {
     }
 
 
-    let finWorkflowId = uuid();
+    let finWorkflowId = uuid.v4();
     logger.info('init workflow', finWorkflowName, finPath, finWorkflowId);
 
     try {

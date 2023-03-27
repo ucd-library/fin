@@ -348,15 +348,17 @@ class FinIoImport {
         let shas = response[utils.PROPERTIES.PREMIS.HAS_MESSAGE_DIGEST]
           .map(item => {
             let [urn, sha, hash] = item['@id'].split(':')
-            return [sha.replace('sha-', ''), hash];
+            return [sha, hash];
           });
 
-        // picking the 256 sha or first
-        let sha = shas.find(item => item[0] === '256');
-        if( !sha ) sha = shas[0];
+        // picking the 256 sha or first sha
+        let sha = shas.find(item => item[0] === 'sha-256');
+        if( !sha ) {
+          shas.find(item => item[0].match(/^sha-/));
+        }
 
-        if( sha[0].match(/^sha/) ) {
-          let localSha = await api.sha(binary.localpath, sha[0]);
+        if( sha ) {
+          let localSha = await api.sha(binary.localpath, sha[0].replace('sha-', ''));
           if( localSha === sha[1] ) {
             console.log(' -> IGNORING (sha match)');
             return false;

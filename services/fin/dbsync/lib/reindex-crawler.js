@@ -1,5 +1,6 @@
 const {activemq, logger, config, RDF_URIS} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
+const postgres = require('./postgres.js');
 
 const FC_BASE_RE = new RegExp('^'+api.getConfig().fcBasePath);
 const FC_HOST_RE = new RegExp('^'+config.fcrepo.host+api.getConfig().fcBasePath);
@@ -10,6 +11,7 @@ const FC_HOST_RE = new RegExp('^'+config.fcrepo.host+api.getConfig().fcBasePath)
 class ReindexCrawler {
 
   constructor(path, options={}) {  
+    this.dbUpdateInterval = 5000;
     this.rootPath = this.cleanPath(path);
 
     if( !options.follow ) options.follow = [];
@@ -20,6 +22,14 @@ class ReindexCrawler {
     this.options = options;
   }
 
+  getCrawlData(startTime) {
+    return {
+      startTime,
+      crawled : Array.from(this.crawled),
+      options : this.options
+    }
+  }
+
   /**
    * @method reindex
    * @description start reindex processs
@@ -27,11 +37,34 @@ class ReindexCrawler {
    * @returns {Array}
    */
   async reindex(writeIndex) {
+    let resp = await postgres.getReindexCrawlStatus(this.rootPath, 'state');
+    if( resp && resp.state === 'crawling' ) {
+      throw new Error('Crawl already in progress for: '+this.rootPath);
+    }
+
     let crawled = new Set();
     this.crawled = crawled;
 
     logger.info('Starting reindex of: '+this.rootPath+(writeIndex ? ' into index'+writeIndex : ''));
+    
+    // set the initial crawl status
+    let startTime = new Date().toISOString();
+    await postgres.updateReindexCrawlStatus(this.rootPath, 'crawling', this.getCrawlData(startTime));
+
+    // update crawl status every 5 seconds
+    let iid = setInterval(async () => {
+      postgres.updateReindexCrawlStatus(this.rootPath, 'crawling', this.getCrawlData(startTime));
+    }, this.dbUpdateInterval);
+
+    // run reindex crawl
     await this.crawl(this.rootPath, crawled, writeIndex);
+
+    // stop update interval and set crawl status to complete
+    clearInterval(iid);
+
+    // set the crawl status to complete
+    resp = await postgres.updateReindexCrawlStatus(this.rootPath, 'stopped', this.getCrawlData(startTime));
+
     return Array.from(crawled);
   }
 
