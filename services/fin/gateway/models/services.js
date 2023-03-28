@@ -1,5 +1,5 @@
 const api = require('@ucd-lib/fin-api');
-const {logger, config, activemq, FinGroups, RDF_URIS} = require('@ucd-lib/fin-service-utils');
+const {logger, config, ActiveMqClient, FinGroups, RDF_URIS} = require('@ucd-lib/fin-service-utils');
 const request = require('request');
 const fs = require('fs');
 const {URL} = require('url');
@@ -16,6 +16,7 @@ jsonld.frame = util.promisify(jsonld.frame);
 // TODO: uncomment to enable finGroups
 // const finGroups = new FinGroups();
 
+const {ActiveMqStompClient} = ActiveMqClient;
 const FIN_URL = new URL(config.server.url);
 const SERVICE_CHAR = '/svc:';
 const AUTHENTICATION_SERVICE_CHAR = '^/auth';
@@ -57,8 +58,9 @@ class ServiceModel {
     this.clientService = null;
 
     // listen for service definition updates
-    activemq.onMessage(e => this._onFcrepoEvent(e));
-    activemq.connect('gateway-'+this.id, '/topic/fedora');
+    this.activemq = new ActiveMqStompClient();
+    this.activemq.onMessage(e => this._onFcrepoEvent(e));
+    this.activemq.connect('gateway-'+this.id);
 
     await this.waitForFcRepoServices();
     await this.reload();

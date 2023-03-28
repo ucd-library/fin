@@ -1,8 +1,9 @@
-const {gc, activemq, config} = require('@ucd-lib/fin-service-utils');
+const {gc, ActiveMqClient, config} = require('@ucd-lib/fin-service-utils');
 const gcsConfig = require('./config.js');
 const init = require('./init.js');
 
 const {pubsub, gcs} = gc;
+const {ActiveMqStompClient} = ActiveMqClient;
 
 
 class GcsSync {
@@ -10,8 +11,9 @@ class GcsSync {
   constructor() {
     pubsub.on('message', message => this.onGcMessage(message));
 
-    activemq.onMessage(e => this.onFcMessage(e));
-    activemq.connect('gssync', '/queue/gssync');
+    this.activemq = new ActiveMqStompClient();
+    this.activemq.onMessage(e => this.onFcMessage(e));
+    this.activemq.connect('gssync', config.activeMq.queues.gcssync);
 
     gcsConfig.loaded.then(c => {
       this.config = (c || {}).sync || {};

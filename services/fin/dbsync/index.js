@@ -21,6 +21,7 @@ app.get(/^\/reindex\/.*/, keycloak.protect(['admin']), async (req, res) => {
                .replace(/^\/fcrepo\/rest\//, '/');
 
   let status = await postgres.getReindexCrawlStatus(path);
+  let force = (req.query.force || '').toLowerCase() === 'true';
 
   if( req.query.status === 'true' ) {
     if( !status ) status = {status : 'none'};
@@ -28,7 +29,7 @@ app.get(/^\/reindex\/.*/, keycloak.protect(['admin']), async (req, res) => {
     return;
   }
 
-  if( status && status.state === 'crawling' ) {
+  if( force === false && status && status.state === 'crawling' ) {
     res.status(400).json({error: true, message: 'Crawl already in progress for: '+path});
     return;
   }

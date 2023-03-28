@@ -23,10 +23,18 @@ class ReindexCli {
     delete args.finPath;
     delete args.follow;
 
+    let query = [];
+
     if( args.options.follow ) {
-      args.path = args.path + '?follow=' + args.options.follow;
+      query.push('follow=' + args.options.follow);
+    }
+    if( args.options.force ) {
+      query.push('force=true');
     }
 
+    if( query.length ) {
+      args.path = args.path + '?' + query.join('&');
+    }
 
     let response = await http.get(args);
     response = response.response.data;

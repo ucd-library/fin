@@ -3,7 +3,10 @@ module.exports = {
   jsonld : require('./lib/jsonld'),
   jwt : require('./lib/jwt'),
   logger : require('./lib/logger'),
-  activemq : require('./lib/activemq'),
+  ActiveMqClient : {
+    ActiveMqStompClient : require('./lib/activemq/stomp.js'),
+    ActiveMqMqttClient : require('./lib/activemq/mqtt.js')
+  },
   pg : require('./lib/pg'),
   utils : require('./lib/utils'),
   waitUntil : require('./lib/wait-until'),

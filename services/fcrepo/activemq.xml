@@ -18,6 +18,7 @@
             <virtualDestinationInterceptor>
                 <!-- https://activemq.apache.org/virtual-destinations -->
                 <virtualDestinations>
+                    <!-- FIN ADDED -->
                     <compositeTopic name="fedora" forwardOnly="false">
                         <forwardTo>
                             <queue physicalName="dbsync"/>
@@ -128,6 +129,8 @@
                 uri="tcp://0.0.0.0:${fcrepo.dynamic.jms.port:61616}?maximumConnections=1000&amp;wireformat.maxFrameSize=104857600"
             />
             <transportConnector name="stomp" uri="stomp://0.0.0.0:${fcrepo.dynamic.stomp.port:61613}"/>
+            <!-- FIN ADDED -->
+            <transportConnector name="mqtt" uri="mqtt://0.0.0.0:1883"/>
         </transportConnectors>
 
         <!-- destroy the spring context on shutdown to stop jetty -->

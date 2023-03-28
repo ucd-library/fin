@@ -58,9 +58,26 @@ module.exports = {
     hostname : fcrepoHostname,
     host : `http://${fcrepoHostname}:8080`,
     root : '/fcrepo/rest',
+
+  },
+
+  activeMq : {
+    hostname : fcrepoHostname,
+    fcrepoTopic : '/topic/fedora',
+    queues : {
+      dbsync : '/queue/dbsync',
+      gcssync : '/queue/gcssync',
+    },
     stomp : {
-      port : 61613,
-      queue : '/queue/fedora'
+      port : 61613
+    },
+    mqtt : {
+      port : 1883,
+      fcrepoTopic : 'fedora',
+      queues : {
+        dbsync : 'dbsync',
+        gcssync : 'gcssync',
+      },
     }
   },
 

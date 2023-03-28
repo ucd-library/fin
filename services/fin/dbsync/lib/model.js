@@ -1,15 +1,19 @@
-const {config, logger, activemq, models, RDF_URIS, workflow} = require('@ucd-lib/fin-service-utils');
+const {config, logger, ActiveMqClient, models, RDF_URIS, workflow} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const postgres = require('./postgres');
 const clone = require('clone');
 const uuid = require('uuid');
 
+const {ActiveMqStompClient} = ActiveMqClient;
+
 class DbSync {
 
   constructor() {
     this.id = uuid.v4().split('-').shift();
-    activemq.onMessage(e => this.handleMessage(e));
-    activemq.connect('dbsync-'+this.id, '/queue/dbsync');
+
+    this.activemq = new ActiveMqStompClient();
+    this.activemq.onMessage(e => this.handleMessage(e));
+    this.activemq.connect('dbsync-'+this.id, config.activeMq.queues.dbsync);
 
     this.UPDATE_TYPES = {
       UPDATE : ['Create', 'Update'],
@@ -89,7 +93,7 @@ class DbSync {
         logger.info('ACL '+e.path+' updated, sending rendex event for: '+rootPath);
 
         // send a reindex event for root container
-        await activemq.sendMessage(
+        await this.activemq.sendMessage(
           {
             '@id' : rootPath,
             '@type' : containerTypes

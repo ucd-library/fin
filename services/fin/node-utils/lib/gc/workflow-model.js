@@ -11,10 +11,14 @@ const config = require('../../config.js');
 const crypto = require('crypto');
 const pg = require('../workflow/postgres.js');
 const keycloak = require('../keycloak.js');
+const ActiveMqStompClient = require('../activemq/stomp.js');
+
 
 class FinGcWorkflowModel {
 
   constructor() {
+    this.id = uuid.v4().split('-').shift();
+
     let gcconf = config.google.workflow;
 
     this.TYPE = gcconf.type;
@@ -30,7 +34,33 @@ class FinGcWorkflowModel {
     this.statusLoopStarted = false;
   }
 
+  async _onFcrepoEvent(event) {
+    let id = event.headers[this.activemq.ACTIVE_MQ_HEADER_ID];
+    
+    // check that a workflow container was updated
+    if( !id ) return;
+    if( !id.startsWith(this.GC_WORKFLOW_PATH) && !id.startsWith(this.CONFIG_PATH) ) return;
+
+    if( this._debounceConfigReload ) clearTimeout(this._debounceConfigReload);
+
+    this._debounceConfigReload = setTimeout(() => {
+      this._debounceConfigReload = null;
+
+      // check that the config isn't being updated
+      if( this.requestLoopPromise ) return;
+
+      logger.info('Reloading workflow config from fcrepo: '+this.CONFIG_PATH, 'Updated by: '+id);
+      this.getConfig();
+    }, 1000);
+  }
+
   load() {
+    if( !this.activemq ) {
+      this.activemq = new ActiveMqStompClient();
+      this.activemq.onMessage(e => this._onFcrepoEvent(e));
+      this.activemq.connect('workflow-'+this.id);
+    }
+
     this.getConfig();
     return this.requestLoopPromise;
   }
@@ -53,6 +83,11 @@ class FinGcWorkflowModel {
     });
 
     if( res.last.statusCode === 200 ) {
+      logger.info('Loaded workflow config from fcrepo: '+this.CONFIG_PATH);
+
+      this.definitions = {};
+      this.defaults = {};
+
       let config = JSON.parse(res.last.body);
       this.setDefaults(config.defaults);
       for( let name in config.definitions ) {
@@ -132,13 +167,13 @@ class FinGcWorkflowModel {
       logger.debug(request);
       const [operation] = await this.wClient.updateWorkflow(request);
       let [response] = await operation.promise();
-      console.debug('Update GC workflow response: ', response);
+      logger.debug('Update GC workflow response: ', response);
     } else {
       logger.info('Creating GC workflow: '+gcWorkflowName);
       logger.debug(request);
       const [operation] = await this.wClient.createWorkflow(request);
       let [response] = await operation.promise();
-      console.debug('Create GC workflow response: ', response);
+      logger.debug('Create GC workflow response: ', response);
     }
   }
 
@@ -343,7 +378,7 @@ class FinGcWorkflowModel {
     let workflowInfo = await pg.getWorkflow(finWorkflowId);
     let bucketPath = path.join(workflowInfo.data.gcsBucket, 'workflows', workflowInfo.data.finPath, workflowInfo.name+'.json');
     
-    console.log('writing state to gcs', 'gs://'+bucketPath);
+    logger.info('writing state to gcs', 'gs://'+bucketPath);
 
     await gcs.getGcsFileObjectFromPath('gs://'+bucketPath)
       .save(JSON.stringify(workflowInfo, null, 2));

@@ -1,6 +1,9 @@
-const {activemq, logger, config, RDF_URIS} = require('@ucd-lib/fin-service-utils');
+const {ActiveMqClient, logger, config, RDF_URIS} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
+const uuid = require('uuid');
 const postgres = require('./postgres.js');
+
+const {ActiveMqStompClient} = ActiveMqClient;
 
 const FC_BASE_RE = new RegExp('^'+api.getConfig().fcBasePath);
 const FC_HOST_RE = new RegExp('^'+config.fcrepo.host+api.getConfig().fcBasePath);
@@ -10,7 +13,8 @@ const FC_HOST_RE = new RegExp('^'+config.fcrepo.host+api.getConfig().fcBasePath)
  */
 class ReindexCrawler {
 
-  constructor(path, options={}) {  
+  constructor(path, options={}) {
+    this.id = uuid.v4().split('-').shift();
     this.dbUpdateInterval = 5000;
     this.rootPath = this.cleanPath(path);
 
@@ -20,6 +24,9 @@ class ReindexCrawler {
     options.follow.push(RDF_URIS.PROPERTIES.CONTAINS);
 
     this.options = options;
+
+    this.activemq = new ActiveMqStompClient();
+    this.activemq.connect('reindex-crawler-'+this.id);
   }
 
   getCrawlData(startTime) {
@@ -37,11 +44,6 @@ class ReindexCrawler {
    * @returns {Array}
    */
   async reindex(writeIndex) {
-    let resp = await postgres.getReindexCrawlStatus(this.rootPath, 'state');
-    if( resp && resp.state === 'crawling' ) {
-      throw new Error('Crawl already in progress for: '+this.rootPath);
-    }
-
     let crawled = new Set();
     this.crawled = crawled;
 
@@ -63,8 +65,9 @@ class ReindexCrawler {
     clearInterval(iid);
 
     // set the crawl status to complete
-    resp = await postgres.updateReindexCrawlStatus(this.rootPath, 'stopped', this.getCrawlData(startTime));
+    let resp = await postgres.updateReindexCrawlStatus(this.rootPath, 'stopped', this.getCrawlData(startTime));
 
+    this.activemq.client.disconnect();
     return Array.from(crawled);
   }
 
@@ -149,7 +152,7 @@ class ReindexCrawler {
       headers['edu.ucdavis.library.writeIndex'] = writeIndex;
     }
 
-    activemq.sendMessage(
+    this.activemq.sendMessage(
       {
         '@id' : this.cleanPath(node['@id']),
         '@type' : node['@type'] || []
