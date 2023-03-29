@@ -2,18 +2,15 @@ const {config, logger, ActiveMqClient, models, RDF_URIS, workflow} = require('@u
 const api = require('@ucd-lib/fin-api');
 const postgres = require('./postgres');
 const clone = require('clone');
-const uuid = require('uuid');
 
 const {ActiveMqStompClient} = ActiveMqClient;
 
 class DbSync {
 
   constructor() {
-    this.id = uuid.v4().split('-').shift();
-
-    this.activemq = new ActiveMqStompClient();
+    this.activemq = new ActiveMqStompClient('dbsync');
     this.activemq.onMessage(e => this.handleMessage(e));
-    this.activemq.connect('dbsync-'+this.id, config.activeMq.queues.dbsync);
+    this.activemq.connect({queue: config.activeMq.queues.dbsync});
 
     this.UPDATE_TYPES = {
       UPDATE : ['Create', 'Update'],
@@ -391,6 +388,8 @@ class DbSync {
    */
   async update(event, model, json) {
     if( !json ) throw new Error('update data is null');
+
+    logger.info('Updating '+event.path+' with '+model.id+' model');
 
     if( json['@graph'] ) {
       for( let node of json['@graph'] ) {

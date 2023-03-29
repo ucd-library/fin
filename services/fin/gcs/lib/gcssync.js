@@ -11,9 +11,9 @@ class GcsSync {
   constructor() {
     pubsub.on('message', message => this.onGcMessage(message));
 
-    this.activemq = new ActiveMqStompClient();
+    this.activemq = new ActiveMqStompClient('gcssync');
     this.activemq.onMessage(e => this.onFcMessage(e));
-    this.activemq.connect('gssync', config.activeMq.queues.gcssync);
+    this.activemq.connect({queue: config.activeMq.queues.gcssync});
 
     gcsConfig.loaded.then(c => {
       this.config = (c || {}).sync || {};

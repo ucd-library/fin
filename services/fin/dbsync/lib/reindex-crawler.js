@@ -1,6 +1,5 @@
 const {ActiveMqClient, logger, config, RDF_URIS} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
-const uuid = require('uuid');
 const postgres = require('./postgres.js');
 
 const {ActiveMqStompClient} = ActiveMqClient;
@@ -14,7 +13,6 @@ const FC_HOST_RE = new RegExp('^'+config.fcrepo.host+api.getConfig().fcBasePath)
 class ReindexCrawler {
 
   constructor(path, options={}) {
-    this.id = uuid.v4().split('-').shift();
     this.dbUpdateInterval = 5000;
     this.rootPath = this.cleanPath(path);
 
@@ -25,8 +23,8 @@ class ReindexCrawler {
 
     this.options = options;
 
-    this.activemq = new ActiveMqStompClient();
-    this.activemq.connect('reindex-crawler-'+this.id);
+    this.activemq = new ActiveMqStompClient('reindex-crawler');
+    this.activemq.connect({listen: false});
   }
 
   getCrawlData(startTime) {

@@ -17,8 +17,6 @@ const ActiveMqStompClient = require('../activemq/stomp.js');
 class FinGcWorkflowModel {
 
   constructor() {
-    this.id = uuid.v4().split('-').shift();
-
     let gcconf = config.google.workflow;
 
     this.TYPE = gcconf.type;
@@ -56,9 +54,9 @@ class FinGcWorkflowModel {
 
   load() {
     if( !this.activemq ) {
-      this.activemq = new ActiveMqStompClient();
+      this.activemq = new ActiveMqStompClient('workflow');
       this.activemq.onMessage(e => this._onFcrepoEvent(e));
-      this.activemq.connect('workflow-'+this.id);
+      this.activemq.connect();
     }
 
     this.getConfig();

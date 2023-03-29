@@ -24,6 +24,14 @@ if( serviceAccountExists && !env.GOOGLE_APPLICATION_CREDENTIALS ) {
 
 let dbsyncIgnoreEnv = processArray(process.env.DBSYNC_IGNORE_TYPES);
 
+let esCompactTypesInclude = processArray(process.env.ES_COMPACT_TYPES_INCLUDE);
+if( esCompactTypesInclude ) {
+  esCompactTypesInclude = esCompactTypesInclude.map(type => new RegExp(type));
+}
+
+let esFieldsExclude = processArray(process.env.ES_FIELDS_EXCLUDE);
+let esFieldsExcludeCompact = processArray(process.env.ES_FIELDS_EXCLUDE_COMPACT);
+
 // make sure this is set for gcssync templates
 if( !env.GCS_BUCKET_ENV ) env.GCS_BUCKET_ENV = 'local-dev';
 if( !env.WORKFLOW_ENV ) env.WORKFLOW_ENV = 'local-dev';
@@ -69,10 +77,10 @@ module.exports = {
       gcssync : '/queue/gcssync',
     },
     stomp : {
-      port : 61613
+      port : env.STOMP_PORT || 61613
     },
     mqtt : {
-      port : 1883,
+      port : env.MQTT_PORT || 1883,
       fcrepoTopic : 'fedora',
       queues : {
         dbsync : 'dbsync',
@@ -140,17 +148,17 @@ module.exports = {
       return `http://${this.host}:${this.port}`
     }, 
     log : process.env.ES_LOG_LEVEL || 'error',
-    compactTypeInclude : [
+    compactTypeInclude : esCompactTypesInclude || [
       new RegExp('http://digital.ucdavis.edu/schema#'),
       new RegExp('http://schema.org/')
     ],
     fields : {
-      exclude : [
+      exclude : esFieldsExclude || [
         'roles',
         '@graph.indexableContent', 
         '@graph.createdBy', '@graph.lastModifiedBy', '@graph._', '@graph.textIndexable'
       ],
-      excludeCompact : [
+      excludeCompact : esFieldsExcludeCompact || [
         'roles',
         '@graph.indexableContent', 
         '@graph.createdBy', '@graph.lastModifiedBy', '@graph._',

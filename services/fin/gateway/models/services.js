@@ -1,7 +1,6 @@
 const api = require('@ucd-lib/fin-api');
-const {logger, config, ActiveMqClient, FinGroups, RDF_URIS} = require('@ucd-lib/fin-service-utils');
+const {logger, config, ActiveMqClient} = require('@ucd-lib/fin-service-utils');
 const request = require('request');
-const fs = require('fs');
 const {URL} = require('url');
 const jsonld = require('jsonld');
 const transform = require('./transform');
@@ -9,7 +8,6 @@ const util = require('util');
 const redis = require('../lib/redisClient')();
 const jwt = require('jsonwebtoken');
 const label = require('../models/label');
-const uuid = require('uuid');
 
 jsonld.frame = util.promisify(jsonld.frame);
 
@@ -33,7 +31,6 @@ class ServiceModel {
 
   constructor() {
     this.reloadTimer = -1;
-    this.id = uuid.v4().split('-').shift();
     
     this.services = {};
     this.secrets = {};
@@ -58,9 +55,9 @@ class ServiceModel {
     this.clientService = null;
 
     // listen for service definition updates
-    this.activemq = new ActiveMqStompClient();
+    this.activemq = new ActiveMqStompClient('gateway');
     this.activemq.onMessage(e => this._onFcrepoEvent(e));
-    this.activemq.connect('gateway-'+this.id);
+    this.activemq.connect();
 
     await this.waitForFcRepoServices();
     await this.reload();

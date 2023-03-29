@@ -80,6 +80,7 @@ class DbSyncPostgresUtils {
    */
   async queue(args) {
     let resp = await this.pg.query(`SELECT path FROM ${this.schema}.event_queue where path = $1;`, [args.path]);
+    if( !args.container_types ) args.container_types = [];
 
     if( resp.rows.length ) {
       await this.pg.query(`

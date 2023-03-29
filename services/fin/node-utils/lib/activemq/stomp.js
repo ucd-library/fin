@@ -3,16 +3,17 @@ const ActiveMqClient = require('./index.js');
 const config = require('../../config.js');
 const logger = require('../logger.js');
 const waitUtil = require('../wait-until.js');
+const uuid = require('uuid');
 
 var connectOptions = {
   host : config.activeMq.hostname,
   port : config.activeMq.stomp.port,
-  heartbeatDelayMargin : 8000, // keep this larger than the second value in the heart-beat header
+  heartbeatDelayMargin : 15000, // keep this larger than the second value in the heart-beat header
   connectHeaders: {
     host : '/',
     login : 'fedoraAdmin',
     passcode : 'fedoraAdmin',
-    'heart-beat': '2000,2000'
+    'heart-beat': '5000,5000'
   }
 };
 
@@ -29,14 +30,16 @@ var subscribeHeaders = {
  */
 class ActiveMqStompClient extends ActiveMqClient {
 
-  constructor() {
+  constructor(name) {
     super();
+
+    this.clientName = name+'-'+uuid.v4().split('-').shift();
     this.wait = 0;
     this.counter = 0;
   }
 
   onDisconnect(event, error) {
-    logger.warn('STOMP client '+this.clientName+' error: ', event, error);
+    logger.warn('STOMP client '+this.clientName+' error event: ', event, error);
     
     this.wait = 0;
     
@@ -45,7 +48,11 @@ class ActiveMqStompClient extends ActiveMqClient {
     this.connect();
   }
 
-  sendMessage(msg, additionalHeaders={}) {
+  async sendMessage(msg, additionalHeaders={}) {
+    if( this.connecting ) {
+      await this.connecting;
+    }
+
     if( typeof message !== 'string' ) {
       msg = JSON.stringify(msg);
     } 
@@ -57,17 +64,18 @@ class ActiveMqStompClient extends ActiveMqClient {
     frame.end();
   }
 
-  async connect(clientName, queue) {
+  async connect(opts={queue: null, listen: true}) {
+    if( opts.listen === undefined ) opts.listen = true;
+
     if( !this.connecting ) {
-      this.connecting = true;
+      this.connecting = new Promise((resolve, reject) => {
+        this.connectingResolve = resolve;
+      });
     }
 
-    if( clientName ) {
-      this.clientName = clientName;
-      connectOptions.connectHeaders['client-id'] = clientName;
-    }
-    if( queue ) {
-      subscribeHeaders.destination = queue;
+    connectOptions.connectHeaders['client-id'] = this.clientName;
+    if( opts.queue ) {
+      subscribeHeaders.destination = opts.queue;
     }
 
     await waitUtil(config.activeMq.hostname, config.activeMq.stomp.port);
@@ -83,10 +91,12 @@ class ActiveMqStompClient extends ActiveMqClient {
         stompit.connect(connectOptions, (error, client) => {
           if( error ) {
             this.wait += 1000;
-            logger.warn('STOMP client '+this.clientName+' connection attempt failed, retry in: '+this.wait+'ms');
+            logger.warn('STOMP client '+this.clientName+' connection attempt failed, retry in: '+this.wait+'ms', error);
             this.connect();
             return 
           }
+
+          logger.info('STOMP client '+this.clientName+' connected to server',subscribeHeaders);
 
           // capture all end/close/finish events, assume badness, reconnect
           client.on('error', e => this.onDisconnect('error', e));
@@ -95,9 +105,13 @@ class ActiveMqStompClient extends ActiveMqClient {
           // client.on('close', () => this.onDisconnect('close'));
 
           this.connecting = false;
+          this.connectingResolve();
+          this.connectingResolve = null;
+
           this.wait = 0;
           this.client = client;
-          this.subscribe();
+
+          if( opts.listen === true ) this.subscribe();
         });
       }, this.wait);
     // });
@@ -108,17 +122,11 @@ class ActiveMqStompClient extends ActiveMqClient {
    * @description connect to activemq via STOMP
    */
   subscribe() {
-    if( !this.client ) return;
-    logger.info('STOMP client '+this.clientName+' connected to server',subscribeHeaders);
-
+    logger.info('STOMP client '+this.clientName+' subscribing to: ', subscribeHeaders.destination);
 
     this.client.subscribe(subscribeHeaders, async (error, message) => {
       if( error ) {
-        // ignore connection timeout errors, logged above
-        if( error.message === 'connection timed out' ) {
-          return;
-        }
-        return logger.error('STOMP client '+this.clientName+' message error', error);
+        return logger.error('STOMP client '+this.clientName+' error message', error);
       }
 
       var headers = message.headers;
