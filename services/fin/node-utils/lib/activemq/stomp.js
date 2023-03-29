@@ -3,6 +3,7 @@ const ActiveMqClient = require('./index.js');
 const config = require('../../config.js');
 const logger = require('../logger.js');
 const waitUtil = require('../wait-until.js');
+const pg = require('../pg.js');
 const uuid = require('uuid');
 
 var connectOptions = {
@@ -33,12 +34,14 @@ class ActiveMqStompClient extends ActiveMqClient {
   constructor(name) {
     super();
 
+    this.name = name;;
     this.clientName = name+'-'+uuid.v4().split('-').shift();
     this.wait = 0;
     this.counter = 0;
   }
 
-  onDisconnect(event, error) {
+  async onDisconnect(event, error) {
+    await this.logDebug('error', error);
     logger.warn('STOMP client '+this.clientName+' error event: ', event, error);
     
     this.wait = 0;
@@ -88,8 +91,10 @@ class ActiveMqStompClient extends ActiveMqClient {
         logOpts.connectHeaders.passcode = '******';
         logger.info('STOMP client '+this.clientName+' attempting connection', logOpts);
 
-        stompit.connect(connectOptions, (error, client) => {
+        stompit.connect(connectOptions, async (error, client) => {
           if( error ) {
+            await this.logDebug('connection-error', error);
+
             this.wait += 1000;
             logger.warn('STOMP client '+this.clientName+' connection attempt failed, retry in: '+this.wait+'ms', error);
             this.connect();
@@ -98,11 +103,8 @@ class ActiveMqStompClient extends ActiveMqClient {
 
           logger.info('STOMP client '+this.clientName+' connected to server',subscribeHeaders);
 
-          // capture all end/close/finish events, assume badness, reconnect
+
           client.on('error', e => this.onDisconnect('error', e));
-          // client.on('end', () => this.onDisconnect('end'));
-          // client.on('finish', () => this.onDisconnect('finish'));
-          // client.on('close', () => this.onDisconnect('close'));
 
           this.connecting = false;
           this.connectingResolve();
@@ -126,6 +128,7 @@ class ActiveMqStompClient extends ActiveMqClient {
 
     this.client.subscribe(subscribeHeaders, async (error, message) => {
       if( error ) {
+        await this.logDebug('message-error', error);
         return logger.error('STOMP client '+this.clientName+' error message', error);
       }
 
@@ -163,6 +166,21 @@ class ActiveMqStompClient extends ActiveMqClient {
         else resolve(body);
       });
     });
+  }
+
+  logDebug(event, error) {
+    let data = {
+      connectOptions, subscribeHeaders
+    }
+
+    return pg.query(`
+        INSERT INTO activemq.debug_log 
+          (client_name, client_id, event, message, stack_trace, connection_data) 
+        VALUES 
+          ($1, $2, $3, $4, $5, $6)
+      `, 
+      [this.name, this.clientName, event, error.message, error.stack, JSON.stringify(data)]
+    );
   }
 
 }

@@ -47,6 +47,10 @@ class ReindexCrawler {
 
     logger.info('Starting reindex of: '+this.rootPath+(writeIndex ? ' into index'+writeIndex : ''));
     
+    if( this.activemq.connecting ) {
+      await this.activemq.connecting;
+    }
+
     // set the initial crawl status
     let startTime = new Date().toISOString();
     await postgres.updateReindexCrawlStatus(this.rootPath, 'crawling', this.getCrawlData(startTime));
