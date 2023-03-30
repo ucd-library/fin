@@ -16,21 +16,20 @@ const app = express();
 app.use(bodyParser.text({type: '*/*'}));
 
 function ensureRootPath(req, res, next) {
-  let path = req.headers['x-fin-original-url'].match(/\/fcrepo\/rest\/(.*)\/svc:elastic-search/)[1];
-  let cmd = req.headers['x-fin-original-url'].match(/\/svc:elastic-search\/(.*)/)[1];
-  path = path.split('/');
+  let path = req.headers['x-fin-original-url'].match(/\/fcrepo\/rest\/(.*\/?)svc:es-index-management/)[1];
+  let cmd = req.headers['x-fin-original-url'].match(/\/svc:es-index-management\/(.*)/)[1];
+  path = path.split('/').filter(p => p.length > 0);
 
   // TODO: get svc id from headers
   if( path.length > 1 ) {
     return res.status(400).json({
       error: true,
-      message : 'the /svc:elastic-search endpoint only works at the root of models path: /'+path[0],
-      correctUrl : config.server.url+'/fcrepo/rest/'+path[0]+'/svc:elastic-search/'+cmd
+      message : 'the /svc:es-index-management endpoint only works at the root of models path: /'+path.join('/'),
+      correctUrl : config.server.url+'/fcrepo/rest/'+path[0]+'/svc:es-index-management/'+cmd
     });
   }
 
-  req.modelName = path[0];
-  req.cmd = cmd;
+  req.modelName = cmd.split('/').shift();
 
   next();
 }
@@ -51,11 +50,11 @@ app.get(/^\/.*\/index$/, keycloak.protect(['admin']), ensureRootPath, async (req
       indexes : await model.getCurrentIndexes(model.id),
       readAlias : {
         name : model.readIndexAlias,
-        index : await model.getAlias(model.readIndexAlias)
+        index : await elasticsearch.getAlias(model.readIndexAlias)
       },
       writeAlias : {
         name : model.writeIndexAlias,
-        index : await model.getAlias(model.writeIndexAlias)
+        index : await elasticsearch.getAlias(model.writeIndexAlias)
       }
     })
 
@@ -68,20 +67,9 @@ app.get(/^\/.*\/index$/, keycloak.protect(['admin']), ensureRootPath, async (req
 // get information about an index
 app.get(/^\/.*\/index\/.+/, keycloak.protect(['admin']), ensureRootPath, async (req, res) => {
   try {
-    let modelName = req.modelName;
-    let indexName = req.path.split('/').pop();
+    let indexName = req.path.replace(/\/$/).split('/').pop();
 
-    // make sure this is a known model
-    let {model} = await models.get(modelName);
-    if( !(model instanceof FinEsDataModel) ) {
-      throw new Error('The model '+model.id+' does not use FinEsDataModel')
-    }
-
-    res.json({
-      model : model.id,
-      index : indexName,
-      definition: await elasticsearch.getIndex(indexName)
-    });
+    res.json(await elasticsearch.getIndex(indexName));
 
   } catch(e) {
     onError(res, e);
@@ -115,7 +103,7 @@ app.post(/^\/.*\/index(\/)?$/, keycloak.protect(['admin']), ensureRootPath, asyn
 });
 
 // remove index
-app.delete(/^\/index\/.+$/, keycloak.protect(['admin']), ensureRootPath, async (req, res) => {
+app.delete(/^\/.*\/index\/.+$/, keycloak.protect(['admin']), ensureRootPath, async (req, res) => {
   try {
     let indexName = req.path.split('/').pop();
 
@@ -176,7 +164,8 @@ app.put(/^\/.*\/index\/.+$/, keycloak.protect(['admin']), ensureRootPath, async 
 app.post(/^\/.*\/recreate-index\/.+$/, keycloak.protect(['admin']), ensureRootPath, async (req, res) => {
   try {
     let modelName = req.modelName;
-    let indexSource = req.path.split('/').pop();
+    let indexSource = req.path.replace(/\/$/, '').split('/').pop();
+    console.log(req.path, indexSource)
 
     // make sure this is a known model
     let {model} = await models.get(modelName);

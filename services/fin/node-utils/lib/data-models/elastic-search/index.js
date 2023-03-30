@@ -391,7 +391,7 @@ class FinEsDataModel extends FinDataModel {
     if( exits ) {
       let currentAliases = await this.client.indices.getAlias({name: alias});
       for( let index in currentAliases ) {
-        console.log('Removing: ', {index, name: alias})
+        logger.info('Removing alias: ', {index, name: alias})
         await this.client.indices.deleteAlias({index, name: alias});
       }
     }
@@ -406,8 +406,13 @@ class FinEsDataModel extends FinDataModel {
     // set new index as new write source
     await this.setAlias(indexDest, this.writeIndexAlias);
 
+    console.log({ 
+      source: { index: indexSource }, 
+      dest: { index: indexDest }
+    })
+
     // now copy over source indexes data
-    let response = this.esClient.reindex({ 
+    let response = await this.client.reindex({ 
       wait_for_completion : false,
       body: { 
         source: { index: indexSource }, 
