@@ -318,7 +318,7 @@ class FinIoImport {
     if( this.options.dryRun !== true ) {
       response = await api.put({
         path : containerPath,
-        content : JSON.stringify(container.containerGraph),
+        content : this.replaceBaseContext(container.containerGraph, containerPath),
         partial : true,
         headers
       });
@@ -454,7 +454,7 @@ class FinIoImport {
 
       response = await api.put({
         path : containerPath,
-        content : JSON.stringify(binary.containerGraph),
+        content : this.replaceBaseContext(binary.containerGraph, containerPath),
         partial : true,
         headers
       });
@@ -469,7 +469,7 @@ class FinIoImport {
 
         response = await api.put({
           path : containerPath,
-          content : JSON.stringify(binary.containerGraph),
+          content : this.replaceBaseContext(binary.containerGraph, containerPath),
           partial : true,
           headers
         });
@@ -768,6 +768,25 @@ class FinIoImport {
     newFinIoNode[utils.PROPERTIES.FIN_IO.METADATA_SHA] = [{'@value': localSha}];
 
     return false;
+  }
+
+  /**
+   * @method replaceBaseContext
+   * @description given a jsonld string, replace all instances of the @base: with the url
+   * to fcrepo.  The host and base /fcrepo/rest path will be looked up based on config.
+   * 
+   * @param {String|Object} content 
+   * @param {String} path 
+   * @returns {String}
+   */
+  replaceBaseContext(content, path) {
+    if( typeof content === 'object' ) {
+      content = JSON.stringify(content);
+    }
+
+    let url = api.getConfig().host+api.getConfig().fcBasePath+path;
+    if( !url.endsWith('/') ) url += '/';
+    return content.replace(/@base:/g, url);
   }
 
 }

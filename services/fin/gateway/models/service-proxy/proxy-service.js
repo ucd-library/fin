@@ -32,11 +32,10 @@ module.exports = async (req, res) => {
 
   
   let proxyOpts = {
-    headers : {
+    headers : forwardedHeader({
       [serviceModel.SIGNATURE_HEADER] : serviceModel.createServiceSignature(req.finService.id, req.user),
-      'Forwarded' : forwardedHeader(),
       'x-fin-original-url' : req.originalUrl
-    }
+    })
   }
 
   // will return null if conditions are not met

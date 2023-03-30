@@ -187,7 +187,7 @@ class ProxyModel {
 
     // set forwarded header to our base server url
     if( config.server.url ) {
-      req.headers['forwarded'] = forwardedHeader();
+      forwardedHeader(req.headers);
     }
 
     // if this is not a service request, preform basic fcrepo proxy request
