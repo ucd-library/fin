@@ -784,12 +784,13 @@ class FinIoImport {
       content = JSON.stringify(content);
     }
 
-    let matches = Array.from(content.match(/@base:((\/?\.\.\/?)+)?/g) || []);
+    let matches = Array.from(content.match(/"@base:.*?"/g) || []);
     for( let match of matches ) {
-      let resolvedPath = path.resolve(finPath, match.replace(/@base:\/?/, ''));
+      let resolveTo = match.replace(/"@base:\/?/, '').replace(/"$/, '');
+      let resolvedPath = path.resolve(finPath, resolveTo);
       let url = 'info:fedora'+resolvedPath;
-      console.log(' -> Resolving "'+match+'" to '+url);
-      content = content.replace(match, url);
+      console.log(' -> Resolving '+match+' to '+url);
+      content = content.replace(match, `"${url}"`);
     }
 
     return content;
