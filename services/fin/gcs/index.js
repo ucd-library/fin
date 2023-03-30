@@ -11,11 +11,17 @@ gcsConfig.load();
 
 app.get(/.*/, hasAccess, async (req, res) => {
   try {
-    let file = await gcs.getGcsFileObjectFromPath(req.gcsPath)
+    let file = gcs.getGcsFileObjectFromPath(req.gcsPath)
     let stream = file.createReadStream()
       .on('error', e => {
         res.status(500).json({error : e.message});
       });
+
+    let metadata = await gcs.getGcsFileMetadata(req.gcsPath);
+    if( metadata.contentType ) {
+      res.setHeader('content-type', metadata.contentType);
+    }
+
     stream.pipe(res)
   } catch(e) {
     res.status(500).json({error : e.message});
