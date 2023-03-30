@@ -776,17 +776,23 @@ class FinIoImport {
    * to fcrepo.  The host and base /fcrepo/rest path will be looked up based on config.
    * 
    * @param {String|Object} content 
-   * @param {String} path 
+   * @param {String} finPath 
    * @returns {String}
    */
-  replaceBaseContext(content, path) {
+  replaceBaseContext(content, finPath) {
     if( typeof content === 'object' ) {
       content = JSON.stringify(content);
     }
 
-    let url = api.getConfig().host+api.getConfig().fcBasePath+path;
-    if( !url.endsWith('/') ) url += '/';
-    return content.replace(/@base:/g, url);
+    let matches = Array.from(content.match(/@base:((\/?\.\.\/?)+)?/g) || []);
+    for( let match of matches ) {
+      let resolvedPath = path.resolve(finPath, match.replace(/@base:\/?/, ''));
+      let url = 'info:fedora'+resolvedPath;
+      console.log(' -> Resolving "'+match+'" to '+url);
+      content = content.replace(match, url);
+    }
+
+    return content;
   }
 
 }
