@@ -1,22 +1,29 @@
 const fs = require('fs-extra');
 const path = require('path');
 const config = require('../config');
+const jsonld = require('jsonld');
 const yaml = require('js-yaml');
 const utils = require('./utils');
 
-const METADATA_SHA = 'http://digital.ucdavis.edu/schema#finIoMetadataSha256';
-const FIN_IO_INDIRECT_REFERENCE = 'http://library.ucdavis.edu/schema#finIoIndirectReference';
-const GIT_SOURCE = 'http://library.ucdavis.edu/gitsource';
-const GIT_SOURCE_PROP = 'http://library.ucdavis.edu/git#';
+const GIT_SOURCE = 'http://digital.ucdavis.edu/schema#GitSource';
+const GIT_SOURCE_FILE = 'http://digital.ucdavis.edu/schema#git/file';
+const GIT_SOURCE_ROOT_DIR = 'http://digital.ucdavis.edu/schema#git/rootDir';
 
 const ARCHIVAL_GROUP = 'http://fedora.info/definitions/v4/repository#ArchivalGroup';
 const BINARY = 'http://fedora.info/definitions/v4/repository#Binary';
 const NON_RDF_SOURCE = 'http://www.w3.org/ns/ldp#NonRDFSource';
-const COLLECTION = 'http://schema.org/Collection';
-const HAS_PART = 'http://schema.org/hasPart';
-
+const CONTAINS = 'http://www.w3.org/ns/ldp#contains';
+const DIGEST = 'http://fedora.info/definitions/v4/repository#hasMessageDigest';
+const FILENAME = 'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#filename';
+const HAS_MEMBER_RELATION = 'http://www.w3.org/ns/ldp#hasMemberRelation';
+const IS_MEMBER_OF_RELATION = 'http://www.w3.org/ns/ldp#isMemberOfRelation';
 
 let api;
+
+// if a container has this type, ignore it
+const IGNORE_CONTAINER_WITH_TYPE = [
+  'http://digital.ucdavis.edu/schema#FinIoIndirectReference'
+];
 
 const OMIT = [
   'http://www.w3.org/ns/ldp#PreferMembership',
@@ -32,10 +39,16 @@ const OMIT_F4 = [
   'http://www.w3.org/ns/ldp#PreferContainment'
 ];
 
+const V1_REMOVE_PROPS = [
+  'clientMediaDownload', 'clientMedia', 'accessControl'
+]
+
 class ExportCollection {
 
   constructor(_api) {
     api = _api;
+
+    this.JSONLD_FORMAT = api.GET_JSON_ACCEPT.COMPACTED;
   }
 
   /**
@@ -49,6 +62,8 @@ class ExportCollection {
    * @param {Boolean} options.exportCollectionParts
    * @param {Boolean} options.dryRun do not download the files
    * @param {Boolean} options.f4 use fcrepo4 api omit
+   * @param {Boolean} options.fromV1 add v1 to v2 export rules
+   * @param {String} options.configHost
    * 
    */
   async run(options) {
@@ -67,6 +82,10 @@ class ExportCollection {
     if( options.ignoreMetadata !== true ) options.ignoreMetadata = false;
     if( options.cleanDir !== true ) options.cleanDir = false;
 
+    if( options.fromV1 ) {
+      options.f4 = true;
+    }
+
     // if( options.ignoreBinary && options.cleanDir ) {
     //   console.error('ERROR: you cannot clean directory and ignore binary.');
     //   return;
@@ -78,6 +97,31 @@ class ExportCollection {
 * Dry Run
 ***********
 `);
+    }
+
+    let opts = {
+      path: '/fin/io/config.json',
+    };
+    if( options.configHost ) opts.host = options.configHost;
+    let response = await api.get(opts);
+
+    this.instanceConfig = null;
+    if( response.last.statusCode === 200 ) {
+      this.instanceConfig = JSON.parse(response.last.body);
+      if( !this.instanceConfig.typeMappers ) this.instanceConfig.typeMappers = [];
+      this.instanceConfig.typeMappers.forEach(item => {
+        if( item.virtualIndirectContainers && !item.virtualIndirectContainers.hasFolder ) {
+          item.virtualIndirectContainers.hasFolder = item.virtualIndirectContainers.links['http://www.w3.org/ns/ldp#hasMemberRelation'].replace(/.*[#\/]/, '');
+        }
+        if( item.virtualIndirectContainers && !item.virtualIndirectContainers.isFolder ) {
+          item.virtualIndirectContainers.isFolder = item.virtualIndirectContainers.links['http://www.w3.org/ns/ldp#isMemberOfRelation'].replace(/.*[#\/]/, '');
+        }
+      })
+
+      console.log('INSTANCE FINIO CONFIG:');
+      console.log(JSON.stringify(this.instanceConfig, null, 2));
+    } else {
+      console.log('No instance config found');
     }
 
     if( options.cleanDir ) {
@@ -92,35 +136,17 @@ class ExportCollection {
     }
 
     await this.crawl(options);
-
-    if( options.dryRun === true ) return;
-
-    // if( fs.existsSync(path.join(rootColDir, '.fin')) ) {
-    //   if( fs.existsSync(finDir) ) await fs.remove(finDir);
-    //   await fs.move(path.join(rootColDir, '.fin'), finDir);
-    // } else {
-    //   await fs.mkdirp(finDir);
-    // }
-
-    // await fs.writeFile(
-    //   path.join(finDir, 'config.yml'), 
-    //   yaml.dump({
-    //     source: {
-    //       host : config.host,
-    //       base : config.fcBasePath,
-    //       collection : options.collectionName
-    //     },
-    //     contentTypes : contentTypes
-    //   })
-    // );
   }
 
   async crawl(options, archivalGroup) {
+    // ignore any . directories
+    if( options.currentPath.indexOf('/.') !== -1 ) {
+      console.log('Ignoring dot directory: '+options.currentPath);
+      return;
+    }
+
     let metadata = await api.head({
-      path: options.currentPath,
-      headers : {
-        accept : api.RDF_FORMATS.JSON_LD
-      }
+      path: options.currentPath
     });
 
     if( metadata.error ) {
@@ -150,7 +176,7 @@ class ExportCollection {
     metadata = await api.get({
       path: cpath,
       headers : {
-        accept : api.RDF_FORMATS.JSON_LD
+        accept : this.JSONLD_FORMAT
       }
     });
 
@@ -159,29 +185,52 @@ class ExportCollection {
       return;
     }
 
-    let graph = JSON.parse(metadata.last.body);
-    metadata = graph.find(item => item['@id'].match(api.getConfig().fcBasePath+options.currentPath) );
+    // cleaup metadata
+    let graph = this.implBaseAndInfoFedoraPrefix(metadata.last.body, options.currentPath);
+    // let graph = JSON.parse(metadata.last.body);
+    metadata = this.findGraphNode(graph, '');
 
-    if( metadata['@type'] && metadata['@type'].includes(FIN_IO_INDIRECT_REFERENCE) ) {
-      console.log('IGNORING FIN IO INDIRECT REFERENCE: '+options.currentPath);
-      await this.crawlContains(options, metadata, archivalGroup);
-      return;
+    for( let type of IGNORE_CONTAINER_WITH_TYPE ) {
+      if( this.findGraphNode(graph, type) ) {
+        console.log('IGNORING CONTAINER: '+options.currentPath);
+        console.log('  -> CONTAINS IGNORE TYPE: '+type);
+        await this.crawlContains(options, metadata, archivalGroup, graph);
+        return;
+      }
     }
+
 
     // set archivalGroup and gitsource if is archivalGroup
     if( isArchivalGroup ) {
       archivalGroup = metadata;
-      let gitsource = graph.find(item => item['@type'] && item['@type'].includes(GIT_SOURCE));
+      archivalGroup.finPath = options.currentPath;
+      let gitsource = this.findGraphNode(graph, GIT_SOURCE);
+
       if( gitsource ) {
-        archivalGroup.gitsource = {};
-        for( let prop in gitsource ) {
-          if( !prop.startsWith(GIT_SOURCE_PROP) ) continue;
-          archivalGroup.gitsource[prop.replace(GIT_SOURCE_PROP, '')] = gitsource[prop][0]['@id'] || gitsource[prop][0]['@value']; 
+        metadata.gitsource = {
+          rootDir : this.getProp(gitsource, GIT_SOURCE_ROOT_DIR, graph['@context']),
+          file : this.getProp(gitsource, GIT_SOURCE_FILE, graph['@context'])
+        };
+      }
+    }
+
+    // if we have a move to path, then fake the archivalGroup
+    if( !isArchivalGroup && options.fromV1 ) {
+      let resp = this.applyV1Rules(metadata, undefined, graph['@context']);
+
+      if( resp && resp.isArchivalGroup ) {
+        isArchivalGroup = true;
+        archivalGroup = metadata;
+      }
+
+      if( resp && resp.moveToPath ) {
+        archivalGroup.gitsource = {
+          moveToPath: resp.moveToPath
         }
       }
     }
 
-    let cdir = this.getPath(options.fsRoot, metadata, archivalGroup, options);
+    let cdir = this.getPath(options.fsRoot, archivalGroup, options, isBinary);
     let dirname = options.currentPath.split('/').pop();
 
     if( options.dryRun !== true ) {
@@ -190,7 +239,18 @@ class ExportCollection {
       // await fs.mkdirp(path.resolve(cdir, '..'))
     }
 
-    let binaryFile = '';
+    let binaryFile;
+
+    if( isBinary ) {
+      binaryFile = this.getPropAsString(metadata, FILENAME);
+      cdir = cdir.split('/');
+      if( !binaryFile ) {
+        binaryFile = cdir.pop();
+      } else {
+        cdir.pop();
+      }
+      cdir = cdir.join('/');
+    }
 
     // write binary
     if( isBinary ) {
@@ -200,25 +260,28 @@ class ExportCollection {
       let download = false;
 
       // check sha
-      
-      // let filePath = path.join(cdir, binaryFile);
-      let filePath = cdir;
+      let filePath = path.join(cdir, binaryFile);
       if( !fs.existsSync(filePath) ) {
         download = true;
       } else {
-        let shas = metadata['http://www.loc.gov/premis/rdf/v1#hasMessageDigest']
-          .map(item => {
-            let [urn, sha, hash] = item['@id'].split(':')
-            return [sha.replace('sha-', ''), hash];
+        let shas = this.getPropAsString(metadata, DIGEST);
+        if( shas ) {
+          if( !Array.isArray(shas) ) shas = [shas];
+          shas = shas.map(item => {
+            let [urn, sha, hash] = item.split(':')
+            return [sha.replace(/sha-?/, ''), hash];
           });
-        
-        // picking the 256 sha or first
-        let sha = shas.find(item => item[0] === '256');
-        if( !sha ) sha = shas[0];
+          
+          // picking the 256 sha or first
+          let sha = shas.find(item => item[0] === '256');
+          if( !sha ) sha = shas[0];
 
-        let localSha = await api.sha(filePath, sha[0]);
-        if( localSha !== sha[1] ) download = true;
-        else console.log('SHA OK: '+filePath.replace(options.fsRoot, ''));
+          let localSha = await api.sha(filePath, sha[0]);
+          if( localSha !== sha[1] ) download = true;
+          else console.log('SHA OK: '+filePath.replace(options.fsRoot, ''));
+        } else {
+          console.log('NO SHA FOUND: '+options.currentPath);
+        }
       }
 
       if( download ) {
@@ -239,22 +302,22 @@ class ExportCollection {
     if( diskMetadata === null ) return;
 
     if( options.ignoreMetadata !== true ) {
-      if( binaryFile ) {
-        console.log('  -> WRITING METADATA: '+path.resolve(cdir, binaryFile+'.jsonld.json').replace(options.fsRoot, ''));
+      if( isBinary ) {
+        console.log('  -> WRITING METADATA: '+path.resolve(cdir, binaryFile+'.jsonld.json').replace(options.fsRoot+'/', ''));
         if( options.dryRun !== true ) {
           await fs.writeFile(path.resolve(cdir, binaryFile+'.jsonld.json'), diskMetadata);
         }
         return;
       } 
 
-      let mFile;
+      let mFile = cdir;
       if( cdir.match(/\.ttl$/) ) {
         mFile = cdir.replace(/\.ttl$/, '.jsonld.json');
-      } else {
+      } else if( !cdir.match(/\.jsonld\.json$/) ) {
         mFile = cdir + '.jsonld.json';
       }
 
-      console.log('WRITING METADATA: '+mFile.replace(options.fsRoot, ''));
+      console.log('WRITING METADATA: '+mFile.replace(options.fsRoot, '').replace(/^\//, ''));
       if( options.dryRun !== true ) {
         await fs.writeFile(mFile, diskMetadata);
       }
@@ -267,26 +330,53 @@ class ExportCollection {
     }
 
     // are we a collection and exporting hasPart references?
-    if( options.exportCollectionParts && 
-        metadata['@type'] && 
-        metadata['@type'].includes(COLLECTION) ) {
+    // TODO: we need to load this config from the server
+    // if( options.exportCollectionParts && 
+    //     metadata['@type'] && 
+    //     metadata['@type'].includes(COLLECTION) ) {
 
-      let parts = metadata[HAS_PART] || [];
-      for( let part of parts ) {
-        let cOptions = Object.assign({}, options);
-        cOptions.currentPath = part['@id'].replace(new RegExp('.*'+config.fcBasePath), '');
+    //   let parts = metadata[HAS_PART] || [];
+    //   for( let part of parts ) {
+    //     let cOptions = Object.assign({}, options);
+    //     cOptions.currentPath = part['@id'].replace(new RegExp('.*'+config.fcBasePath), '');
   
-        // crawl part without archival group
-        await this.crawl(cOptions);
+    //     // crawl part without archival group
+    //     await this.crawl(cOptions);
+    //   }
+    // }
+    for( let typeMapper of this.instanceConfig.typeMappers ) {
+      if( !typeMapper.virtualIndirectContainers ) continue;
+      let links = typeMapper.virtualIndirectContainers.links;
+      if( !links ) continue;
+
+      let hasMemberRelation = this.getProp(links, HAS_MEMBER_RELATION);
+      if( !hasMemberRelation ) continue;
+
+      for( let type of typeMapper.types ) {
+        let node = this.findGraphNode(metadata, type);
+        if( !node ) continue;
+
+        let crawlProps = this.getProp(node, hasMemberRelation);
+        if( !crawlProps ) continue;
+        if( !Array.isArray(crawlProps) ) crawlProps = [crawlProps];
+
+        for( let prop of crawlProps ) {
+          prop = prop.replace('@base:', options.currentPath).replace(/^info:fedora/, '');
+          let cOptions = Object.assign({}, options);
+          cOptions.currentPath = prop;
+          await this.crawl(cOptions);
+        }
       }
     }
 
-    await this.crawlContains(options, metadata, archivalGroup);
+
+    await this.crawlContains(options, metadata, archivalGroup, graph);
   }
 
-  async crawlContains(options, metadata, archivalGroup) {
+  async crawlContains(options, metadata, archivalGroup, graph) {
+
     // check if this container has children
-    let contains = metadata['http://www.w3.org/ns/ldp#contains'];
+    let contains = this.getPropAsString(metadata, CONTAINS);
     if( !contains ) return; // no more children, done crawling this branch
 
     // just make sure this is an array...
@@ -297,94 +387,251 @@ class ExportCollection {
     // recursively crawl the children
     for( var i = 0; i < contains.length; i++ ) {
       let cOptions = Object.assign({}, options);
-      cOptions.currentPath = contains[i]['@id'].replace(new RegExp('.*'+config.fcBasePath), '');
+      let childPath = contains[i].replace('@base:', '').replace(/^\//, '');
+      cOptions.currentPath = path.resolve(options.currentPath, childPath);
 
       await this.crawl(cOptions, archivalGroup);
     }
   }
 
-  getPath(currentDir, container, archivalGroup, options) {
-    let id = container['@id'];
-    if( id.match(/\/fcr:metadata$/) ) {
-      id = id.replace(/\/fcr:metadata$/, '')
-    }
+  getPath(currentDir, archivalGroup, options) {
+    // let id = container['@id'];
+    // if( id.match(/\/fcr:metadata$/) ) {
+    //   id = id.replace(/\/fcr:metadata$/, '')
+    // }
 
     if( options.useFcExportPath !== true ) {
       let rootDir = '.';
-      if( archivalGroup && archivalGroup.gitsource && archivalGroup.gitsource.rootDir ) {
-        rootDir = archivalGroup.gitsource.rootDir;
-      }
-      
-      if( container === archivalGroup &&  archivalGroup.gitsource &&  archivalGroup.gitsource.file ) {
-        return path.join(currentDir, archivalGroup.gitsource.file);
+
+      if( archivalGroup && archivalGroup.gitsource && archivalGroup.gitsource.moveToPath ) {
+        let agRelativePath = options.currentPath.replace(archivalGroup.gitsource.moveToPath, '/item');
+        return path.join(currentDir, agRelativePath);
       }
 
+      if( archivalGroup && archivalGroup.gitsource && archivalGroup.gitsource.rootDir ) {
+        rootDir = archivalGroup.gitsource.rootDir.replace(/^\//, '');
+      }
+      
+      // if( container === archivalGroup && archivalGroup.gitsource && archivalGroup.gitsource.file ) {
+      //   return path.join(currentDir, archivalGroup.gitsource.file);
+      // }
+
       if( archivalGroup ) {
-        let agRelativePath = container['@id'].replace(archivalGroup['@id'], '');
+        let agRelativePath = options.currentPath.replace(archivalGroup.finPath, '');
         return path.join(currentDir, rootDir, agRelativePath);
       }
     }
 
-    return path.join(currentDir, container['@id'].split(api.getConfig().fcBasePath)[1])
+    return path.join(currentDir, options.currentPath);
   }
 
   async getDiskMetadataFile(fcrepoPath, isArchivalGroup, options = {}) {
-    let metadata = await api.get({
+    let graph = await api.get({
       path: fcrepoPath,
       headers : {
-        accept : api.RDF_FORMATS.JSON_LD,
+        accept : this.JSONLD_FORMAT,
         Prefer : `return=representation; omit="${options.f4 ? OMIT_F4.join(' ') : OMIT.join(' ')}"`
       }
     });
 
-    console.log({
-      accept : api.RDF_FORMATS.JSON_LD,
-      Prefer : `return=representation; omit="${options.f4 ? OMIT_F4.join(' ') : OMIT.join(' ')}"`
-    });
+    if( graph.error ) return '';
+    if( graph.last.statusCode !== 200 ) return '';
 
-    if( metadata.error ) return '';
-    if( metadata.last.statusCode !== 200 ) return '';
+    graph = this.implBaseAndInfoFedoraPrefix(graph.last.body, fcrepoPath);
 
-    metadata = JSON.parse(metadata.last.body);
-    metadata = metadata.find(item => item['@id'] = fcrepoPath);
-
-    if( !metadata ) return null;
-
-    if( isArchivalGroup ) {
-      metadata['@id'] = metadata['@id'].replace(/^\/.+?\//, '');
-    } else {
-      metadata['@id'] = '';
+    if( options.fromV1 ) {
+      this.applyV1Rules(graph, isArchivalGroup, graph['@context']);
     }
+
+    // let metadata = this.findGraphNode(graph, '');
+    // metadata = metadata.find(item => item['@id'] = fcrepoPath);
+
+    // if( !metadata ) return null;
+
+    // if( isArchivalGroup ) {
+    //   metadata['@id'] = metadata['@id'].replace(/^\/.+?\//, '');
+    // } else {
+    //   metadata['@id'] = '';
+    // }
 
     // replace the root node, set as self reference
     // let rootNode = config.host+config.fcBasePath+fcrepoPath.replace(/\/fcr:metadata\/?$/, '');
 
     // find all references to DAMS urls and replace with relative path
-    let baseUrl = config.host+config.fcBasePath;
+    // let baseUrl = config.host+config.fcBasePath;
     // let urls = ttl.match(new RegExp('<'+baseUrl+'(>|/.*>)', 'g')) || [];
 
-    for( let prop in metadata ) {
-      if( prop.startsWith('@') ) continue;
+    // for( let prop in metadata ) {
+    //   if( prop.startsWith('@') ) continue;
 
-      if( prop === METADATA_SHA ) {
-        delete metadata[prop];
-        continue;
-      }
+    //   if( prop === METADATA_SHA ) {
+    //     delete metadata[prop];
+    //     continue;
+    //   }
 
-      prop = metadata[prop];
-      prop.forEach(item => {
-        if( !item['@id'] ) return;
-        if( !item['@id'].startsWith(baseUrl) ) return;
+    //   prop = metadata[prop];
+    //   prop.forEach(item => {
+    //     if( !item['@id'] ) return;
+    //     if( !item['@id'].startsWith(baseUrl) ) return;
 
-        // item['@id'] = path.relative(
-        //   path.dirname(rootNode),
-        //   path.dirname(item['@id'])
-        // );
-        item['@id'] = item['@id'].replace(baseUrl, 'info:fedora');
-      });      
+    //     // item['@id'] = path.relative(
+    //     //   path.dirname(rootNode),
+    //     //   path.dirname(item['@id'])
+    //     // );
+    //     item['@id'] = item['@id'].replace(baseUrl, 'info:fedora');
+    //   });      
+    // }
+
+    return JSON.stringify(graph, null, 2);
+  }
+
+  findGraphNode(jsonld, id, context) {
+    if( jsonld['@graph'] ) {
+      jsonld = jsonld['@graph'];
+    }
+    if( !Array.isArray(jsonld) ) {
+      jsonld = [jsonld];
     }
 
-    return JSON.stringify(metadata, '  ', '  ');
+    let isRe = false;
+    if( id instanceof RegExp ) {
+      isRe = true;
+    }
+
+    for( let node of jsonld ) {
+      if( isRe && node['@id'].match(id) ) {
+        return node;
+      } else if( !isRe ) {
+        if( node['@id'] === id ) return node;
+        if( this.isNodeOfType(node, id, context) ) return node;
+      }
+    }
+
+    return null;
+  }
+
+  applyTypeToNode(node, type) {
+    let types = node['@type'] || [];
+    if( !Array.isArray(types) ) types = [types];
+    if( types.includes(type) ) return;
+    types.push(type);
+    node['@type'] = types; 
+  }
+
+  isNodeOfType(node, type, context) {
+    let types = node['@type'] || [];
+    if( !Array.isArray(types) ) types = [types];
+    if( types.includes(type) ) return true;
+
+    if( !context ) return false;
+
+    for( let t of types ) {      
+      let prefix = t.split(':')[0];
+
+      if( !context[prefix] ) continue;
+      if( context[prefix]+t.split(':')[1] === type ) return true;
+    }
+
+    return false;
+  }
+
+  implBaseAndInfoFedoraPrefix(jsonldStr, finPath) {
+    finPath = finPath.replace(/\/fcr:[a-z]+$/, '');
+
+    let infoFedora = '"'+api.getConfig().host+api.getConfig().fcBasePath;
+    let base = infoFedora+finPath;
+
+    // first replace all relative path references with @base:
+    jsonldStr = jsonldStr.replaceAll(base, '"@base:');
+    // then replace all absolute path references with info:fedora
+    jsonldStr = jsonldStr.replaceAll(infoFedora, '"info:fedora');
+    // set base node id to empty string
+    jsonldStr = jsonldStr.replaceAll('"@base:"', '""');
+
+    let graph = JSON.parse(jsonldStr);
+
+    // graph['@context']['@base'] = base.replace(/^"/, '');
+    // graph['@context']['info:fedora'] = {'@id': infoFedora.replace(/^"/, ''), '@type': '@id'};
+
+    return graph;
+  }
+
+  applyV1Rules(graph, isArchivalGroup, context) {
+    let tmp = graph;
+    if( tmp['@graph'] ) tmp = tmp['@graph'];
+    if( !Array.isArray(tmp) ) tmp = [tmp];
+    for( let node of tmp ) {
+      for( let prop of V1_REMOVE_PROPS ) {
+        if( node[prop] !== undefined ) {
+          delete node[prop];
+        }
+      }
+    }
+
+    if( isArchivalGroup ) {
+      let node = this.findGraphNode(graph, '', context);
+      this.applyTypeToNode(node, ARCHIVAL_GROUP, context);
+      return;
+    }
+
+    // add archive group
+    for( let typeMapper of this.instanceConfig.typeMappers ) {
+      for( let type of typeMapper.types ) {
+        let node = this.findGraphNode(graph, type, context);
+        if( node ) {
+          this.applyTypeToNode(node, ARCHIVAL_GROUP, context);
+          return {isArchivalGroup: true};
+        }
+      }
+
+      if( !typeMapper.virtualIndirectContainers ) continue;
+      let links = typeMapper.virtualIndirectContainers.links;
+      if( !links ) continue;
+
+      let isMemberOfRelation = this.getProp(links, IS_MEMBER_OF_RELATION, context);
+      if( !isMemberOfRelation ) continue;
+
+      let node = this.findGraphNode(graph, '');
+      let relProps = this.getProp(node, isMemberOfRelation, context);
+      if( !relProps ) continue;
+      if( !Array.isArray(relProps) ) relProps = [relProps];
+
+      for( let prop of relProps ) {
+        if( prop.startsWith('info:fedora'+typeMapper.basePath) ) {
+          this.applyTypeToNode(node, ARCHIVAL_GROUP, context);
+          return {isArchivalGroup: true, moveToPath: prop.replace('info:fedora', '')};
+        }
+      }
+    }
+  }
+
+  getPropAsString(metadata, prop, context) {
+    prop = this.getProp(metadata, prop);
+    if( !prop ) return '';
+    if( Array.isArray(prop) ) {
+      return prop.map(item => this._getPropValueAsString(item));
+    }
+    return this._getPropValueAsString(prop);
+  }
+
+  _getPropValueAsString(value) {
+    if( typeof value === 'string' ) return value;
+    return item['@id'] || item['@value'];
+  }
+
+  getProp(metadata, prop, context) {
+    let compacted = prop.split(/#|\//).pop();
+    let v = metadata[prop] || metadata[compacted];
+    if( v ) return v;
+
+    if( context ) {
+      for( let key in context ) {
+        if( typeof context[key] !== 'object' ) continue;
+        if( context[key]['@id'] === prop ) {
+          return metadata[key];
+        }
+      }
+    }
   }
 
 }

@@ -116,6 +116,7 @@ class IoUtils {
 
     // strip all ldp (and possibly fedora properties)
     if( node['@type'] ) {
+      if( !Array.isArray(node['@type']) ) node['@type'] = [node['@type']];
       node['@type'] = node['@type']
         .filter(item => !item.match(this.LDP_SCHEMA) && !item.match(this.FEDORA_SCHEMA));
     }

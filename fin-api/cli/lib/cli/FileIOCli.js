@@ -34,6 +34,8 @@ class FileIOCli {
     let exportCollectionParts = args.options.exportCollectionParts || false;
     let useFcExportPath = args.options.useFcpaths ? true : false;
     let f4 = args.options.f4 ? true : false;
+    let fromV1 = args.options.fromV1 ? true : false;
+    let configHost = args.options.configHost;
 
     await api.io.export.run({
       fcrepoPath: args.rootFcrepoPath, 
@@ -42,7 +44,8 @@ class FileIOCli {
       dryRun,
       exportCollectionParts,
       useFcExportPath,
-      f4
+      f4,
+      fromV1, configHost
     });
   }
 

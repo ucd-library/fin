@@ -445,9 +445,22 @@ class IoDir {
 
       if( this.config.instanceConfig ) {
         fileObject.typeConfig = this.config.instanceConfig.typeMappers.find(item => {
-          for( let type of item.types ) {
-            if( fileObject.mainGraphNode['@type'].includes(type) ) return true;
+          
+          let context = fileObject.containerGraph['@context'] || fileObject.mainGraphNode['@context'] || {}; 
+          let types = fileObject.mainGraphNode['@type'] || [];
+          if( !Array.isArray(types) ) types = [types];
+          
+          for( let type of types ) {
+            let prefix = type.split(':')[0];
+            
+            for( let itype of item.types ) {
+              if( itype === type ) return;
+
+              if( !context[prefix] ) continue;
+              if( context[prefix]+type.split(':')[1] === itype ) return true;
+            }
           }
+
           return false;
         });
 
