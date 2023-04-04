@@ -11,7 +11,7 @@ const ROOT_DIR = path.join(__dirname, 'loaded-transforms');
 
 // ensure that both http and https are supported
 let finUrl = new URL(config.server.url);
-let finUrlRegex = new RegExp(`^https?://${finUrl.host}${config.fcrepo.root}`);
+let finUrlRegex = new RegExp(`^https?://${finUrl.hostname}(:\d*)?${config.fcrepo.root}`);
 
 const BLACK_LIST_LABEL_ATTRS = ['http://schema.org/hasPart', 'http://schema.org/associatedMedia', 
 'http://www.w3.org/ns/ldp#contains', 'http://schema.org/workExample'];

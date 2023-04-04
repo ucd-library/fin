@@ -10,7 +10,8 @@ class Config {
   constructor() {
     this.data = {
       globalPrefix : {},
-      autoSlug : false
+      autoSlug : false,
+      jwt : {}
     };
 
     this.cliOptions = {
@@ -112,12 +113,12 @@ class Config {
   }
 
   set jwt(value) {
-    this.data.jwt = value;
+    this.data.jwt[this.data.host] = value;
     api.setConfig({jwt: value});
     this.save();
   }
   get jwt() {
-    return this.data.jwt;
+    return this.data.jwt[this.data.host];
   }
 
   set username(value) {
@@ -155,11 +156,6 @@ class Config {
     this.refreshToken = '';
   }
 
-  setJwt(jwt) {
-    this.username = '';
-    this.password = '';
-    this.jwt = args.token;
-  }
 
   addPrefix(args) {
     this.data.globalPrefix[args.prefix] = args.url;
@@ -194,15 +190,15 @@ class Config {
     }
 
     this.data = JSON.parse(fs.readFileSync(this.optionsPath, 'utf-8'));
+    if( typeof this.data.jwt === 'string' ) {
+      this.data.jwt = {[this.data.host] : this.data.jwt};
+    }
 
     if( process.env.FCREPO_HOST ) {
       this.data.host = process.env.FCREPO_HOST;
     }
     if( process.env.FCREPO_REST_PATH ) {
       this.data.fcBasePath = process.env.FCREPO_REST_PATH;
-    }
-    if( process.env.FCREPO_JWT ) {
-      this.data.jwt = process.env.FCREPO_JWT;
     }
     if( process.env.FCREPO_USERNAME ) {
       this.data.username = process.env.FCREPO_USERNAME;
@@ -215,9 +211,6 @@ class Config {
     }
     if( process.env.FCREPO_ADMIN_PASSWORD ) {
       this.data.adminPassword = process.env.FCREPO_ADMIN_PASSWORD;
-    }
-    if( process.env.FCREPO_JWT ) {
-      this.data.password = process.env.FCREPO_JWT;
     }
     if( process.env.FCREPO_SUPERUSER ) {
       this.data.superuser = (process.env.FCREPO_SUPERUSER.toLowerCase().trim() === 'true')

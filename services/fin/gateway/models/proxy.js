@@ -1,6 +1,6 @@
 const {URL} = require('url');
 const api = require('@ucd-lib/fin-api');
-const {logger, config, jwt, workflow, FinAC, FinGroups, RDF_URIS} = require('@ucd-lib/fin-service-utils');
+const {logger, config, jwt, workflow, FinAC, pg, FinGroups, RDF_URIS} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('./services');
 const proxy = require('../lib/http-proxy');
 const serviceProxy = require('./service-proxy');
@@ -228,6 +228,10 @@ class ProxyModel {
     // so that the workflow headers can be added to the response
     req.workflows = await workflow.postgres.getLatestWorkflowsByPath(path);
 
+    if( req.user.roles.includes(config.finac.agents.admin) ) {
+      req.openTransaction = await this.getOpenTransaction(path);
+    }
+
     // TODO: uncomment to enable finGroups
     // req.finGroup = await finGroups.get(path);
 
@@ -237,6 +241,12 @@ class ProxyModel {
 
     let url = `http://${config.fcrepo.hostname}:8080${req.originalUrl}`;
     logger.debug(`Fcrepo proxy request: ${url}`);
+
+    // hack for nuking transaction
+    if( req.originalUrl.startsWith('/fcrepo/rest/fcr:tx/nuke/') ) {
+      await this.nukeTransaction(req.originalUrl.replace('/fcrepo/rest/fcr:tx/nuke/', ''));
+      return res.status(200).send();
+    }
 
     proxy.web(req, res, {
       target : url
@@ -251,17 +261,25 @@ class ProxyModel {
    * @param {Object} res http-proxy response object
    */
   _appendServiceLinkHeaders(req, res) {
-    if( !api.isSuccess(res) ) return;
-
-    // parse out current link headers
-    let types = [];
     let clinks = [];
     if( res.headers && res.headers.link ) {
       let links = api.parseLinkHeader(res.headers.link);
       if( links.type ) types = links.type.map(link => link.url);
       clinks = res.headers.link.split(',')
     }
-  
+
+    if( req.openTransaction ) {
+      clinks.push(`<${config.server.url}/fcr:tx/${req.openTransaction}>; rel="open-transaction"`);
+    }
+
+    if( !api.isSuccess(res) ) {
+      res.headers.link = clinks.join(', ');
+      return;
+    }
+
+    // parse out current link headers
+    let types = [];
+    
     serviceModel.setServiceLinkHeaders(clinks, req.fcPath, types);
 
     // TODO: uncomment to enable finGroups
@@ -274,7 +292,7 @@ class ProxyModel {
         clinks.push(`<${config.server.url}${req.fcPath}/svc:workflow/${workflow.id}>; rel="workflow"; type="${workflow.name}"`);
       }
     }
-    
+
     res.headers.link = clinks.join(', ');
   }
 
@@ -371,6 +389,48 @@ class ProxyModel {
           stack: e.stack
         })
     }
+  }
+
+  async getOpenTransaction(path) {
+    path = path.replace(/^\/fcrepo\/rest/, '');
+    path = 'info:fedora'+path;
+
+    let resp = await pg.query(`select 
+        ct.transaction_id as txid_1,  
+        mto.tx_id as txid_2,
+        oimso.session_id as txid_3,
+        rto.transaction_id as txid_4
+      from 
+        containment_transactions ct,
+        membership_tx_operations mto,
+        ocfl_id_map_session_operations oimso,
+        reference_transaction_operations rto
+      where
+        ct.fedora_id = $1 or
+        mto.subject_id = $1 or
+        oimso.fedora_id = $1 or
+        rto.fedora_id = $1
+      limit 1
+    `, [path]);
+
+    if( resp.rows && resp.rows.length ) {
+      let row = resp.rows[0];
+      if( row.txid_1 ) return row.txid_1;
+      if( row.txid_2 ) return row.txid_2;
+      if( row.txid_3 ) return row.txid_3;
+      if( row.txid_4 ) return row.txid_4;
+    }
+
+    return '';
+  }
+
+  async nukeTransaction(txid) {
+    await pg.query(`delete from containment_transactions where transaction_id = $1`, [txid]);
+    await pg.query(`delete from membership_tx_operations where tx_id = $1`, [txid]);
+    await pg.query(`delete from ocfl_id_map_session_operations where session_id = $1`, [txid]);
+    await pg.query(`delete from reference_transaction_operations where transaction_id = $1`, [txid]);
+    await pg.query(`delete from search_resource_rdf_type_transactions where transaction_id = $1`, [txid]);
+    await pg.query(`delete from simple_search_transactions where transaction_id = $1`, [txid]);
   }
 
 }

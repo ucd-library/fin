@@ -188,10 +188,10 @@ class ExportCollection {
     // cleaup metadata
     let graph = this.implBaseAndInfoFedoraPrefix(metadata.last.body, options.currentPath);
     // let graph = JSON.parse(metadata.last.body);
-    metadata = this.findGraphNode(graph, '');
+    metadata = utils.getGraphNode(graph, '');
 
     for( let type of IGNORE_CONTAINER_WITH_TYPE ) {
-      if( this.findGraphNode(graph, type) ) {
+      if( utils.getGraphNode(graph, type) ) {
         console.log('IGNORING CONTAINER: '+options.currentPath);
         console.log('  -> CONTAINS IGNORE TYPE: '+type);
         await this.crawlContains(options, metadata, archivalGroup, graph);
@@ -204,12 +204,12 @@ class ExportCollection {
     if( isArchivalGroup ) {
       archivalGroup = metadata;
       archivalGroup.finPath = options.currentPath;
-      let gitsource = this.findGraphNode(graph, GIT_SOURCE);
+      let gitsource = utils.getGraphNode(graph, GIT_SOURCE);
 
       if( gitsource ) {
         metadata.gitsource = {
-          rootDir : this.getProp(gitsource, GIT_SOURCE_ROOT_DIR, graph['@context']),
-          file : this.getProp(gitsource, GIT_SOURCE_FILE, graph['@context'])
+          rootDir : utils.getProp(gitsource, GIT_SOURCE_ROOT_DIR, graph['@context']),
+          file : utils.getProp(gitsource, GIT_SOURCE_FILE, graph['@context'])
         };
       }
     }
@@ -242,7 +242,7 @@ class ExportCollection {
     let binaryFile;
 
     if( isBinary ) {
-      binaryFile = this.getPropAsString(metadata, FILENAME);
+      binaryFile = utils.getPropAsString(metadata, FILENAME);
       cdir = cdir.split('/');
       if( !binaryFile ) {
         binaryFile = cdir.pop();
@@ -264,7 +264,7 @@ class ExportCollection {
       if( !fs.existsSync(filePath) ) {
         download = true;
       } else {
-        let shas = this.getPropAsString(metadata, DIGEST);
+        let shas = utils.getPropAsString(metadata, DIGEST);
         if( shas ) {
           if( !Array.isArray(shas) ) shas = [shas];
           shas = shas.map(item => {
@@ -349,14 +349,14 @@ class ExportCollection {
       let links = typeMapper.virtualIndirectContainers.links;
       if( !links ) continue;
 
-      let hasMemberRelation = this.getProp(links, HAS_MEMBER_RELATION);
+      let hasMemberRelation = utils.getProp(links, HAS_MEMBER_RELATION);
       if( !hasMemberRelation ) continue;
 
       for( let type of typeMapper.types ) {
-        let node = this.findGraphNode(metadata, type);
+        let node = utils.getGraphNode(metadata, type);
         if( !node ) continue;
 
-        let crawlProps = this.getProp(node, hasMemberRelation);
+        let crawlProps = utils.getProp(node, hasMemberRelation);
         if( !crawlProps ) continue;
         if( !Array.isArray(crawlProps) ) crawlProps = [crawlProps];
 
@@ -376,7 +376,7 @@ class ExportCollection {
   async crawlContains(options, metadata, archivalGroup, graph) {
 
     // check if this container has children
-    let contains = this.getPropAsString(metadata, CONTAINS);
+    let contains = utils.getPropAsString(metadata, CONTAINS);
     if( !contains ) return; // no more children, done crawling this branch
 
     // just make sure this is an array...
@@ -443,7 +443,7 @@ class ExportCollection {
       this.applyV1Rules(graph, isArchivalGroup, graph['@context']);
     }
 
-    // let metadata = this.findGraphNode(graph, '');
+    // let metadata = utils.getGraphNode(graph, '');
     // metadata = metadata.find(item => item['@id'] = fcrepoPath);
 
     // if( !metadata ) return null;
@@ -485,56 +485,6 @@ class ExportCollection {
     return JSON.stringify(graph, null, 2);
   }
 
-  findGraphNode(jsonld, id, context) {
-    if( jsonld['@graph'] ) {
-      jsonld = jsonld['@graph'];
-    }
-    if( !Array.isArray(jsonld) ) {
-      jsonld = [jsonld];
-    }
-
-    let isRe = false;
-    if( id instanceof RegExp ) {
-      isRe = true;
-    }
-
-    for( let node of jsonld ) {
-      if( isRe && node['@id'].match(id) ) {
-        return node;
-      } else if( !isRe ) {
-        if( node['@id'] === id ) return node;
-        if( this.isNodeOfType(node, id, context) ) return node;
-      }
-    }
-
-    return null;
-  }
-
-  applyTypeToNode(node, type) {
-    let types = node['@type'] || [];
-    if( !Array.isArray(types) ) types = [types];
-    if( types.includes(type) ) return;
-    types.push(type);
-    node['@type'] = types; 
-  }
-
-  isNodeOfType(node, type, context) {
-    let types = node['@type'] || [];
-    if( !Array.isArray(types) ) types = [types];
-    if( types.includes(type) ) return true;
-
-    if( !context ) return false;
-
-    for( let t of types ) {      
-      let prefix = t.split(':')[0];
-
-      if( !context[prefix] ) continue;
-      if( context[prefix]+t.split(':')[1] === type ) return true;
-    }
-
-    return false;
-  }
-
   implBaseAndInfoFedoraPrefix(jsonldStr, finPath) {
     finPath = finPath.replace(/\/fcr:[a-z]+$/, '');
 
@@ -569,17 +519,17 @@ class ExportCollection {
     }
 
     if( isArchivalGroup ) {
-      let node = this.findGraphNode(graph, '', context);
-      this.applyTypeToNode(node, ARCHIVAL_GROUP, context);
+      let node = utils.getGraphNode(graph, '', context);
+      utils.applyTypeToNode(node, ARCHIVAL_GROUP, context);
       return;
     }
 
     // add archive group
     for( let typeMapper of this.instanceConfig.typeMappers ) {
       for( let type of typeMapper.types ) {
-        let node = this.findGraphNode(graph, type, context);
+        let node = utils.getGraphNode(graph, type, context);
         if( node ) {
-          this.applyTypeToNode(node, ARCHIVAL_GROUP, context);
+          utils.applyTypeToNode(node, ARCHIVAL_GROUP, context);
           return {isArchivalGroup: true};
         }
       }
@@ -588,51 +538,25 @@ class ExportCollection {
       let links = typeMapper.virtualIndirectContainers.links;
       if( !links ) continue;
 
-      let isMemberOfRelation = this.getProp(links, IS_MEMBER_OF_RELATION, context);
+      let isMemberOfRelation = utils.getProp(links, IS_MEMBER_OF_RELATION, context);
       if( !isMemberOfRelation ) continue;
 
-      let node = this.findGraphNode(graph, '');
-      let relProps = this.getProp(node, isMemberOfRelation, context);
+      let node = utils.getGraphNode(graph, '');
+      if( !node ) continue;
+
+      let relProps = utils.getProp(node, isMemberOfRelation, context);
       if( !relProps ) continue;
       if( !Array.isArray(relProps) ) relProps = [relProps];
 
       for( let prop of relProps ) {
         if( prop.startsWith('info:fedora'+typeMapper.basePath) ) {
-          this.applyTypeToNode(node, ARCHIVAL_GROUP, context);
+          utils.applyTypeToNode(node, ARCHIVAL_GROUP, context);
           return {isArchivalGroup: true, moveToPath: prop.replace('info:fedora', '')};
         }
       }
     }
   }
 
-  getPropAsString(metadata, prop, context) {
-    prop = this.getProp(metadata, prop);
-    if( !prop ) return '';
-    if( Array.isArray(prop) ) {
-      return prop.map(item => this._getPropValueAsString(item));
-    }
-    return this._getPropValueAsString(prop);
-  }
-
-  _getPropValueAsString(value) {
-    if( typeof value === 'string' ) return value;
-    return item['@id'] || item['@value'];
-  }
-
-  getProp(metadata, prop, context) {
-    let compacted = prop.split(/#|\//).pop();
-    let v = metadata[prop] || metadata[compacted];
-    if( v ) return v;
-
-    if( context ) {
-      for( let key in context ) {
-        if( typeof context[key] !== 'object' ) continue;
-        if( context[key]['@id'] === prop ) {
-          return metadata[key];
-        }
-      }
-    }
-  }
 
 }
 

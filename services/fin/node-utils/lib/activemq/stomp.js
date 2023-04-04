@@ -10,6 +10,7 @@ var connectOptions = {
   host : config.activeMq.hostname,
   port : config.activeMq.stomp.port,
   heartbeatDelayMargin : 15000, // keep this larger than the second value in the heart-beat header
+  heartbeatOutputMargin : 100,
   connectHeaders: {
     host : '/',
     login : 'fedoraAdmin',

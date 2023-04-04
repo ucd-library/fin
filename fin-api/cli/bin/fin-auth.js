@@ -4,9 +4,10 @@ const program = new Command();
 
 program.command('login')
   .description('Login using UCD CAS Authentication')
-  .option('--local, -l <username>', 'Login using local UCD DAMS authentication')
-  .option('--headless, -h', 'Login without local browser, copy and paste token')
-  .option('--super-user, -s <username>', 'Login as a user with admin privileges using root server credentials')
+  .option('-l, --local <username>', 'Login using local UCD DAMS authentication')
+  .option('-h, --headless', 'Login without local browser, copy and paste token')
+  .option('-s, --super-user <username>', 'Login as a user with admin privileges using root server credentials')
+  .option('-S, --service-name <serviceName>', 'Fin auth service name (default: keycloak-oidc)')
   .action(options => {
     config.login(options);
   });

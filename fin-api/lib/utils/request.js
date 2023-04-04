@@ -6,25 +6,25 @@ const config = require('../config');
 const auth = require('../auth');
 
 async function request(options) {
-  // this sets config.jwt
-  await auth.getJwt();
-
   if( !options.headers ) options.headers = {};
 
   let authUsed = false;
 
   let directAccess = options.directAccess !== undefined ? options.directAccess : config.directAccess;
-  if( (options.jwt || config.jwt) && directAccess === false ) {
+  
+  let jwt = options.jwt || auth.getJwt();
+
+  if( jwt && directAccess === false ) {
     authUsed = true;
-    options.headers['Authorization'] = `Bearer ${options.jwt || config.jwt}`;
+    options.headers['Authorization'] = `Bearer ${jwt}`;
 
   } else if( directAccess === true ) {
     authUsed = true;
     let payload = {};
     let principals = [];
 
-    if( options.jwt || config.jwt ) {
-      payload = auth.getJwtPayload(options.jwt || config.jwt);
+    if( jwt ) {
+      payload = auth.getJwtPayload(jwt);
 
       if( payload.username ) {
         principals.push(payload.username);

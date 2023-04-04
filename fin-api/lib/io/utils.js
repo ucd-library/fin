@@ -12,8 +12,8 @@ class IoUtils {
     this.CONTAINER_FILE_EXTS_REGEX = /(\.ttl|\.jsonld\.json)$/;
 
     this.GIT_SOURCE_PROPERTY_BASE = 'http://digital.ucdavis.edu/schema#git/';
-    this.LDP_SCHEMA = 'http://www.w3.org/ns/ldp#';
-    this.FEDORA_SCHEMA = 'http://fedora.info/definitions/v4/repository#';
+    this.LDP_SCHEMA = ['http://www.w3.org/ns/ldp#', 'ldp:'];
+    this.FEDORA_SCHEMA = ['http://fedora.info/definitions/v4/repository#', 'fedora:'];
 
     this.TYPES = {
       ARCHIVAL_GROUP : 'http://fedora.info/definitions/v4/repository#ArchivalGroup',
@@ -101,10 +101,12 @@ class IoUtils {
   cleanupContainerNode(node={}, headers={}, current) {
     // strip @types that must be provided as a Link headers
     if( node['@type'] ) {
+      if( !Array.isArray(node['@type']) ) node['@type'] = [node['@type']];
       this.TO_HEADER_TYPES.forEach(type => {
-        if( !node['@type'].includes(type) ) return;
+        let typeName = this.isNodeOfType(node, type);
+        if( !typeName ) return;
 
-        node['@type'] = node['@type'].filter(item => item !== type);
+        node['@type'] = node['@type'].filter(item => item !== typeName);
 
         if( current && current.data.statusCode !== 200 ) {
           if( !headers.link ) headers.link = [];
@@ -112,13 +114,15 @@ class IoUtils {
           console.log(`  - creating ${type.replace(/.*#/, '')}`);
         }
       })
-    }
 
-    // strip all ldp (and possibly fedora properties)
-    if( node['@type'] ) {
-      if( !Array.isArray(node['@type']) ) node['@type'] = [node['@type']];
-      node['@type'] = node['@type']
-        .filter(item => !item.match(this.LDP_SCHEMA) && !item.match(this.FEDORA_SCHEMA));
+      // strip all ldp (and possibly fedora properties)
+      let prefixes = [this.LDP_SCHEMA, this.FEDORA_SCHEMA];
+      prefixes.forEach(types => {
+        types.forEach(type => 
+          node['@type'] = node['@type'].filter(item => !item.startsWith(type))
+        );
+      });
+      
     }
 
     // HACK to work around: https://fedora-repository.atlassian.net/browse/FCREPO-3858
@@ -155,14 +159,32 @@ class IoUtils {
     return graph.find(item => item['@id'] && item['@id'].match(/^ark:\//));
   }
 
-  getGraphNode(graph, typeOrId) {
-    if( graph['@graph'] ) graph = graph['@graph'];
-    if( !Array.isArray(graph) ) graph = [graph];
 
-    let node = graph.find(item => item['@type'] && item['@type'].includes(typeOrId));
-    if( node ) return node;
-    return graph.find(item => item['@id'] === typeOrId);
+  getGraphNode(jsonld, id, context) {
+    if( jsonld['@graph'] ) {
+      jsonld = jsonld['@graph'];
+    }
+    if( !Array.isArray(jsonld) ) {
+      jsonld = [jsonld];
+    }
+
+    let isRe = false;
+    if( id instanceof RegExp ) {
+      isRe = true;
+    }
+
+    for( let node of jsonld ) {
+      if( isRe && node['@id'].match(id) ) {
+        return node;
+      } else if( !isRe ) {
+        if( node['@id'] === id ) return node;
+        if( this.isNodeOfType(node, id, context) ) return node;
+      }
+    }
+
+    return null;
   }
+
 
   removeGraphNode(graph, typeOrId) {
     if( graph['@graph'] ) graph = graph['@graph'];
@@ -197,6 +219,60 @@ class IoUtils {
       } 
     }
     return null;
+  }
+
+  applyTypeToNode(node, type) {
+    let types = node['@type'] || [];
+    if( !Array.isArray(types) ) types = [types];
+    if( types.includes(type) ) return;
+    types.push(type);
+    node['@type'] = types; 
+  }
+
+  isNodeOfType(node, type, context) {
+    let types = node['@type'] || [];
+    if( !Array.isArray(types) ) types = [types];
+    if( types.includes(type) ) return type;
+
+    if( !context ) return false;
+
+    for( let t of types ) {      
+      let prefix = t.split(':')[0];
+
+      if( !context[prefix] ) continue;
+      if( context[prefix]+t.split(':')[1] === type ) return t;
+    }
+
+    return false;
+  }
+
+  getPropAsString(metadata, prop, context) {
+    prop = this.getProp(metadata, prop);
+    if( !prop ) return '';
+    if( Array.isArray(prop) ) {
+      return prop.map(item => this._getPropValueAsString(item));
+    }
+    return this._getPropValueAsString(prop);
+  }
+
+  _getPropValueAsString(value) {
+    if( typeof value === 'string' ) return value;
+    return item['@id'] || item['@value'];
+  }
+
+  getProp(metadata, prop, context) {
+    let compacted = prop.split(/#|\//).pop();
+    let v = metadata[prop] || metadata[compacted];
+    if( v ) return v;
+
+    if( context ) {
+      for( let key in context ) {
+        if( typeof context[key] !== 'object' ) continue;
+        if( context[key]['@id'] === prop ) {
+          return metadata[key];
+        }
+      }
+    }
   }
 
 }

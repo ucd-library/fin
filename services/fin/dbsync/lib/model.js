@@ -445,7 +445,7 @@ class DbSync {
     }
 
     // ask postgres for all children of this path
-    let children = await postgres.getChildren(path);
+    let children = (await postgres.getChildren(path)) || [];
 
     for( let childPath of children ) {
       logger.info('Container '+path+' was publicly inaccessible from LDP, removing child '+childPath+' from index.');

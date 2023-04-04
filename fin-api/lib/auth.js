@@ -15,22 +15,25 @@ class Auth {
     return null;
   }
 
-  async getJwt() {
-    if( config.jwt ) {
+  getJwt() {
+    // upgrade to host based jwt
+    if( typeof config.jwt === 'string' ) {
+      config.jwt = { [config.host] : config.jwt };
+    }
+
+    let jwt = config.jwt[config.host];
+    if( process.env.FCREPO_JWT ) {
+      jwt = process.env.FCREPO_JWT;
+    }
+
+    if( jwt ) {
       // check that jwt is not expired
-      let payload = this.getJwtPayload(config.jwt);
+      let payload = this.getJwtPayload(jwt);
       if( payload.exp*1000 > Date.now() ) {
-        return config.jwt;
+        return jwt;
       }
     }
 
-    // check if we have a username / password
-    // if( config.password && config.username ) {
-    //   let success = await this.loginPassword();
-    //   if( success ) return config.jwt;
-    // }
-
-    config.jwt = '';
     return '';
   }
 

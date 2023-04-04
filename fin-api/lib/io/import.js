@@ -14,6 +14,32 @@ class FinIoImport {
     api = _api;
   }
 
+  addSigIntCallback() { 
+    if( this.sigIntCallbackSet ) return;
+    this.sigIntCallbackSet = true;
+
+    process.on('SIGINT', async () => {
+      if( this.sigInt ) return;
+      this.sigInt = true;
+
+      console.log("Caught interrupt signal");      
+
+      if( this.currentOp ) {
+        console.log('Waiting for current write operation to finish...');
+        await this.currentOp;
+      }
+
+      if( api.getConfig().transactionToken ) {
+        console.log('Rolling back transaction...');
+        let response = await api.rollbackTransaction();
+        console.log('Rollback response: ', response.last.statusCode, response.last.body);
+      }
+
+      console.log('Exiting');
+      process.exit();
+    });
+  }
+
   /**
    * @method run
    * 
@@ -26,6 +52,8 @@ class FinIoImport {
    * 
    */
   async run(options) {
+    this.addSigIntCallback();
+
     if( options.ignoreRemoval !== true ) options.ignoreRemoval = false;
     if( options.fcrepoPath && !options.fcrepoPath.match(/^\//) ) {
       options.fcrepoPath = '/'+options.fcrepoPath;
@@ -105,6 +133,7 @@ class FinIoImport {
       }
     });
 
+    // TODO: implement this!!
     // let collections = rootDir.archivalGroups.filter(item => item.isCollection);
     // if( collections.length > 1 ) {
     //   throw new Error('More than one collection found: ', collections.map(item => item.localpath).join(', '));
@@ -146,6 +175,9 @@ class FinIoImport {
    * @param {IoDir} rootDir root directory for crawl
    */
   async putAGContainers(dir, rootDir) {
+    if( this.sigInt ) return;
+
+
     let isArchivalGroup = (dir.archivalGroup === dir);
     let indirectContainers = null;
     let indirectContainerSha = null;
@@ -186,9 +218,15 @@ class FinIoImport {
         return false;
       } else if( this.options.agImportStrategy === 'remove' ) {
         console.log(' -> changes found, removing and reimporting: '+response.message);
-        await api.delete({path: dir.fcrepoPath, permanent: true});
+        this.currentOp = api.delete({path: dir.fcrepoPath, permanent: true});
+        await this.currentOp;
       } else if( this.options.agImportStrategy === 'transaction' ) {
-        await api.startTransaction();
+        this.currentOp = api.startTransaction();
+        let tResp = await this.currentOp;
+        if( tResp.last.statusCode !== 201 ) {
+          logger.error('Unable to start transaction: ', tResp.last.statusCode, tResp.last.body);
+          return;
+        }
         console.log(' -> changes found, running transaction based update ('+api.getConfig().transactionToken+'): '+response.message);
       } else if( this.options.agImportStrategy === 'version-all' ) {
         console.log(' -> changes found, WARNING versioning every change: '+response.message);
@@ -227,7 +265,8 @@ class FinIoImport {
     if( !dir.getFiles ) {
       if( isArchivalGroup && this.options.agImportStrategy === 'transaction' ) {
         let token = api.getConfig().transactionToken;
-        let tResp = await api.commitTransaction();
+        this.currentOp = api.commitTransaction();
+        let tResp = await this.currentOp;
         console.log(' -> commit ArchivalGroup transaction based update ('+token+'): '+tResp.data.statusCode);
       }
       return true;
@@ -250,7 +289,8 @@ class FinIoImport {
 
     if( isArchivalGroup && this.options.agImportStrategy === 'transaction' ) {
       let token = api.getConfig().transactionToken;
-      let tResp = await api.commitTransaction();
+      this.currentOp = api.commitTransaction();
+      let tResp = await this.currentOp;
       console.log(' -> commit ArchivalGroup transaction based update ('+token+'): '+tResp.data.statusCode);
     }
 
@@ -265,6 +305,8 @@ class FinIoImport {
    * @returns {Promise}
    */
   async putContainer(container, force=false) {
+    if( this.sigInt ) return;
+
     let containerPath = container.fcrepoPath;
     let localpath = container.localpath || container.containerFile;
 
@@ -316,12 +358,13 @@ class FinIoImport {
     this.addNodeToGraph(container.containerGraph, finIoNode);
 
     if( this.options.dryRun !== true ) {
-      response = await api.put({
+      this.currentOp = api.put({
         path : containerPath,
         content : this.replaceBaseContext(container.containerGraph, containerPath),
         partial : true,
         headers
       });
+      response = await this.currentOp;
 
       if( response.error ) {
         throw new Error(response.error);
@@ -331,6 +374,8 @@ class FinIoImport {
   }
 
   async putBinary(binary) {
+    if( this.sigInt ) return;
+
     let fullfcpath = binary.fcrepoPath;
     console.log(`PUT BINARY: ${fullfcpath}\n -> ${binary.localpath}`);
     
@@ -378,28 +423,31 @@ class FinIoImport {
     }
 
     if( this.options.dryRun !== true ) {
-      response = await api.put({
+      this.currentOp = api.put({
         path : fullfcpath,
         file : binary.localpath,
         partial : true,
         headers : customHeaders
       });
+      response = await this.currentOp;
 
       // tombstone found, attempt removal
       if( response.last.statusCode === 410 ) {
         console.log(' -> tombstone found, removing')
-        response = await api.delete({
+        this.currentOp = api.delete({
           path: fullfcpath, 
           permanent: true
         });
+        response = await this.currentOp;
         console.log(' -> tombstone request: '+response.last.statusCode);
 
-        response = await api.put({
+        this.currentOp = api.put({
           path : fullfcpath,
           file : binary.localpath,
           partial : true,
           headers : customHeaders
         });
+        response = await this.currentOp;
       }
 
       if( response.error ) {
@@ -413,6 +461,8 @@ class FinIoImport {
   }
 
   async putBinaryMetadata(binary) {
+    if( this.sigInt ) return;
+
     if( !binary.containerGraph ) return false;
 
     let containerPath = pathutils.joinUrlPath(binary.fcrepoPath, 'fcr:metadata');
@@ -452,27 +502,31 @@ class FinIoImport {
       }
       this.addNodeToGraph(binary.containerGraph, finIoContainer);
 
-      response = await api.put({
+      this.currentOp = api.put({
         path : containerPath,
         content : this.replaceBaseContext(binary.containerGraph, containerPath),
         partial : true,
         headers
       });
+      response = await this.currentOp;
 
       if( response.last.statusCode === 410 ) {
         console.log(' -> tombstone found, removing')
-        response = await api.delete({
+        this.currentOp = api.delete({
           path: containerPath.replace(/\/fcr:metadata/, ''), 
           permanent: true
         });
+        response = await this.currentOp;
         console.log(' -> tombstone request: '+response.last.statusCode);
 
-        response = await api.put({
+        this.currentOp = api.put({
           path : containerPath,
           content : this.replaceBaseContext(binary.containerGraph, containerPath),
           partial : true,
           headers
         });
+        response = await this.currentOp;
+
       }
 
       if( response.error ) {

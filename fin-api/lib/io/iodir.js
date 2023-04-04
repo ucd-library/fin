@@ -17,11 +17,11 @@ class IoDir {
    * @param {Array} archivalGroups list of all known ArchivalGroups
    */
   constructor(fsroot, subPath='', config={}, archivalGroup, archivalGroups=[]) {
-    // if( process.stdout && process.stdout.clearLine ) {
-    //   process.stdout.clearLine();
-    //   process.stdout.cursorTo(0); 
-    //   process.stdout.write('Crawling: '+subPath);
-    // }
+    if( process.stdout && process.stdout.clearLine ) {
+      process.stdout.clearLine();
+      process.stdout.cursorTo(0); 
+      process.stdout.write('Crawling: '+subPath);
+    }
 
     if( !subPath.match(/^\//) ) {
       subPath = '/'+subPath;
@@ -102,9 +102,10 @@ class IoDir {
 
           if( containerFile.graph !== null ) {
             let graph = containerFile.graph;
-            let gitInfo = await git.info(this.fsroot, {cwd: this.fsroot});
-            gitInfo.file = containerFile.filePath.replace(gitInfo.rootDir, '');
-            gitInfo.rootDir = this.fsfull.replace(gitInfo.rootDir, '');
+            let gitInfo = {};
+            // let gitInfo = await git.info(this.fsroot, {cwd: this.fsroot});
+            // gitInfo.file = containerFile.filePath.replace(gitInfo.rootDir, '');
+            // gitInfo.rootDir = this.fsfull.replace(gitInfo.rootDir, '');
 
             let id = this.getIdentifier(containerFile.mainNode) || fileInfo.base;
             this.archivalGroups.push({
@@ -256,9 +257,10 @@ class IoDir {
 
       // if we are not an archive group, grab git info
       if( !this.archivalGroup && this.containerFile ) {
-        container.gitInfo = await git.info(this.fsfull, {cwd: this.fsroot});
-        container.gitInfo.file = binaryGraph.filePath.replace(container.gitInfo.rootDir, '');
-        container.gitInfo.rootDir = this.fsfull.replace(container.gitInfo.rootDir, '');
+        container.gitInfo = {};
+        // container.gitInfo = await git.info(this.fsfull, {cwd: this.fsroot});
+        // container.gitInfo.file = binaryGraph.filePath.replace(container.gitInfo.rootDir, '');
+        // container.gitInfo.rootDir = this.fsfull.replace(container.gitInfo.rootDir, '');
         if( !this.config.importFromRoot ) {
           container.fcrepoPath = pathutils.joinUrlPath(utils.ROOT_FCREPO_PATHS.ITEM, container.fcrepoPath);
         }
@@ -400,23 +402,22 @@ class IoDir {
     return pathutils.joinUrlPath(subPath, id);
   }
 
-  getIdentifier(graphNode={}) {
+  getIdentifier(graphNode={}, context) {
     if( graphNode['@id'] ) {
       return graphNode['@id'];
     }
 
-    let ids = graphNode[utils.PROPERTIES.SCHEMA.IDENTIFIER];
+    let ids = utils.getPropAsString(graphNode, utils.PROPERTIES.SCHEMA.IDENTIFIER, graphNode['@context'] || context);
+    if( !Array.isArray(ids) ) ids = [ids];
+
     if( ids && ids.length ) {
-      
         // attempt to find ark
       let ark = ids
-        .find(item => (item['@id'] || item['@value']).match(/^ark:\//) );
-      if( ark ) return ark['@id'] || ark['@value'];
-
-      // TODO: secondary uri?
+        .find(item => item.match(/^ark:\//));
+      if( ark ) return ark;
 
       // if no ark return first
-      return ids[0]['@id'] || ids[0]['@value'];
+      return ids[0];
     }
 
     return null;
@@ -439,9 +440,10 @@ class IoDir {
       fileObject.archivalGroup = fileObject;
 
       this.archivalGroups.push(fileObject);
-      fileObject.gitInfo = await git.info(this.fsfull, {cwd: this.fsroot});
-      fileObject.gitInfo.file = fileObject.containerFile.replace(fileObject.gitInfo.rootDir, '');
-      fileObject.gitInfo.rootDir = this.fsfull.replace(fileObject.gitInfo.rootDir, '');
+      fileObject.gitInfo = {};
+      // fileObject.gitInfo = await git.info(this.fsfull, {cwd: this.fsroot});
+      // fileObject.gitInfo.file = fileObject.containerFile.replace(fileObject.gitInfo.rootDir, '');
+      // fileObject.gitInfo.rootDir = this.fsfull.replace(fileObject.gitInfo.rootDir, '');
 
       if( this.config.instanceConfig ) {
         fileObject.typeConfig = this.config.instanceConfig.typeMappers.find(item => {

@@ -126,11 +126,11 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
   /**
    * Login User
    */
-  async login(params) {
-    if( !params.options ) params.options = {};
+  async login(options) {
+    options.serviceName = options.serviceName || 'keycloak-oidc';
 
-    if( params.options.headless ) {
-      let authUrl = new URL(config.host+'/auth/keycloak-oidc/login');
+    if( options.headless ) {
+      let authUrl = new URL(config.host+'/auth/'+options.serviceName+'/login');
       authUrl.searchParams.set('cliRedirectUrl', `${config.host}/auth/login-shell`);
       authUrl.searchParams.set('provideJwt', 'true');
       authUrl.searchParams.set('force', 'true');
@@ -146,15 +146,15 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
         message: 'Token: '
       }]);
 
-      config.jwt = args.token;
-      let payload = Buffer.from(config.jwt.split('.')[1], 'base64');
+      config[config.host].jwt = args.token;
+      let payload = Buffer.from(config[config.host].jwt.split('.')[1], 'base64');
       config.username = JSON.parse(payload).username;
 
       this.display();
       
       return;
     }
-    if( params.options['super-user'] ) {
+    if( options.superUser ) {
       let args = await inquirer.prompt([{
         type: 'text',
         name: 'secret',
@@ -165,7 +165,7 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
         message: 'Server Secret Issuer: '
       }]);
 
-      let payload = {username: params.options['super-user']};
+      let payload = {username: options.superUser};
       payload.admin = true;
 
       let token = jwt.sign(
@@ -177,14 +177,14 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
         }
       );
 
-      config.jwt = token;
-      config.username = params.options['super-user'];
+      config[config.host].jwt = token;
+      config.username = options.superUser;
 
       this.display();
       return;
     }
 
-    browserLogin.login();
+    browserLogin.login(options);
   }
 
   async logout() {
@@ -221,7 +221,7 @@ CWD: ${config.cwd}
     );
 
     if( args.options.save ) {
-      config.jwt = token;
+      config[config.host].jwt = token;
       config.username = args.username;
     }
 

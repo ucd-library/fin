@@ -13,6 +13,7 @@ class FileIOCli {
     let ignoreRemoval = args.options.syncDeletes ? false : true;
     let fcrepoPathType = args.options.fcrepoPathType;
     let importFromRoot = args.options.importFromRoot;
+    let agImportStrategy = args.options.agImportStrategy || 'transaction';
 
     await api.io.import.run({
       fsPath : rootPath, 
@@ -20,7 +21,8 @@ class FileIOCli {
       forceMetadataUpdate,
       ignoreRemoval,
       fcrepoPathType,
-      importFromRoot
+      importFromRoot,
+      agImportStrategy
     });
   }
 

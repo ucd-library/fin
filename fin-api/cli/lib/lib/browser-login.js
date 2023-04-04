@@ -9,11 +9,11 @@ const fs = require('fs');
 
 class BrowerLogin {
 
-  async login() {
+  async login(options) {
     let server = new LocalLoginServer();
 
     try {
-      await server.login();
+      await server.login(options);
     } catch(e) {
       throw e;
     }
@@ -23,18 +23,18 @@ class BrowerLogin {
 
 class LocalLoginServer {
 
-  login() {
+  login(options) {
     return new Promise((resolve, reject) => {
       this.resolve = resolve;
       this.reject = reject;
-      this._initServer();
+      this._initServer(options);
     });
   }
 
-  async _initServer() {
+  async _initServer(options) {
     var port = await portfinder.getPortPromise();
 
-    let authUrl = new URL(config.host+'/auth/keycloak-oidc/login');
+    let authUrl = new URL(config.host+'/auth/'+options.serviceName+'/login');
     authUrl.searchParams.set('cliRedirectUrl', `http://localhost:${port}`);
     authUrl.searchParams.set('provideJwt', 'true');
     authUrl.searchParams.set('force', 'true');
