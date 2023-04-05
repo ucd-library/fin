@@ -120,9 +120,9 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
         message: 'Token: '
       }]);
 
-      config[config.host].jwt = args.token;
-      let payload = Buffer.from(config[config.host].jwt.split('.')[1], 'base64');
-      config.username = JSON.parse(payload).username;
+      config.jwt = args.token;
+      config.save();
+      config.load();
 
       this.display();
       
@@ -151,7 +151,7 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
         }
       );
 
-      config[config.host].jwt = token;
+      config.jwt = token;
       config.username = options.superUser;
 
       this.display();
@@ -198,7 +198,6 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
 
     Logger.log(`
 Host          : ${clientConfig.host}
-Base Path     : ${clientConfig.fcBasePath}
 Base Path     : ${clientConfig.fcBasePath}
 Direct Access : ${clientConfig.directAccess}
 Super User    : ${clientConfig.superuser}

@@ -25,12 +25,16 @@
         if (!results[2]) return '';
         return decodeURIComponent(results[2].replace(/\+/g, ' '));
       }
-      
-      document.querySelector('#username').innerHTML = getParameterByName('username')+',';
-
+      let jwt = getParameterByName('jwt');
       let ele = document.querySelector('#code');
-      ele.value = getParameterByName('jwt');
+      ele.value = jwt;
       ele.select();
+
+      if( jwt ) {
+        let user = JSON.parse(atob(jwt.split('.')[1]));
+        document.querySelector('#username').innerHTML = (user.username || user.preferred_username)+',';
+      }
+
     </script>
   </body>
 </html>

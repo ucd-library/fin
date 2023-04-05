@@ -58,7 +58,7 @@ class Config {
     } else {
       this.optionsPath = path.join(getUserHome(), DOT_FILE);
       if( !fs.existsSync(this.optionsPath) ) {
-        fs.writeFileSync(this.optionsPath, '{}');
+        fs.writeFileSync(this.optionsPath, JSON.stringify(this.data, null, 2));
       }
     }
 
