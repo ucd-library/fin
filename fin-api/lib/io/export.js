@@ -437,7 +437,7 @@ class ExportCollection {
     if( graph.error ) return '';
     if( graph.last.statusCode !== 200 ) return '';
 
-    graph = this.implBaseAndInfoFedoraPrefix(graph.last.body, fcrepoPath);
+    graph = this.implBaseAndInfoFedoraPrefix(graph.last.body, fcrepoPath, true);
 
     if( options.fromV1 ) {
       this.applyV1Rules(graph, isArchivalGroup, graph['@context']);
@@ -485,7 +485,7 @@ class ExportCollection {
     return JSON.stringify(graph, null, 2);
   }
 
-  implBaseAndInfoFedoraPrefix(jsonldStr, finPath) {
+  implBaseAndInfoFedoraPrefix(jsonldStr, finPath, updateToRelative = false) {
     finPath = finPath.replace(/\/fcr:[a-z]+$/, '');
 
     let infoFedora = '"'+api.getConfig().host+api.getConfig().fcBasePath;
@@ -495,8 +495,24 @@ class ExportCollection {
     jsonldStr = jsonldStr.replaceAll(base, '"@base:');
     // then replace all absolute path references with info:fedora
     jsonldStr = jsonldStr.replaceAll(infoFedora, '"info:fedora');
+
+    // update all info:fedora references to be relative to the base
+    if( updateToRelative ) {
+      let infoFedoraRefs = jsonldStr.match(/"info:fedora\/.+?"/g) || [];
+
+      let startsWith = finPath.split('/').slice(0,3).join('/');
+      for( let ref of infoFedoraRefs ) {
+        let refPath = ref.replace(/^"info:fedora/, '').replace(/"$/, '');
+        if( !refPath.startsWith(startsWith) ) continue;
+
+        let relative = path.relative(finPath, refPath);
+        console.log('  -> resolving paths '+finPath+' and '+refPath+' to @base:'+relative);
+        jsonldStr = jsonldStr.replaceAll(ref, '"@base:'+relative+'"');
+      }
+    }
+
     // set base node id to empty string
-    jsonldStr = jsonldStr.replaceAll('"@base:"', '""');
+    jsonldStr = jsonldStr.replace(/"@base:\/?"/g, '""');
 
     let graph = JSON.parse(jsonldStr);
 
@@ -549,6 +565,7 @@ class ExportCollection {
       if( !Array.isArray(relProps) ) relProps = [relProps];
 
       for( let prop of relProps ) {
+        
         if( prop.startsWith('info:fedora'+typeMapper.basePath) ) {
           utils.applyTypeToNode(node, ARCHIVAL_GROUP, context);
           return {isArchivalGroup: true, moveToPath: prop.replace('info:fedora', '')};

@@ -157,7 +157,6 @@ class KeycloakUtils {
 
     // override roles
     let roles = new Set();
-    roles.add('fedoraUser');
 
     if( user.username ) roles.add(user.username);
     if( user.preferred_username ) roles.add(user.preferred_username);
@@ -171,11 +170,14 @@ class KeycloakUtils {
       delete user.realmRoles;
     }
 
-    // promote admins to fin-ac roles
+    // promote admins to fin-ac roles and set the fedora user principal
     if( roles.has(config.finac.agents.admin) ) {
       roles.add(config.finac.agents.discover);
       roles.add(config.finac.agents.protected);
-    } 
+      roles.add('fedoraAdmin');
+    } else {
+      roles.add('fedoraUser');
+    }
 
     // see if the user has a temp finac access
     let path = decodeURIComponent(req.originalUrl)

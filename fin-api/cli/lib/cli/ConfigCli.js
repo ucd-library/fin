@@ -1,41 +1,15 @@
-const config = require('../lib/config');
+const config = require('../lib/config-file');
 const location = require('../lib/location');
 const inquirer = require('inquirer');
 const Logger = require('../lib/logger');
-const auth = require('../lib/auth');
 const browserLogin = require('../lib/browser-login');
 const {URL} = require('url');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const pkg = require('../../../package.json');
+const client = require('../../..');
 
 class ConfigCli {
-
-  async init(vorpal, argv) {
-    this.vorpal = vorpal;
-
-
-
-    vorpal.command('jwt encode <secret> <issuer> <username>')
-      .option('-a --admin', 'set the admin flag for the token')
-      .option('-s --save', 'save the token to config')
-      .option('-t --ttl <ttl>', 'set time to live (seconds).  Defaults to 14 day')
-      .description('Create and optionally save a jwt token.  secret can point to a text file')
-      .action((args) => this.jwtEncode(args));
-
-    vorpal.command('jwt decode <token>')
-      .description('Decode a display a jwt token, returns JSON payload')
-      .action((args) => this.jwtDecode(args));
-
-      vorpal.command('jwt verify <secret> <issuer> <token>')
-      .description('Verify token is a valid jwt token for fin server')
-      .action((args) => this.jwtVerify(args));
-
-    if( config.cwd ) {
-      location.setCwd(config.cwd);
-    }
-
-  }
 
   getConfigDocs() {
     return `
@@ -52,7 +26,7 @@ class ConfigCli {
 Welcome to the FIN CLI for interacting with the Fedora Repository backed FIN Server.  
 
 - Project Code - 
-https://github.com/UCDavisLibrary/fin-server
+https://github.com/ucd-library/fin
 
 - CLI Setup - 
 fin config set <attribute> <value>
@@ -193,40 +167,50 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
 
   async setAttribute(args) {
     config[args.attribute] = args.value;
+    config.save();
   }
 
   display(args, callback) {
-    Logger.log(`
-================ Current CLI Config =================
+    let clientConfig = client.getConfig();    
 
-Host/Base Path: ${config.host}${config.basePath}
-User: ${config.username ? config.username : 'Not logged in'}
-Config File: ${config.optionsPath}
-CWD: ${config.cwd}
+    let user;
+    if( clientConfig.jwt ) {
+      user = jwt.decode(clientConfig.jwt);
+    }
+
+    let authStr = 'Not logged in';
+    if( user && Date.now() < new Date(user.exp*1000).getTime() ) {
+      if( !user.roles && user.admin === true ) {
+        user.roles = ['admin'];
+      }
+      if( !user.realmRoles && user.realm_access && user.realm_access.roles ) {
+        user.realmRoles = user.realm_access.roles;
+      }
+
+      authStr = `  User              : ${user.username || user.preferred_username}
+  Roles             : ${user.roles ? user.roles.join(', ') : 'none'}
+  Realm Roles       : ${user.realmRoles ? user.realmRoles.join(', ') : 'none'}
+  Expires           : ${new Date(user.exp*1000).toLocaleString()}
+  Issuer            : ${user.iss}
+  Identity Provider : ${user.identity_provider || 'not set'}
+`;
+    }
+
+    Logger.log(`
+Host          : ${clientConfig.host}
+Base Path     : ${clientConfig.fcBasePath}
+Base Path     : ${clientConfig.fcBasePath}
+Direct Access : ${clientConfig.directAccess}
+Super User    : ${clientConfig.superuser}
+Config File   : ${config.optionsPath}
+
+Authentication (${clientConfig.host}):
+${authStr}
 `);
     if( callback ) callback();
   }
 
-  async jwtEncode(args) {
-    let payload = {username: args.username};
-    if( args.options.admin ) payload.admin = true;
 
-    let token = jwt.sign(
-      payload, 
-      this._getSecret(args), 
-      {
-        issuer: args.issuer || '',
-        expiresIn: args.options.ttl || (60 * 60 * 24 * 14)
-      }
-    );
-
-    if( args.options.save ) {
-      config[config.host].jwt = token;
-      config.username = args.username;
-    }
-
-    Logger.log(token);
-  }
 
   async jwtVerify(args) {
     Logger.log();

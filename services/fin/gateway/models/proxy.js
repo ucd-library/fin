@@ -228,7 +228,7 @@ class ProxyModel {
     // so that the workflow headers can be added to the response
     req.workflows = await workflow.postgres.getLatestWorkflowsByPath(path);
 
-    if( req.user.roles.includes(config.finac.agents.admin) ) {
+    if( req.user && req.user.roles.includes(config.finac.agents.admin) ) {
       req.openTransaction = await this.getOpenTransaction(path);
     }
 
@@ -237,7 +237,11 @@ class ProxyModel {
 
     // set base user auth
     let fcrepoApiConfig = api.getConfig();
-    req.headers['authorization'] = 'Basic '+Buffer.from(fcrepoApiConfig.username+':'+fcrepoApiConfig.password).toString('base64');
+    if( req.user && req.user.roles && req.user.roles.includes(config.finac.agents.admin) ) {
+      req.headers['authorization'] = 'Basic '+Buffer.from(fcrepoApiConfig.adminUsername+':'+fcrepoApiConfig.adminPassword).toString('base64');
+    } else {
+      req.headers['authorization'] = 'Basic '+Buffer.from(fcrepoApiConfig.username+':'+fcrepoApiConfig.password).toString('base64');
+    }
 
     let url = `http://${config.fcrepo.hostname}:8080${req.originalUrl}`;
     logger.debug(`Fcrepo proxy request: ${url}`);
@@ -261,6 +265,8 @@ class ProxyModel {
    * @param {Object} res http-proxy response object
    */
   _appendServiceLinkHeaders(req, res) {
+    // parse out current link headers
+    let types = [];
     let clinks = [];
     if( res.headers && res.headers.link ) {
       let links = api.parseLinkHeader(res.headers.link);
@@ -277,8 +283,7 @@ class ProxyModel {
       return;
     }
 
-    // parse out current link headers
-    let types = [];
+
     
     serviceModel.setServiceLinkHeaders(clinks, req.fcPath, types);
 
@@ -391,6 +396,13 @@ class ProxyModel {
     }
   }
 
+  /**
+   * @method getOpenTransaction
+   * @description get the open transaction for a given path
+   * 
+   * @param {String} path 
+   * @returns {String} transaction id
+   */
   async getOpenTransaction(path) {
     path = path.replace(/^\/fcrepo\/rest/, '');
     path = 'info:fedora'+path;
@@ -424,6 +436,16 @@ class ProxyModel {
     return '';
   }
 
+  /**
+   * @method nukeTransaction
+   * @description remove all traces of a transaction from the database.  This
+   * is a total hack to get around fcrepo tx issues.  Fcrepo will need to be restarted
+   * after calling this method.
+   * 
+   * @param {String} txid
+   * 
+   * @returns {Promise} 
+   */
   async nukeTransaction(txid) {
     await pg.query(`delete from containment_transactions where transaction_id = $1`, [txid]);
     await pg.query(`delete from membership_tx_operations where tx_id = $1`, [txid]);

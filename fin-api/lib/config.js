@@ -14,7 +14,7 @@ const config = {
   /**
    * Auth Information
    */
-  jwt : {},
+  jwt : '',
   username : env.FCREPO_USERNAME || 'fedoraUser',
   password : env.FCREPO_PASSWORD || 'fedoraUser',
 
@@ -34,7 +34,7 @@ const config = {
   /**
    * User agent header
    */
-  userAgent : 'fin-api'
+  userAgent : 'fin-client'
 }
 
 module.exports = config;

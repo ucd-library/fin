@@ -1,5 +1,5 @@
 const path = require('path');
-const config = require('../lib/config');
+const config = require('./config-file');
 const contentDisposition = require('content-disposition');
 const api = require('../../..');
 

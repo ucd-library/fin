@@ -257,7 +257,7 @@ class IoUtils {
 
   _getPropValueAsString(value) {
     if( typeof value === 'string' ) return value;
-    return item['@id'] || item['@value'];
+    return value['@id'] || value['@value'];
   }
 
   getProp(metadata, prop, context) {

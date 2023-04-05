@@ -3,6 +3,7 @@ const path = require('path');
 const pathutils = require('../utils/path');
 const utils = require('./utils');
 const git = require('./git.js');
+const clone = require('clone');
 
 
 class IoDir {
@@ -59,6 +60,11 @@ class IoDir {
   async crawl() {
     if( this.children ) return this.children;
 
+    if( !this.gitInfo ) {
+      this.gitInfo = await git.info(this.fsfull, {cwd: this.fsroot});
+    }
+
+
     if( !fs.existsSync(this.fsfull) ) {
       throw new Error('Unable to crawl directory: '+this.fsfull);
     }
@@ -102,10 +108,9 @@ class IoDir {
 
           if( containerFile.graph !== null ) {
             let graph = containerFile.graph;
-            let gitInfo = {};
-            // let gitInfo = await git.info(this.fsroot, {cwd: this.fsroot});
-            // gitInfo.file = containerFile.filePath.replace(gitInfo.rootDir, '');
-            // gitInfo.rootDir = this.fsfull.replace(gitInfo.rootDir, '');
+            let gitInfo = clone(this.gitInfo);
+            gitInfo.file = containerFile.filePath.replace(this.gitInfo.rootDir, '');
+            gitInfo.rootDir = path.parse(gitInfo.file).dir;
 
             let id = this.getIdentifier(containerFile.mainNode) || fileInfo.base;
             this.archivalGroups.push({
@@ -143,6 +148,7 @@ class IoDir {
         this.archivalGroup,
         this.archivalGroups
       );
+      child.gitInfo = this.gitInfo;
 
       this.children.push(child);
       await child.crawl();
@@ -257,10 +263,9 @@ class IoDir {
 
       // if we are not an archive group, grab git info
       if( !this.archivalGroup && this.containerFile ) {
-        container.gitInfo = {};
-        // container.gitInfo = await git.info(this.fsfull, {cwd: this.fsroot});
-        // container.gitInfo.file = binaryGraph.filePath.replace(container.gitInfo.rootDir, '');
-        // container.gitInfo.rootDir = this.fsfull.replace(container.gitInfo.rootDir, '');
+        container.gitInfo = clone(this.gitInfo);
+        container.gitInfo.file = binaryGraph.filePath.replace(this.gitInfo.rootDir, '');
+        container.gitInfo.rootDir = path.parse(container.gitInfo.file).dir;
         if( !this.config.importFromRoot ) {
           container.fcrepoPath = pathutils.joinUrlPath(utils.ROOT_FCREPO_PATHS.ITEM, container.fcrepoPath);
         }
@@ -440,10 +445,9 @@ class IoDir {
       fileObject.archivalGroup = fileObject;
 
       this.archivalGroups.push(fileObject);
-      fileObject.gitInfo = {};
-      // fileObject.gitInfo = await git.info(this.fsfull, {cwd: this.fsroot});
-      // fileObject.gitInfo.file = fileObject.containerFile.replace(fileObject.gitInfo.rootDir, '');
-      // fileObject.gitInfo.rootDir = this.fsfull.replace(fileObject.gitInfo.rootDir, '');
+      fileObject.gitInfo = clone(this.gitInfo);
+      fileObject.gitInfo.file = fileObject.containerFile.replace(this.gitInfo.rootDir, '');
+      fileObject.gitInfo.rootDir = path.parse(fileObject.gitInfo.file).dir;
 
       if( this.config.instanceConfig ) {
         fileObject.typeConfig = this.config.instanceConfig.typeMappers.find(item => {

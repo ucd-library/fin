@@ -1,6 +1,6 @@
 const http = require('http');
 const {URL} = require('url');
-const config = require('./config');
+const config = require('./config-file');
 const logger = require('./logger');
 const open = require('open');
 const portfinder = require('portfinder');

@@ -213,7 +213,7 @@ class FinIoImport {
         dir.finIoNode[utils.PROPERTIES.FIN_IO.INDIRECT_REFERENCE_SHA] = [{'@value': indirectContainerSha}];
       }
 
-      if( response.equal === true ) {
+      if( response.equal === true && this.options.forceMetadataUpdate !== true ) {
         console.log(' -> no changes found, ignoring');
         return false;
       } else if( this.options.agImportStrategy === 'remove' ) {
@@ -369,6 +369,7 @@ class FinIoImport {
       if( response.error ) {
         throw new Error(response.error);
       }
+      
       console.log(response.last.statusCode, response.last.body);
     }
   }
@@ -640,13 +641,13 @@ class FinIoImport {
    * @returns {Object}
    */
   createGitNode(gitInfo) {
+    let rdf = {};
     for( let attr in gitInfo ) {
-      gitInfo[utils.GIT_SOURCE_PROPERTY_BASE+attr] = [{'@value' : gitInfo[attr]}];
-      delete gitInfo[attr];
+      rdf[utils.GIT_SOURCE_PROPERTY_BASE+attr] = [{'@value' : gitInfo[attr]}];
     }
-    gitInfo['@id'] = utils.GRAPH_NODES.GIT_SOURCE;
-    gitInfo['@type'] = utils.TYPES.GIT_SOURCE;
-    return gitInfo;
+    rdf['@id'] = utils.GRAPH_NODES.GIT_SOURCE;
+    rdf['@type'] = utils.TYPES.GIT_SOURCE;
+    return rdf;
   }
 
   /**
