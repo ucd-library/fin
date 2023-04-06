@@ -1,4 +1,3 @@
-const config = require('./lib/config');
 const yargs = require('yargs');
 const vorpal = require('vorpal')();
 const logger = require('./lib/logger');
@@ -9,11 +8,8 @@ vorpal.isCommandArgKeyPairNormalized = false;
 const cliComponents = {
   http : require('./cli/HttpCli'),
   config : require('./cli/ConfigCli'),
-  location : require('./cli/LocationCli'),
-  interactive : require('./cli/InteractiveCli'),
   io : require('./cli/FileIOCli'),
   service : require('./cli/ServiceCli'),
-  application : require('./cli/ApplicationCli'),
   logger : logger
 }
 
@@ -26,16 +22,11 @@ var argv = yargs
   })
   .help(false); // disable yargs help
 
-for( var key in config.cliOptions ) {
-  argv.option(key, {alias: config.cliOptions[key].alias});
-}
-argv = argv.argv;
-
 // TODO: switch to yargs for initial processing
-argv.shell = false;
-if( argv._.indexOf('shell') > -1 ) {
-  argv.shell = true;
-}
+// argv.shell = false;
+// if( argv._.indexOf('shell') > -1 ) {
+//   argv.shell = true;
+// }
 
 var configPromise;
 for( var key in cliComponents ) {

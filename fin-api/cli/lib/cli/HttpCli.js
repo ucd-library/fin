@@ -4,7 +4,6 @@ const inquirer = require('inquirer');
 
 const Logger = require('../lib/logger');
 const location = require('../lib/location');
-const config = require('../lib/config');
 
 /**
  * @class HttpCli
