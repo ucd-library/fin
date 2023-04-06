@@ -50,6 +50,7 @@ class LocalLoginServer {
       if( !jwt  ) return;
 
       config.jwt = jwt;
+      config.save();
 
       await this._respondWithFile(req, res, 200, path.join('..', 'templates', 'login.html'));
 
