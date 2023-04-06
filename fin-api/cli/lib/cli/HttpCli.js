@@ -3,7 +3,6 @@ const fs = require('fs');
 const inquirer = require('inquirer');
 
 const Logger = require('../lib/logger');
-const prefixutils = require('../lib/prefixutils');
 const location = require('../lib/location');
 const config = require('../lib/config');
 
@@ -236,8 +235,7 @@ class HttpCli {
       }
 
     } else if( args.options.dataString ) {
-      let prefixes = prefixutils(args, sparql);
-      options.content = prefixes+'\n'+args.options.dataString;
+      options.content = args.options.dataString;
       options.headers['Content-Type'] = api.RDF_FORMATS.TURTLE;
     }
 
