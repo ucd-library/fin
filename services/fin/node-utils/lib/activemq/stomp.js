@@ -35,7 +35,7 @@ class ActiveMqStompClient extends ActiveMqClient {
   constructor(name) {
     super();
 
-    this.name = name;;
+    this.name = name;
     this.clientName = name+'-'+uuid.v4().split('-').shift();
     this.wait = 0;
     this.counter = 0;
@@ -77,6 +77,8 @@ class ActiveMqStompClient extends ActiveMqClient {
       });
     }
 
+    // create a new client name on reconnect
+    this.clientName = this.name+'-'+uuid.v4().split('-').shift();
     connectOptions.connectHeaders['client-id'] = this.clientName;
     if( opts.queue ) {
       subscribeHeaders.destination = opts.queue;

@@ -116,39 +116,37 @@ class DbSyncPostgresUtils {
    */
   async updateStatus(args) {
     if( !args.model ) args.model = '';
-    let resp = await this.pg.query(`SELECT path FROM ${this.schema}.update_status where path = $1 and model = $2;`, [args.path, args.model]);
 
-    if( resp.rows.length ) {
-      // if there is a model provided, only update model / path combo.  Otherwise update all path entries
-      let attrs = 'event_id, event_timestamp, container_types, update_types, workflow_types, action, message, db_response, transform_service, source, updated';
-      let values = '$3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13';
-      let where = 'PATH = $1 and model = $2';
-
-      // if( !args.model ) {
-      //   attrs = 'model, event_id, event_timestamp, container_types, update_types, action, message, db_response, transform_service, source, updated';
-      //   values = '$2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12';
-      //   where = 'PATH = $1';
-      // }
-
-      await this.pg.query(`
-        UPDATE ${this.schema}.update_status 
-          SET 
-            (${attrs}) = (${values})
-        WHERE 
-          ${where}
-        ;`, [args.path, args.model, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.workflow_types, args.action, 
-            args.message, args.dbResponse, args.tranformService, args.source, new Date().toISOString()]
-      );
-    } else {
-      await this.pg.query(`
-        INSERT INTO ${this.schema}.update_status 
-          (path, event_id, event_timestamp, container_types, update_types, workflow_types, action, message, db_response, transform_service, model, source) 
-        VALUES 
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, args.workflow_types, args.action, args.message, 
-          args.dbResponse, args.tranformService, args.model, args.source]
-      );
-    }
+    return this.pg.query(
+      `SELECT * from ${this.schema}.upsert_update_status(
+        $1::TEXT, 
+        $2::TEXT, 
+        $3::TEXT, 
+        $4::TIMESTAMP, 
+        $5::TEXT[], 
+        $6::fcrepo_update_type[], 
+        $7::TEXT[], 
+        $8::TEXT, 
+        $9::TEXT, 
+        $10::JSONB, 
+        $11::TEXT,
+        $12::JSONB
+      );`, 
+      [
+        args.path, 
+        args.model, 
+        args.event_id, 
+        args.event_timestamp, 
+        args.container_types, 
+        args.update_types, 
+        args.workflow_types,
+        args.action, 
+        args.message, 
+        args.db_response, 
+        args.transform_service, 
+        args.source
+      ]
+    );
   }
 
   async getStatusByModel(path, model=null) {
