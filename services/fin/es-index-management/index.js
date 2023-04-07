@@ -165,7 +165,6 @@ app.post(/^\/.*\/recreate-index\/.+$/, keycloak.protect(['admin']), ensureRootPa
   try {
     let modelName = req.modelName;
     let indexSource = req.path.replace(/\/$/, '').split('/').pop();
-    console.log(req.path, indexSource)
 
     // make sure this is a known model
     let {model} = await models.get(modelName);

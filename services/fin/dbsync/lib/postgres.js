@@ -142,8 +142,8 @@ class DbSyncPostgresUtils {
         args.workflow_types,
         args.action, 
         args.message, 
-        args.db_response, 
-        args.transform_service, 
+        args.dbResponse, 
+        args.tranformService, 
         args.source
       ]
     );

@@ -111,7 +111,6 @@ class FinAcFcrepo {
     let webac = [];
     if( response.last &&  response.last.statusCode === 200 && response.last.body ) {
       webac = JSON.parse(response.last.body);
-      console.log(path, webac);
       if( webac['@graph'] ) webac = webac['@graph'];
       if( !Array.isArray(webac) ) webac = [webac]
     }

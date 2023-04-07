@@ -34,11 +34,12 @@ class DbSync {
 
       await this.updateContainer(item);
       await postgres.clearMessage(item.event_id);
+
+      this.readLoop();
     } catch(e) {
       logger.error('DbSync readLoop error', e);
+      setTimeout(() => this.readLoop(), this.READ_LOOP_WAIT); 
     }
-
-    this.readLoop();
   }
 
   /**

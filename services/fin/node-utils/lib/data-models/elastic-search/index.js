@@ -199,8 +199,14 @@ class FinEsDataModel extends FinDataModel {
       delete options._source_excludes; 
     } else if( options._source_excludes === 'compact' ) {
       options._source_excludes = config.elasticsearch.fields.excludeCompact.join(',');
+    } else if( Array.isArray(options._source_excludes) ) {
+      options._source_excludes = options._source_excludes.join(',');
     } else {
       options._source_excludes = config.elasticsearch.fields.exclude.join(',');
+    }
+
+    if( Array.isArray(options._source_includes) ) {
+      options._source_includes = options._source_includes.join(',');
     }
 
     if( options.admin ) {
@@ -241,6 +247,16 @@ class FinEsDataModel extends FinDataModel {
     //   }
     // }, '  ', '  '));
 
+    let graphProperties = {
+      roles
+    };
+
+    for( let key in jsonld ) {
+      if( key === '@graph' ) continue;
+      if( key === '@id' ) continue;
+      graphProperties[key] = jsonld[key];
+    }
+
     let response = await this.client.update({
       index,
       id : jsonld['@id'],
@@ -250,8 +266,10 @@ class FinEsDataModel extends FinDataModel {
           ctx._source['@graph'].removeIf((Map item) -> { item['@id'] == node['@id'] });
           ctx._source['@graph'].add(node);
         }
-        ctx._source.roles = params.roles;`,
-        params : {nodes:jsonld['@graph'], roles}
+        for (def key : params.graphProperties.keySet()) {
+          ctx._source[key] = params.graphProperties[key];
+        }`,
+        params : {nodes: jsonld['@graph'], graphProperties}
       }
     });
 
