@@ -121,6 +121,7 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
       }]);
 
       config.jwt = args.token;
+      client.setConfig({jwt: args.token});
       config.save();
       config.load();
 

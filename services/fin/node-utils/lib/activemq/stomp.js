@@ -146,8 +146,13 @@ class ActiveMqStompClient extends ActiveMqClient {
         } catch(e) {}
       }
 
-      if( this.callback ) {
-        await this.callback({headers, body})
+      try {
+        if( this.callback ) {
+          await this.callback({headers, body})
+        }
+      } catch(e) {
+        await this.logDebug('processing-error', e);
+        logger.error('STOMP client '+this.clientName+' processing error', e);
       }
 
       this.client.ack(message);

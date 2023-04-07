@@ -408,29 +408,17 @@ class ProxyModel {
     path = 'info:fedora'+path;
 
     let resp = await pg.query(`select 
-        ct.transaction_id as txid_1,  
-        mto.tx_id as txid_2,
-        oimso.session_id as txid_3,
-        rto.transaction_id as txid_4
+        ct.transaction_id as txid_1
       from 
-        containment_transactions ct,
-        membership_tx_operations mto,
-        ocfl_id_map_session_operations oimso,
-        reference_transaction_operations rto
+        containment_transactions ct
       where
-        ct.fedora_id = $1 or
-        mto.subject_id = $1 or
-        oimso.fedora_id = $1 or
-        rto.fedora_id = $1
+        ct.fedora_id = $1
       limit 1
     `, [path]);
 
     if( resp.rows && resp.rows.length ) {
       let row = resp.rows[0];
       if( row.txid_1 ) return row.txid_1;
-      if( row.txid_2 ) return row.txid_2;
-      if( row.txid_3 ) return row.txid_3;
-      if( row.txid_4 ) return row.txid_4;
     }
 
     return '';

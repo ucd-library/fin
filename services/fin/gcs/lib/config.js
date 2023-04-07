@@ -40,7 +40,7 @@ class GcsConfig {
       let body = res.last.body.replace(/\{\{(\w+)\}\}/g, (match, p1) => {
         return process.env[p1] || '';
       });
-      console.log(body);
+      logger.info('GCS Config', body);
 
       this.config = JSON.parse(body);
       this.requestLoopPromise = null;

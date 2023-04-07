@@ -224,7 +224,7 @@ class FinIoImport {
         this.currentOp = api.startTransaction();
         let tResp = await this.currentOp;
         if( tResp.last.statusCode !== 201 ) {
-          logger.error('Unable to start transaction: ', tResp.last.statusCode, tResp.last.body);
+          console.error('Unable to start transaction: ', tResp.last.statusCode, tResp.last.body);
           return;
         }
         console.log(' -> changes found, running transaction based update ('+api.getConfig().transactionToken+'): '+response.message);

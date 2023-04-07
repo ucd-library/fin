@@ -38,7 +38,7 @@ class GcsSync {
     }
   }
 
-  async onFcMessage(message) {
+  async onFcMessage(msg) {
     if( msg.headers['edu.ucdavis.library.eventType'] ) {
       return;
     }

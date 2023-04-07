@@ -8,6 +8,8 @@ const {ActiveMqStompClient} = ActiveMqClient;
 class DbSync {
 
   constructor() {
+    this.READ_LOOP_WAIT = 2000;
+
     this.activemq = new ActiveMqStompClient('dbsync');
     this.activemq.onMessage(e => this.handleMessage(e));
     this.activemq.connect({queue: config.activeMq.queues.dbsync});
@@ -22,15 +24,19 @@ class DbSync {
   }
 
   async readLoop() {
-    let item = await postgres.nextMessage();
-    
-    if( !item ) {
-      setTimeout(() => this.readLoop(), 500);
-      return;
-    }
+    try {
+      let item = await postgres.nextMessage();
+      
+      if( !item ) {
+        setTimeout(() => this.readLoop(), this.READ_LOOP_WAIT);
+        return;
+      }
 
-    await this.updateContainer(item);
-    await postgres.clearMessage(item.event_id);
+      await this.updateContainer(item);
+      await postgres.clearMessage(item.event_id);
+    } catch(e) {
+      logger.error('DbSync readLoop error', e);
+    }
 
     this.readLoop();
   }
