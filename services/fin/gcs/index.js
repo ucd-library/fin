@@ -11,8 +11,16 @@ gcsConfig.load();
 
 app.get(/.*/, hasAccess, async (req, res) => {
   try {
+    let streamOpts = {};
+    let range = req.get('range');
+    if( range ) {
+      range = range.replace('bytes=', '').split('-');
+      streamOpts.start = parseInt(range[0]);
+      streamOpts.end = parseInt(range[1]);
+    }
+
     let file = gcs.getGcsFileObjectFromPath(req.gcsPath)
-    let stream = file.createReadStream()
+    let stream = file.createReadStream(streamOpts)
       .on('error', e => {
         res.status(500).json({error : e.message});
       });
