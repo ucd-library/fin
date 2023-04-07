@@ -10,6 +10,7 @@ program
   .option('--import-from-root', 'import data starting at given fs path, instead of ArchivalGroups')
   .option('--fcrepo-path-type <type>', 'import relative to ArchivalGroups + subpath + id (id, default) or subpath + id (subpath)')
   .option('--ag-import-strategy <strategy>', 'import strategy for ArchivalGroups.  Options are transaction, delete or version-all (default, transaction)')
+  .option('--log-to-disk', 'Generate a csv log file of all operations')
   .option('-s, --sync-deletes', 'Remove files from fedora that do not exist on disk')
   .description('Import a collection from Fin filesystem representation. root-fs-path should be the folder containing the .fin and collection-name.ttl files')
   .action((rootFsPath, options) => {

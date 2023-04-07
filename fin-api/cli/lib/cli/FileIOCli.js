@@ -22,7 +22,8 @@ class FileIOCli {
       ignoreRemoval,
       fcrepoPathType,
       importFromRoot,
-      agImportStrategy
+      agImportStrategy,
+      logToDisk : args.options.logToDisk || false
     });
   }
 

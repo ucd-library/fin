@@ -19,6 +19,7 @@
     "clone": "^2.1.1",
     "commander": "^9.4.1",
     "content-disposition": "^0.5.4",
+    "csv": "^6.2.8",
     "fs-extra": "^7.0.1",
     "ignore": "^5.0.5",
     "inquirer": "^8.2.4",

@@ -4,9 +4,10 @@ const crypto = require('crypto');
 const mime = require('mime');
 const pathutils = require('../utils/path');
 const utils = require('./utils');
+const csv = require('csv/sync');
+const fs = require('fs');
 
 let api;
-
 
 class FinIoImport {
 
@@ -27,6 +28,11 @@ class FinIoImport {
       if( this.currentOp ) {
         console.log('Waiting for current write operation to finish...');
         await this.currentOp;
+      }
+
+      if( this.options.logToDisk ) {
+        console.log('Waiting for log to disk...');
+        this.saveDiskLog();
       }
 
       if( api.getConfig().transactionToken ) {
@@ -165,6 +171,10 @@ class FinIoImport {
       console.log(` - ArchivalGroup ${key}s: ${counts[key]}`);
     }
     console.log(` - Total ArchivalGroups updated: ${agUpdates}`);
+
+    if( this.options.logToDisk ) {
+      this.saveDiskLog();
+    }
   }
 
   /**
@@ -215,11 +225,11 @@ class FinIoImport {
 
       if( response.equal === true && this.options.forceMetadataUpdate !== true ) {
         console.log(' -> no changes found, ignoring');
+        this.diskLog({verb: 'ignore', path: dir.fcrepoPath, file: dir.fsfull, message : 'no changes found'});
         return false;
       } else if( this.options.agImportStrategy === 'remove' ) {
         console.log(' -> changes found, removing and reimporting: '+response.message);
-        this.currentOp = api.delete({path: dir.fcrepoPath, permanent: true});
-        await this.currentOp;
+        await this.write('delete', {path: dir.fcrepoPath, permanent: true}, dir.fsfull);
       } else if( this.options.agImportStrategy === 'transaction' ) {
         this.currentOp = api.startTransaction();
         let tResp = await this.currentOp;
@@ -340,6 +350,7 @@ class FinIoImport {
       let jsonld = JSON.parse(response.last.body);
       if( await this.isMetaShaMatch(jsonld, finIoNode, localpath ) ) {
         console.log(` -> IGNORING (sha match)`);
+        this.diskLog({verb: 'ignore', path: containerPath, file: localpath, message : 'sha match'});
         return;
       }
     } else if ( localpath !== '_virtual_' ) {
@@ -358,13 +369,12 @@ class FinIoImport {
     this.addNodeToGraph(container.containerGraph, finIoNode);
 
     if( this.options.dryRun !== true ) {
-      this.currentOp = api.put({
+      let response = await this.write('put', {
         path : containerPath,
         content : this.replaceBaseContext(container.containerGraph, containerPath),
         partial : true,
         headers
-      });
-      response = await this.currentOp;
+      }, localpath);
 
       if( response.error ) {
         throw new Error(response.error);
@@ -406,6 +416,7 @@ class FinIoImport {
           let localSha = await api.sha(binary.localpath, sha[0].replace('sha-', ''));
           if( localSha === sha[1] ) {
             console.log(' -> IGNORING (sha match)');
+            this.diskLog({verb: 'ignore', path: fullfcpath, file: binary.localpath, message : 'sha match'});
             return false;
           }
         }
@@ -424,31 +435,28 @@ class FinIoImport {
     }
 
     if( this.options.dryRun !== true ) {
-      this.currentOp = api.put({
+      response = await this.write('put', {
         path : fullfcpath,
         file : binary.localpath,
         partial : true,
         headers : customHeaders
-      });
-      response = await this.currentOp;
+      }, binary.localpath);
 
       // tombstone found, attempt removal
       if( response.last.statusCode === 410 ) {
         console.log(' -> tombstone found, removing')
-        this.currentOp = api.delete({
+        response = await this.write('delete', {
           path: fullfcpath, 
           permanent: true
-        });
-        response = await this.currentOp;
+        }, binary.localpath);
         console.log(' -> tombstone request: '+response.last.statusCode);
 
-        this.currentOp = api.put({
+        response = await this.write('put', {
           path : fullfcpath,
           file : binary.localpath,
           partial : true,
           headers : customHeaders
-        });
-        response = await this.currentOp;
+        }, binary.localpath);
       }
 
       if( response.error ) {
@@ -488,6 +496,7 @@ class FinIoImport {
         response = JSON.parse(response.last.body);
         if( await this.isMetaShaMatch(response, finIoContainer, binary.containerFile ) ) {
           console.log(` -> IGNORING (sha match)`);
+          this.diskLog({verb: 'ignore', path: containerPath, file: binary.containerFile, message : 'sha match'});
           return false;
         }
       } else {
@@ -503,31 +512,27 @@ class FinIoImport {
       }
       this.addNodeToGraph(binary.containerGraph, finIoContainer);
 
-      this.currentOp = api.put({
+      response = await this.write('put',{
         path : containerPath,
         content : this.replaceBaseContext(binary.containerGraph, containerPath),
         partial : true,
         headers
-      });
-      response = await this.currentOp;
+      }, binary.containerFile);
 
       if( response.last.statusCode === 410 ) {
         console.log(' -> tombstone found, removing')
-        this.currentOp = api.delete({
+        response = await this.write('delete', {
           path: containerPath.replace(/\/fcr:metadata/, ''), 
           permanent: true
-        });
-        response = await this.currentOp;
+        }, binary.containerFile);
         console.log(' -> tombstone request: '+response.last.statusCode);
 
-        this.currentOp = api.put({
+        response = await this.write('put',{
           path : containerPath,
           content : this.replaceBaseContext(binary.containerGraph, containerPath),
           partial : true,
           headers
-        });
-        response = await this.currentOp;
-
+        }, binary.containerFile);
       }
 
       if( response.error ) {
@@ -849,6 +854,75 @@ class FinIoImport {
     }
 
     return content;
+  }
+
+  async write(verb, opts, file) {
+    try {
+      if( verb === 'put' ) {
+        this.currentOp = api.put(opts);
+      } else if( verb === 'post' ) {
+        this.currentOp = api.post(opts);
+      } else if( verb === 'delete' ) {
+        this.currentOp = api.delete(opts);
+      } else {
+        throw new Error('Unsupported verb: '+verb);
+      }
+
+      let response = await this.currentOp;
+      this.diskLog({
+        verb,
+        path: opts.path,
+        file,
+        statusCode : response.last.statusCode
+      });
+
+      return response;
+    } catch(e) {
+      this.diskLog({
+        verb,
+        path: opts.path,
+        file,
+        error: true,
+        message: e.message,
+        stack: e.stack
+      });
+    }
+  }
+
+  diskLog(data) {
+    if( !this.options.logToDisk ) return;
+    if( !this.diskLogBuffer ) this.diskLogBuffer = [];
+
+    if( !data.verb ) data.verb = '';
+
+    data.timestamp = new Date().toISOString();
+    this.diskLogBuffer.push(data);
+  }
+
+  saveDiskLog() {
+    if( !this.diskLogBuffer ) {
+      this.diskLogBuffer = [];
+    }
+
+    fs.writeFileSync(
+      path.join(process.cwd(), 'fin-io-log.csv'),
+      csv.stringify(
+        this.diskLogBuffer,
+        {
+          header: true, 
+          columns: [
+            {key: 'timestamp'},
+            {key: 'verb'},
+            {key: 'path'},
+            {key: 'statusCode'},
+            {key: 'file'},
+            {key: 'error'},
+            {key: 'message'},
+            {key: 'stack'}
+          ]
+        }  
+      )
+    );
   }
 
 }
