@@ -1,5 +1,5 @@
 const api = require('@ucd-lib/fin-api');
-const {waitUntil, config} = require('@ucd-lib/fin-service-utils');
+const {waitUntil, config, logger} = require('@ucd-lib/fin-service-utils');
 
 /**
  * @fileoverview Configuration for GCSSync service.  waits for fcrepo to start then
