@@ -76,7 +76,7 @@ class DbSync {
   // }
 
   isDelete(e) {
-    return e.update_types.find(item => this.UPDATE_TYPES.DELETE.includes(item)) ? true : false;
+    return (e.update_types || []).find(item => this.UPDATE_TYPES.DELETE.includes(item)) ? true : false;
   }
 
   /**

@@ -13,6 +13,8 @@ class FinEsDataModel extends FinDataModel {
 
   constructor(modelName) {
     super(modelName);
+
+    this.UPDATE_RETRY_COUNT = 10;
     
     this.readIndexAlias = modelName+'-read';
     this.writeIndexAlias = modelName+'-write';
@@ -260,6 +262,7 @@ class FinEsDataModel extends FinDataModel {
     let response = await this.client.update({
       index,
       id : jsonld['@id'],
+      retry_on_conflict : this.UPDATE_RETRY_COUNT,
       script : {
         source : `
         for (def node : params.nodes) {
