@@ -262,7 +262,7 @@ class FinGcWorkflowModel {
    * @param {*} finPath 
    * @returns 
    */
-  async createWorkflow(finWorkflowName, finPath) {
+  async createWorkflow(finWorkflowName, finPath, opts={}) {
     if( !this.definitions[finWorkflowName] ) {
       throw new Error('Invalid workflow name: '+finWorkflowName);
     }
@@ -283,6 +283,7 @@ class FinGcWorkflowModel {
       data.tmpGcsPath = 'gs://'+data.tmpGcsBucket+'/'+finWorkflowId+'/'+path.parse(finPath).base;
       data.finPath = finPath;
       data.finWorkflowId = finWorkflowId;
+      data.options = opts;
 
       let result = {
         id : finWorkflowId,
@@ -497,6 +498,8 @@ class FinGcWorkflowModel {
       let execution = response[0];
       workflow.data.gcExecution = execution;
 
+      let keepTmpData = workflow.data?.options?.keepTmpData;
+
       if( execution.state === 'SUCCEEDED' || execution.state === 'CANCELLED' ) {
         await pg.updateWorkflow({
           finWorkflowId: workflow.workflow_id, 
@@ -509,7 +512,9 @@ class FinGcWorkflowModel {
           this.notifyOnSuccess(workflow);
         }
 
-        await this.cleanupWorkflow(workflow.workflow_id);
+        if( keepTmpData !== true ) {
+          await this.cleanupWorkflow(workflow.workflow_id);
+        }
       } else if( execution.state === 'FAILED' ) {
         await pg.updateWorkflow({
           finWorkflowId: workflow.workflow_id, 
@@ -518,7 +523,9 @@ class FinGcWorkflowModel {
           error : execution.error.message
         });
 
-        await this.cleanupWorkflow(workflow.workflow_id);
+        if( keepTmpData !== true ) {
+          await this.cleanupWorkflow(workflow.workflow_id);
+        }
       } else {
         // console.log('HERE', execution.state)
       }

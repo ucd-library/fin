@@ -283,8 +283,8 @@ class HttpCli {
    *
    * @param {Object} args Command line arguments
    */
-  async post(args) {
-    let options = this._initOptions(args);
+  async post(args, baseOptions={}) {
+    let options = Object.assign(this._initOptions(args), baseOptions);
 
     let success = this._parseDataOptions(args, options);
     if( !success ) return;

@@ -1,5 +1,6 @@
 // create express router
 const express = require('express');
+const bodyParser = require('body-parser');
 const {gc, logger, config} = require('@ucd-lib/fin-service-utils');
 const {workflowModel} = gc;
 
@@ -47,12 +48,17 @@ app.get('/list', async (req, res) => {
 
 });
 
-app.post('/:workflowName', async (req, res) => {
+app.post('/:workflowName', bodyParser.json(), async (req, res) => {
 
   let finPath = req.query.fcPath.replace(/\/fcrepo\/rest/, '');
 
+  let opts = {};
+  if( req.body.keepTmpData === true ) {
+    opts.keepTmpData = true;
+  }
+
   try {
-    let workflowInfo = await workflowModel.createWorkflow(req.params.workflowName, finPath);
+    let workflowInfo = await workflowModel.createWorkflow(req.params.workflowName, finPath, opts);
     res.json(workflowInfo);
   } catch(e) {
     res.status(500).json({
