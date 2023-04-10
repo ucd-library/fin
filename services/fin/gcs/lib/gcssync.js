@@ -9,26 +9,31 @@ const {ActiveMqStompClient} = ActiveMqClient;
 class GcsSync {
 
   constructor() {
+    this.init();
+  }
+
+  async init() {
+    await gcsConfig.loaded;
+
+    this.config = (gcsConfig.config || {}).sync || {};
+
     pubsub.on('message', message => this.onGcMessage(message));
+    this.config.containers.forEach(container => {
+      container.bucket = container.bucket.replace(/\{\{(\w+)\}\}/g, (match, p1) => {
+        return process.env[p1] || '';
+      });
+
+      if( container.direction === 'gcs-to-fcrepo') {
+        pubsub.listen(container.bucket);
+      }
+    });
 
     this.activemq = new ActiveMqStompClient('gcssync');
     this.activemq.onMessage(e => this.onFcMessage(e));
     this.activemq.connect({queue: config.activeMq.queues.gcssync});
 
-    gcsConfig.loaded.then(c => {
-      this.config = (c || {}).sync || {};
-      this.config.containers.forEach(container => {
-        container.bucket = container.bucket.replace(/\{\{(\w+)\}\}/g, (match, p1) => {
-          return process.env[p1] || '';
-        });
-
-        if( container.direction === 'gcs-to-fcrepo') {
-          pubsub.listen(container.bucket);
-        }
-      });
-
-      this.runDataHydration();
-    });
+    this.runDataHydration();
+    
   }
 
   async runDataHydration() {
@@ -44,6 +49,8 @@ class GcsSync {
     }
 
     let finPath = msg.headers['org.fcrepo.jms.identifier'];
+
+    if( !this.config.containers ) return;
 
     let container = this.config.containers.find(container => {
       if( finPath.startsWith(container.basePath) ) {

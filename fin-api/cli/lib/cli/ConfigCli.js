@@ -159,7 +159,7 @@ description : if the 'directAccess' flag is set to true, setting 'superuser' to 
       return;
     }
 
-    browserLogin.login(options);
+    browserLogin.login(options, this);
   }
 
   async logout() {

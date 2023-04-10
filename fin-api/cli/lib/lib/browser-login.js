@@ -6,11 +6,12 @@ const open = require('open');
 const portfinder = require('portfinder');
 const path = require('path');
 const fs = require('fs');
+const client = require('../../..');
 
 class BrowerLogin {
 
-  async login(options) {
-    let server = new LocalLoginServer();
+  async login(options, configCli) {
+    let server = new LocalLoginServer(configCli);
 
     try {
       await server.login(options);
@@ -22,6 +23,10 @@ class BrowerLogin {
 }
 
 class LocalLoginServer {
+
+  constructor(configCli) {
+    this.configCli = configCli;
+  }
 
   login(options) {
     return new Promise((resolve, reject) => {
@@ -51,6 +56,11 @@ class LocalLoginServer {
 
       config.jwt = jwt;
       config.save();
+      client.setConfig({jwt});
+
+      console.log('Logged in successfully!');
+      console.log('---------------------------------')
+      this.configCli.display();
 
       await this._respondWithFile(req, res, 200, path.join('..', 'templates', 'login.html'));
 

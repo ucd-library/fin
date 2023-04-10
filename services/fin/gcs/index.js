@@ -60,4 +60,5 @@ function hasAccess(req, res, next) {
 
 app.listen(PORT, () => {
   logger.info('GCS Service Started at port '+PORT);
+  require('./lib/gcssync.js');
 });
