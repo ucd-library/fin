@@ -10,7 +10,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS update_status (
   update_status_id SERIAL PRIMARY KEY,
   updated timestamp NOT NULL DEFAULT NOW(),
-  path TEXT NOT NULL UNIQUE,
+  path TEXT NOT NULL,
   direction gcssync_direction NOT NULL,
   gcs_bucket TEXT NOT NULL,
   gcs_path TEXT NOT NULL,

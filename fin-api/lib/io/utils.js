@@ -247,7 +247,7 @@ class IoUtils {
   }
 
   getPropAsString(metadata, prop, context) {
-    prop = this.getProp(metadata, prop);
+    prop = this.getProp(metadata, prop, context);
     if( !prop ) return '';
     if( Array.isArray(prop) ) {
       return prop.map(item => this._getPropValueAsString(item));

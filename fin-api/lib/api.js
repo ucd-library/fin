@@ -61,6 +61,7 @@ class FinApi {
      */
     this.FILE_EXTENSIONS = {
       '.jsonld' : this.RDF_FORMATS.JSON_LD,
+      '.jsonld.json' : this.RDF_FORMATS.JSON_LD,
       '.nt' : this.RDF_FORMATS.N_TRIPLES,
       '.xmlrdf' : this.RDF_FORMATS.RDF_XML,
       '.n3' : this.RDF_FORMATS.N3,
@@ -89,11 +90,11 @@ class FinApi {
       MINIMAL : 'return=minimal',
       REPRESENTATION : 'return=representation',
       REPRESENTATION_INCLUDE_EMBED_RESOURCE : 'return=representation; include="http://fedora.info/definitions/v4/repository#EmbedResources"',
-      REPRESENTATION_INCLUDE_INBOUND_REFERENCES : 'return=representation; include="http://fedora.info/definitions/v4/repository#InboundReferences"',
-      REPRESENTATION_INCLUDE_SERVER_MANAGED : 'return=representation; include="http://fedora.info/definitions/v4/repository#ServerManaged"',
+      REPRESENTATION_INCLUDE_INBOUND_REFERENCES : 'return=representation; include="http://fedora.info/definitions/fcrepo#PreferInboundReferences"',
+      REPRESENTATION_INCLUDE_SERVER_MANAGED : 'return=representation; include="http://fedora.info/definitions/fcrepo#ServerManaged"',
       REPRESENTATION_OMIT_EMBED_RESOURCE : 'return=representation; omit="http://fedora.info/definitions/v4/repository#EmbedResources"',
-      REPRESENTATION_OMIT_INBOUND_REFERENCES : 'return=representation; omit="http://fedora.info/definitions/v4/repository#InboundReferences"',
-      REPRESENTATION_OMIT_SERVER_MANAGED : 'return=representation; omit="http://fedora.info/definitions/v4/repository#ServerManaged"',
+      REPRESENTATION_OMIT_INBOUND_REFERENCES : 'return=representation; omit="http://fedora.info/definitions/fcrepo#PreferInboundReferences"',
+      REPRESENTATION_OMIT_SERVER_MANAGED : 'return=representation; omit="http://fedora.info/definitions/fcrepo#ServerManaged"',
     }
 
     this.LDP_TYPES = {
