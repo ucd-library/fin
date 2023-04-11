@@ -62,7 +62,7 @@ class GcsSync {
     if( !container ) return;
     if( container.direction !== 'fcrepo-to-gcs' ) return;
 
-    await gcs.syncToFcrepo(finPath, container.bucket, {
+    await gcs.syncToGcs(finPath, container.bucket, {
       proxyBinary : container.proxyBinary,
       crawlChildren : false,
       basePath : finPath,
