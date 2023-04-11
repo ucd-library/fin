@@ -41,7 +41,7 @@ class HttpCli {
 
   stdOptionWrapper(command) {
     command
-      .option('-H, --header <header>', 'Add additional Headers to the request')
+      .option('-H, --header <header...>', 'Add additional Headers to the request')
       .option('--check-status','Return exit code for unsucessful calls')
       .option('--pretty', 'Pretty response body print if application/json or application/ld+json')
       .option('-P, --print <print>', '[hbsHB] Specify what components to print to user. Value should '+
@@ -251,6 +251,10 @@ class HttpCli {
    * @returns {Object} HTTP request options
    */
   _initOptions(args) {
+    if( !args.path ) {
+      throw new Error('Missing path.  You may need to add -- before the path.');
+    }
+
     let options = {
       path : location.makeAbsoluteFcPath(args.path || '.'),
       headers : {}

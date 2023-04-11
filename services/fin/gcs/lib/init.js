@@ -13,6 +13,9 @@ class GcsSyncDataHydration {
 
     let response = await api.get({
       path : syncConfig.basePath,
+      headers : {
+        'accept' : api.RDF_FORMATS.JSON_LD
+      },
       host : config.fcrepo.host,
       superuser : true,
       directAccess : true
@@ -45,11 +48,13 @@ class GcsSyncDataHydration {
       }
     });
 
+    return;
+
     // now set the init flag
     let response = await api.get({
       path : syncConfig.basePath,
       headers : {
-        'Content-Type' : 'application/ld+json',
+        'accept' : 'application/ld+json',
         Prefer : api.GET_PREFER.REPRESENTATION_OMIT_SERVER_MANAGED
       },
       host : config.fcrepo.host,
