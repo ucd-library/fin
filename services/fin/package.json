@@ -12,7 +12,6 @@
     "es-index-management": "node es-index-management/index.js",
     "gcs": "node gcs/index.js",
     "gateway": "node gateway/index.js",
-    "trusted-proxy": "node trusted-proxy/index.js",
     "workflow": "node workflow/index.js"
   },
   "author": "jrmerz@ucdavis.edu",
