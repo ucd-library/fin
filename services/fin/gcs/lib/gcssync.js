@@ -10,6 +10,11 @@ class GcsSync {
 
   constructor() {
     this.init();
+
+    this.FCREPO_UPDATE_TYPES = {
+      UPDATE : ['Create', 'Update'],
+      DELETE : ['Delete', 'Purge']
+    }
   }
 
   async init() {
@@ -62,6 +67,14 @@ class GcsSync {
     if( !container ) return;
     if( container.direction !== 'fcrepo-to-gcs' ) return;
 
+    if( this.isFcrepoDelete(msg) ) {
+      if( container.enabledDeletes === true ) {
+        await gcs.cleanFolder(container.bucket, finPath);
+      }
+      
+      return;
+    }
+
     await gcs.syncToGcs(finPath, container.bucket, {
       proxyBinary : container.proxyBinary,
       crawlChildren : false,
@@ -93,6 +106,10 @@ class GcsSync {
     }
 
     message.ack();
+  }
+
+  isFcrepoDelete(e) {
+    return (e.update_types || []).find(item => this.UPDATE_TYPES.DELETE.includes(item)) ? true : false;
   }
 }
 

@@ -750,6 +750,7 @@ class GcsWrapper {
     // ensure proper folder format
     folder = folder.replace(/\/$/, '').replace(/^\//, '')+'/';
 
+    logger.info(`Deleting folder ${folder} in bucket ${bucket}`);
     return storage.bucket(bucket).deleteFiles({
       force: true,
       prefix: folder
