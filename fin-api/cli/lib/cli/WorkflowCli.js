@@ -75,11 +75,19 @@ ${this.getGcWorkflowUrl(data.data.gcExecution)}
     delete args.workflowName;
 
     let baseOptions = {}
+    let flags = {};
     if( args.options.keepTmpData ) {
+      flags.keepTmpData = true;
+    }
+    if( args.options.force ) {
+      flags.force = true;
+    }
+
+    if( Object.keys(flags).length ) {
       baseOptions.headers = {
         'content-type': 'application/json'
       }
-      baseOptions.content = JSON.stringify({keepTmpData: true});
+      baseOptions.content = JSON.stringify(flags);
     }
 
     let response = await http.post(args, baseOptions);

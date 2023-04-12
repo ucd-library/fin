@@ -19,6 +19,8 @@ class DbSync {
       DELETE : ['Delete', 'Purge']
     }
 
+    models.load();
+
     postgres.connect()
       .then(() => this.readLoop());
   }

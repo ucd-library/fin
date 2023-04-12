@@ -21,7 +21,8 @@ CREATE INDEX IF NOT EXISTS workflow_data_finpath_idx ON workflow((data->>'finPat
 CREATE INDEX IF NOT EXISTS workflow_data_state_idx ON workflow(state);
 
 CREATE TABLE IF NOT EXISTS workflow_gcs (
-  workflow_gcs UUID PRIMARY KEY,
+  workflow_gcs SERIAL PRIMARY KEY,
   workflow_id UUID REFERENCES workflow(workflow_id),
   file_hash TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS workflow_gcs_file_hash_idx ON workflow_gcs(file_hash);

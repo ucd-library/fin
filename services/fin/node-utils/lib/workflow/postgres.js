@@ -33,10 +33,10 @@ class WorkflowPostgresUtils {
     this.pg.pgLib.types.setTypeParser(eum.typarray, this.pg.pgLib.types.getTypeParser(text.typarray));
   }
 
-  initWorkflow(args) {
+  initWorkflow(args, state='init') {
     return this.pg.query(
       `INSERT INTO ${this.schema}.workflow (workflow_id, type, name, state, data) VALUES ($1, $2, $3, $4, $5)`, 
-      [args.finWorkflowId, args.type, args.name, 'init', args.data]
+      [args.finWorkflowId, args.type, args.name, state, args.data]
     );
   }
 
@@ -115,6 +115,13 @@ class WorkflowPostgresUtils {
     return resp.rows[0];
   }
 
+  async getActiveAndInitWorkflows() {
+    let resp = await this.pg.query(
+      `SELECT * FROM ${this.schema}.workflow WHERE state = 'running' or state = 'init'`
+    );
+    return resp.rows;
+  }
+
   async getActiveWorkflows() {
     let resp = await this.pg.query(
       `SELECT * FROM ${this.schema}.workflow WHERE state = 'running'`
@@ -122,9 +129,11 @@ class WorkflowPostgresUtils {
     return resp.rows;
   }
 
-  async getPendingWorkflow() {
+  async getNextPendingWorkflow() {
     let resp = await this.pg.query(
-      `SELECT workflow_id FROM ${this.schema}.workflow WHERE state = 'pending' order by created asc limit 1`
+    `UPDATE ${this.schema}.workflow set state = 'init' WHERE workflow_id = (
+      SELECT workflow_id FROM ${this.schema}.workflow WHERE state = 'pending' order by created asc limit 1 FOR UPDATE SKIP LOCKED
+    ) RETURNING *`
     );
     if( !resp.rows.length ) return null;
     return resp.rows[0];
@@ -155,6 +164,27 @@ class WorkflowPostgresUtils {
 
     logger.info('workflow '+workflow.workflow_id+': no-op');
     return null;
+  }
+
+  async setWorkflowGcsFilehash(workflowId, filehash) {
+    let currentHash = await this.getWorkflowGcsFilehash(workflowId);
+    if( currentHash ) {
+      await this.pg.query(`UPDATE ${this.schema}.workflow_gcs SET file_hash = $1 WHERE workflow_id = $2`, [filehash, workflowId]);
+    } else {
+      await this.pg.query(`INSERT INTO ${this.schema}.workflow_gcs (workflow_id, file_hash) VALUES ($1, $2)`, [workflowId, filehash]);
+    }
+  }
+
+  async getWorkflowGcsFilehash(workflowId) {
+    let resp = await this.pg.query(`SELECT file_hash FROM ${this.schema}.workflow_gcs WHERE workflow_id = $1`, [workflowId]);
+    if( !resp.rows.length ) return null;
+    return resp.rows[0].file_hash;
+  }
+
+  async gcsFileHashExists(filehash) {
+    let resp = await this.pg.query(`SELECT * FROM ${this.schema}.workflow_gcs WHERE file_hash = $1`, [filehash]);
+    if( !resp.rows.length ) return null;
+    return resp.rows[0];
   }
 
 }

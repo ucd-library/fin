@@ -309,7 +309,7 @@ class FinEsDataModel extends FinDataModel {
 
     let result = [];
     for( let doc of hits ) {
-      logger.info(`ES Indexer removing ${this.moduleName} container: ${id} from ${doc._id}`);
+      logger.info(`ES Indexer removing ${this.modelName} container: ${id} from ${doc._id}`);
         
       let r = await this.client.update({
         index,
@@ -329,7 +329,7 @@ class FinEsDataModel extends FinDataModel {
       
       // if the document is empty, remove
       if( response._source && response._source['@graph'] && response._source['@graph'].length === 0 ) {
-        logger.info(`ES Indexer removing ${this.moduleName} document: ${doc._id}.  No nodes left in graph`);
+        logger.info(`ES Indexer removing ${this.modelName} document: ${doc._id}.  No nodes left in graph`);
         r = await this.client.delete({
           index,
           id : doc._id

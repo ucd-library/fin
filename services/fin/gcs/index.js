@@ -19,18 +19,28 @@ app.get(/.*/, hasAccess, async (req, res) => {
       streamOpts.end = parseInt(range[1]);
     }
 
-    let file = gcs.getGcsFileObjectFromPath(req.gcsPath)
-    let stream = file.createReadStream(streamOpts)
-      .on('error', e => {
-        res.status(500).json({error : e.message});
-      });
-
     let metadata = await gcs.getGcsFileMetadata(req.gcsPath);
     if( metadata.contentType ) {
       res.setHeader('content-type', metadata.contentType);
     }
+    let file = gcs.getGcsFileObjectFromPath(req.gcsPath);
 
-    stream.pipe(res)
+    // check for bucket template flag
+    // TODO: implement fin-bucket-template
+    if( metadata.contentType === 'application/json' && metadata.name.endsWith('/manifest.json') ) {
+      let manifest = await file.download();
+      manifest = manifest[0].toString();
+      manifest = manifest.replace(/{{BUCKET}}/gi, req.gcsBucket);
+      res.send(manifest);
+    } else {
+      let stream = file.createReadStream(streamOpts)
+      .on('error', e => {
+        res.status(500).json({error : e.message});
+      });
+
+      stream.pipe(res)
+    }    
+
   } catch(e) {
     res.status(500).json({error : e.message});
   }
@@ -53,6 +63,7 @@ function hasAccess(req, res, next) {
     }
 
     req.gcsPath = 'gs://'+bucket+gcsPath;
+    req.gcsBucket = bucket;
 
     next();
   });

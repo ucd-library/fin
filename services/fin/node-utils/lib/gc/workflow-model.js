@@ -95,7 +95,7 @@ class FinGcWorkflowModel {
       // start the check status loop
       if( this.statusLoopStarted === false ) {
         this.statusLoopStarted = true;
-        setInterval(() => this.executionStatusCheck(), 10000);
+        setInterval(() => this.executionStatusCheck(), 5000);
       }
 
       this.requestLoopPromise = null;
@@ -256,11 +256,18 @@ class FinGcWorkflowModel {
 
   /**
    * @method createWorkflow
-   * @description 
+   * @description Start a new gcs workflow. If a workflow is already running on this path for this workflow name, 
+   * this function will error out unless the force option is set to true.  The gracefulReload option can be 
+   * used to simply load the workflow if exists in GCS otherwise create a new one.
    * 
    * @param {*} finWorkflowName 
    * @param {*} finPath 
-   * @returns 
+   * @param {Object} opts
+   * @param {Boolean} opts.force - if true, will create a new workflow even if one already exists
+   * @param {Boolean} opts.keepTmpData - if true, the tmp bucket will not be deleted after the workflow completes
+   * @param {Boolean} opts.gracefulReload - if true, will not start a new workflow if one is found in GCS
+   * 
+   * @returns {Promise}
    */
   async createWorkflow(finWorkflowName, finPath, opts={}) {
     if( !this.definitions[finWorkflowName] ) {
@@ -269,6 +276,27 @@ class FinGcWorkflowModel {
 
     // verify a workflow with the same name is not already running on this path
     let currentWorkflow = await pg.getLatestWorkflowByPath(finPath, finWorkflowName);
+
+    // if the workflow is not in the db, check if it exists in GCS
+    if( !currentWorkflow ) {
+      let existsInGcs = await this.workflowExistsInGcs(finWorkflowName, finPath);
+
+      if( existsInGcs ) {
+        await this.loadWorkflowFromGcs({finWorkflowName, finPath});
+        currentWorkflow = await pg.getLatestWorkflowByPath(finPath, finWorkflowName);
+
+        // if we are doing a graceful reload, don't create a new workflow since
+        // it was found in GCS.  loadWorkflowFromGcs() poked the onsuccess endpoint
+        if( opts.gracefulReload ) {
+          return currentWorkflow;
+        } 
+      }
+    }
+
+    if( currentWorkflow && !opts.force ) {
+      throw new Error('Workflow '+finWorkflowName+' exists on path: '+finPath+'.  No force option set.');
+    }
+
     if( currentWorkflow && 
       (currentWorkflow.state !== 'completed' && currentWorkflow.state !== 'error' )) {
       throw new Error('Workflow already '+currentWorkflow.state+' on path: '+finPath);
@@ -295,15 +323,15 @@ class FinGcWorkflowModel {
       };
 
       // verify there is an empty slot
-      let runningWorkflows = await pg.getActiveWorkflows();
-      if( runningWorkflows >= this.MAX_WORKFLOWS_RUNNING ) {
+      let runningWorkflows = (await pg.getActiveAndInitWorkflows()).length;
+      if( runningWorkflows > this.MAX_WORKFLOWS_RUNNING ) {
         result.state = 'pending';
         await pg.initWorkflow({
           finWorkflowId,
           name : finWorkflowName,
           type : this.TYPE,
           data : data
-        });
+        }, 'pending');
         return result;
       } else {
         await pg.initWorkflow({
@@ -381,6 +409,9 @@ class FinGcWorkflowModel {
 
     await gcs.getGcsFileObjectFromPath('gs://'+bucketPath)
       .save(JSON.stringify(workflowInfo, null, 2));
+
+    let metadata = (await gcs.getGcsFileObjectFromPath('gs://'+bucketPath).getMetadata())[0];
+    await pg.setWorkflowGcsFilehash(finWorkflowId, metadata.md5Hash);
   }
 
   async startWorkflow(workflowInfo) {
@@ -529,14 +560,9 @@ class FinGcWorkflowModel {
       } else {
         // console.log('HERE', execution.state)
       }
-
-
-      // now check if any pending workflows
-      let pendingWorkflow = await pg.getPendingWorkflow();
-      if( pendingWorkflow ) {
-        this.initWorkflow(pendingWorkflow.workflow_id);
-      }
     }
+
+    this.checkPendingWorkflows();
   }
 
   async notifyOnSuccess(workflow) {
@@ -597,20 +623,99 @@ class FinGcWorkflowModel {
     let resp = await gcs.getGcsFilesInFolder(gcsFile);
     for( let file of resp.files ) {
       if( file.name.match(/\.json$/) ) {
-        logger.info('loading workflow: gs://'+bucket+'/'+file.name);
-        let workflow = await gcs.loadFileIntoMemory('gs://'+bucket+'/'+file.name);
-        workflow = JSON.parse(workflow);
-        let updated = await pg.reloadWorkflow(workflow);
-
-        if( updated ) {
-          await this.notifyOnSuccess(workflow);
-        }
+        await this.loadWorkflowFromGcs({
+          bucket,
+          filename: file.name
+        });
       }
     }
 
     for( let folder of resp.folders ) {
       this.reloadGcsFolder(bucket, folder);
     }
+  }
+
+  async checkPendingWorkflows() {
+    // now check if any pending workflows
+    let runningWorkflows = (await pg.getActiveAndInitWorkflows()).length;
+
+    // start next workflow in queue
+    if( runningWorkflows <= this.MAX_WORKFLOWS_RUNNING ) {
+      let pendingWorkflow = await pg.getNextPendingWorkflow();
+      if( pendingWorkflow ) {
+        this.initWorkflow(pendingWorkflow.workflow_id);
+      }
+    }
+  }
+
+  /**
+   * @method loadWorkflowFromGcs
+   * @description load a workflow from gcs.  Opts should be an object with either
+   * bucket and filename or finWorkflowName and finPath.  This will poke the workflows
+   * on success endpoint if one is defined.
+   * 
+   * @param {Object} opts
+   * @param {String} opts.bucket gcs bucket
+   * @param {String} opts.filename gcs filename
+   * @param {String} opts.finWorkflowName fin workflow name
+   * @param {String} opts.finPath fin path
+   * 
+   * @return {Promise} 
+   */
+  async loadWorkflowFromGcs(opts={}) {
+    let gcsFilePath = null;
+
+    if( opts.bucket && opts.filename ) {
+      gcsFilePath = 'gs://'+ opts.bucket+'/'+opts.filename
+    } else if( opts.finWorkflowName && opts.finPath ) {
+      if( !this.definitions[opts.finWorkflowName] ) {
+        throw new Error('Invalid workflow name: '+opts.finWorkflowName);
+      }
+      let data = this.getGcWorkflowDefinition(opts.finWorkflowName);
+      gcsFilePath = 'gs://'+data.gcsBucket+'/workflows'+opts.finPath+'/'+opts.finWorkflowName+'.json';
+    } else {
+      throw new Error('Invalid options');
+    }
+
+    // check the file has is already in the db
+    let metadata = (await gcs.getGcsFileObjectFromPath(gcsFilePath).getMetadata())[0];
+    let exists = await pg.gcsFileHashExists(metadata.md5Hash);
+
+    if( exists ) {
+      // debugging this, list cloud get LONG.
+      logger.debug('Workflow file '+gcsFilePath+' already exists in db');
+      return;
+    }
+
+    logger.info('loading workflow: '+gcsFilePath);
+    let workflow = await gcs.loadFileIntoMemory(gcsFilePath);
+    workflow = JSON.parse(workflow);
+    let updated = await pg.reloadWorkflow(workflow);
+
+    metadata = (await gcs.getGcsFileObjectFromPath(gcsFilePath).getMetadata())[0];
+    await pg.setWorkflowGcsFilehash(workflow.workflow_id, metadata.md5Hash);
+
+    if( updated ) {
+      await this.notifyOnSuccess(workflow);
+    }
+  }
+
+  /**
+   * @method workflowExistsInGcs
+   * @description check if a workflow exists in gcs
+   * 
+   * @param {String} finWorkflowName 
+   * @param {String} gcWorkflowName 
+   */
+  async workflowExistsInGcs(finWorkflowName, finPath) {
+    if( !this.definitions[finWorkflowName] ) {
+      throw new Error('Invalid workflow name: '+finWorkflowName);
+    }
+    let data = this.getGcWorkflowDefinition(finWorkflowName);
+
+    let gcsFile = 'gs://'+data.gcsBucket+'/workflows'+finPath+'/'+finWorkflowName+'.json';
+    gcsFile = gcs.getGcsFileObjectFromPath(gcsFile);
+    return (await gcsFile.exists())[0];
   }
 
 }
