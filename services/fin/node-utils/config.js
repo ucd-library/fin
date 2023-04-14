@@ -31,6 +31,7 @@ if( esCompactTypesInclude ) {
 
 let esFieldsExclude = processArray(process.env.ES_FIELDS_EXCLUDE);
 let esFieldsExcludeCompact = processArray(process.env.ES_FIELDS_EXCLUDE_COMPACT);
+let gcsDiskCacheExts = processArray(process.env.GCS_DISK_CACHE_EXTS);
 
 // make sure this is set for gcssync templates
 if( !env.GCS_BUCKET_ENV ) env.GCS_BUCKET_ENV = 'local-dev';
@@ -189,6 +190,21 @@ module.exports = {
     location : env.GOOGLE_CLOUD_LOCATION || 'us-central1',
     pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || env.GCS_BUCKET_ENV,
     gcsBucketEnv : env.GCS_BUCKET_ENV,
+
+    gcsfuse : {
+      rootDir : env.GCSFUSE_ROOT_DIR || '/etc/gcsfuse',
+
+    },
+
+    gcsDiskCache : {
+      // size is in kilobytes
+      maxSize : 500,// parseInt(env.GCS_DISK_CACHE_MAX_SIZE || 1000 * 1000),
+      rootDir : env.GCS_DISK_CACHE_ROOT_DIR || '/etc/gcs-disk-cache',
+      // age is in ms
+      recheckAge : parseInt(env.GCS_DISK_CACHE_RECHECK_AGE || 1000 * 60 * 60),
+      // extensions to be cached
+      allowedExts : gcsDiskCacheExts || ['png', 'jpg', 'jpeg']
+    },
 
     workflow : {
       type : 'gc-workflow',

@@ -2,6 +2,8 @@ const express = require('express');
 const gcsConfig = require('./lib/config.js');
 const path = require('path');
 const {gc, logger, config} = require('@ucd-lib/fin-service-utils');
+const diskCache = require('./lib/disk-cache.js');
+const fs = require('fs-extra');
 const {gcs} = gc;
 
 const PORT = 3000;
@@ -11,37 +13,67 @@ gcsConfig.load();
 
 app.get(/.*/, hasAccess, async (req, res) => {
   try {
+
+    // check for range query
+    // currently this always goes to GCS, we could cache this in the future
     let streamOpts = {};
     let range = req.get('range');
     if( range ) {
       range = range.replace('bytes=', '').split('-');
       streamOpts.start = parseInt(range[0]);
       streamOpts.end = parseInt(range[1]);
-    }
 
-    let metadata = await gcs.getGcsFileMetadata(req.gcsPath);
-    if( metadata.contentType ) {
-      res.setHeader('content-type', metadata.contentType);
-    }
-    let file = gcs.getGcsFileObjectFromPath(req.gcsPath);
-
-    // check for bucket template flag
-    // TODO: implement fin-bucket-template
-    if( metadata.contentType === 'application/json' && metadata.name.endsWith('/manifest.json') ) {
-      let manifest = await file.download();
-      manifest = manifest[0].toString();
-      manifest = manifest.replace(/{{BUCKET}}/gi, req.gcsBucket);
-      res.send(manifest);
-    } else {
+      let file = gcs.getGcsFileObjectFromPath(req.gcsPath);
       let stream = file.createReadStream(streamOpts)
       .on('error', e => {
         res.status(500).json({error : e.message});
       });
 
-      stream.pipe(res)
-    }    
+      stream.pipe(res);
+      return;
+    }
+
+    // handle json files with a direct download
+    if( req.gcsPath.match(/\.json$/) ) {
+      let localFile = await diskCache.get(req.gcsBucket, req.baseFilePath);
+      let contents = await fs.readFile(localFile);
+      contents = contents.replace(/{{BUCKET}}/gi, req.gcsBucket);
+      res.setHeader('content-type', 'application/json');
+      res.send(contents);
+      return;
+    }
+
+    // let the disk cache handle if file extension is in list
+    let ext = path.parse(req.gcsPath).ext.replace(/^\./, '');
+    if( config.google.gcsDiskCache.allowedExtensions.includes(ext) ) {
+      await diskCache.get(req.gcsBucket, req.baseFilePath, res);
+      return;
+    }
+
+    // stream the file from GCS
+    let metadata = await gcs.getGcsFileMetadata(req.gcsPath);
+    if( metadata.contentType ) {
+      res.setHeader('content-type', metadata.contentType);
+    }
+    let file = gcs.getGcsFileObjectFromPath(req.gcsPath);
+    let stream = file.createReadStream(streamOpts)
+      .on('error', e => {
+        res.status(500).send(JSON.stringify({error : e.message}));
+      });
+    stream.pipe(res)
 
   } catch(e) {
+    logger.error('gcs request error', e);
+    res.status(500).send(JSON.stringify({error : e.message}));
+  }
+});
+
+app.put(/.*/, hasAccess, async (req, res) => {
+  try {
+    await diskCache.put(req.gcsBucket, req.baseFilePath);
+    res.status(200).json({success : true});
+  } catch(e) {
+    logger.error('gcs request error', e);
     res.status(500).json({error : e.message});
   }
 });
@@ -62,6 +94,7 @@ function hasAccess(req, res, next) {
       }
     }
 
+    req.baseFilePath = gcsPath;
     req.gcsPath = 'gs://'+bucket+gcsPath;
     req.gcsBucket = bucket;
 
