@@ -198,7 +198,7 @@ module.exports = {
 
     gcsDiskCache : {
       // size is in kilobytes
-      maxSize : 500,// parseInt(env.GCS_DISK_CACHE_MAX_SIZE || 1000 * 1000),
+      maxSize : parseInt(env.GCS_DISK_CACHE_MAX_SIZE || 1000 * 1000),
       rootDir : env.GCS_DISK_CACHE_ROOT_DIR || '/etc/gcs-disk-cache',
       // age is in ms
       recheckAge : parseInt(env.GCS_DISK_CACHE_RECHECK_AGE || 1000 * 60 * 60),
