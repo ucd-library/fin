@@ -36,7 +36,7 @@ app.get(/.*/, hasAccess, async (req, res) => {
     // handle json files with a direct download
     if( req.gcsPath.match(/\.json$/) ) {
       let localFile = await diskCache.get(req.gcsBucket, req.baseFilePath);
-      let contents = await fs.readFile(localFile);
+      let contents = await fs.readFile(localFile, 'utf-8');
       contents = contents.replace(/{{BUCKET}}/gi, req.gcsBucket);
       res.setHeader('content-type', 'application/json');
       res.send(contents);
@@ -45,7 +45,7 @@ app.get(/.*/, hasAccess, async (req, res) => {
 
     // let the disk cache handle if file extension is in list
     let ext = path.parse(req.gcsPath).ext.replace(/^\./, '');
-    if( config.google.gcsDiskCache.allowedExtensions.includes(ext) ) {
+    if( config.google.gcsDiskCache.allowedExts.includes(ext) ) {
       await diskCache.get(req.gcsBucket, req.baseFilePath, res);
       return;
     }
