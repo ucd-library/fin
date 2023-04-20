@@ -83,6 +83,8 @@ class GcsDiskCache {
         } else {
           logger.info(`MD5 Hash recheck ok for: ${bucket}/${finPath}`);
         }
+      
+
       } else {
         logger.info(`Found file in disk cache: ${bucket}/${finPath}`);
       }
@@ -92,13 +94,18 @@ class GcsDiskCache {
       throw new Error('Failed to get file from disk cache');
     }
 
+    file = path.join(this.config.rootDir, file.bucket, file.path);
+    if( !fs.existsSync(file) ) {
+      logger.warn(`File not found on disk!: ${bucket}/${finPath}`);
+      downloading = true;
+      await this.put(bucket, finPath, res);
+    }
+
     await pg.query(`update ${this.schema}.disk_cache set last_accessed = now() where bucket = $1 and path = $2`, [bucket, finPath]);
 
     if( res && file.content_type && downloading === false ) {
       res.setHeader('Content-Type', file.content_type);
     }
-
-    file = path.join(this.config.rootDir, file.bucket, file.path);
 
     if( res && downloading === false ) {
       fs.createReadStream(file).pipe(res);
