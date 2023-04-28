@@ -78,7 +78,8 @@ module.exports = {
       gcssync : '/queue/gcssync',
     },
     stomp : {
-      port : env.STOMP_PORT || 61613
+      port : env.STOMP_PORT || 61613,
+      maxLineLength : env.STOMP_MAX_LINE_LENGTH || 1024*32,
     },
     mqtt : {
       port : env.MQTT_PORT || 1883,
@@ -147,7 +148,7 @@ module.exports = {
     password : process.env.ELASTIC_PASSWORD || 'elastic',
     get connStr () {
       return `http://${this.host}:${this.port}`
-    }, 
+    },
     log : process.env.ES_LOG_LEVEL || 'error',
     compactTypeInclude : esCompactTypesInclude || [
       new RegExp('http://digital.ucdavis.edu/schema#'),
@@ -156,12 +157,12 @@ module.exports = {
     fields : {
       exclude : esFieldsExclude || [
         'roles',
-        '@graph.indexableContent', 
+        '@graph.indexableContent',
         '@graph.createdBy', '@graph.lastModifiedBy', '@graph._', '@graph.textIndexable'
       ],
       excludeCompact : esFieldsExcludeCompact || [
         'roles',
-        '@graph.indexableContent', 
+        '@graph.indexableContent',
         '@graph.createdBy', '@graph.lastModifiedBy', '@graph._',
         '@graph.image', '@graph.textIndexable', '@graph.lastModified'
       ]
@@ -183,7 +184,7 @@ module.exports = {
   },
 
   google : {
-    serviceAccountExists, 
+    serviceAccountExists,
     serviceAccountFile,
     serviceAcountEmail : env.GOOGLE_SERVICE_ACCOUNT_EMAIL || gcServiceAccount.client_email,
     project : env.GOOGLE_CLOUD_PROJECT || gcServiceAccount.project_id,

@@ -8,7 +8,6 @@ const uuid = require('uuid');
 
 var connectOptions = {
   host : config.activeMq.hostname,
-  port : config.activeMq.stomp.port,
   heartbeatDelayMargin : 15000, // keep this larger than the second value in the heart-beat header
   heartbeatOutputMargin : 100,
   connectHeaders: {
@@ -16,7 +15,8 @@ var connectOptions = {
     login : 'fedoraAdmin',
     passcode : 'fedoraAdmin',
     'heart-beat': '5000,5000'
-  }
+  },
+  ...config.activeMq.stomp
 };
 
 var subscribeHeaders = {
@@ -44,9 +44,9 @@ class ActiveMqStompClient extends ActiveMqClient {
   async onDisconnect(event, error) {
     await this.logDebug('error', error);
     logger.warn('STOMP client '+this.clientName+' error event: ', event, error);
-    
+
     this.wait = 0;
-    
+
     logger.warn('STOMP client '+this.clientName+' disconnected');
     this.client = null;
     this.connect();
@@ -59,7 +59,7 @@ class ActiveMqStompClient extends ActiveMqClient {
 
     if( typeof message !== 'string' ) {
       msg = JSON.stringify(msg);
-    } 
+    }
     const frame = this.client.send(Object.assign({
       'destination': subscribeHeaders.destination,
       'content-type': 'application/json'
@@ -101,7 +101,7 @@ class ActiveMqStompClient extends ActiveMqClient {
             this.wait += 1000;
             logger.warn('STOMP client '+this.clientName+' connection attempt failed, retry in: '+this.wait+'ms', error);
             this.connect();
-            return 
+            return
           }
 
           logger.info('STOMP client '+this.clientName+' connected to server',subscribeHeaders);
@@ -162,9 +162,9 @@ class ActiveMqStompClient extends ActiveMqClient {
   /**
    * @method readMessage
    * @description read a activemq message
-   * 
+   *
    * @param {Object} message activemq message
-   * 
+   *
    * @returns {Promise} resolves to activemq message
    */
   readMessage(message) {
@@ -182,11 +182,11 @@ class ActiveMqStompClient extends ActiveMqClient {
     }
 
     return pg.query(`
-        INSERT INTO activemq.debug_log 
-          (client_name, client_id, event, message, stack_trace, connection_data) 
-        VALUES 
+        INSERT INTO activemq.debug_log
+          (client_name, client_id, event, message, stack_trace, connection_data)
+        VALUES
           ($1, $2, $3, $4, $5, $6)
-      `, 
+      `,
       [this.name, this.clientName, event, error.message, error.stack, JSON.stringify(data)]
     );
   }
