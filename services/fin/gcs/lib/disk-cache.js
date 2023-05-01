@@ -29,14 +29,11 @@ class GcsDiskCache {
     }    
 
     await pg.query(
-      `insert into ${this.schema}.disk_cache 
-        (bucket, path, size, file_md5, content_type, last_accessed) 
-      values 
-        ($1, $2, $3, $4, $5, now())`, 
+      `select ${this.schema}.upsert_disk_cache($1::TEXT, $2::TEXT, $3::INTEGER, $4::TEXT, $5::TEXT)`, 
       [bucket, finPath, Math.ceil(metadata.size/1000), metadata.md5Hash, metadata.contentType || '']
     );
 
-    logger.info(`Added file to disk cache: ${bucket}/${finPath} (${metadata.size} bytes)`);
+    logger.info(`Updated file in disk cache: ${bucket}/${finPath} (${metadata.size} bytes)`);
 
     this.clean();
 
@@ -136,6 +133,7 @@ class GcsDiskCache {
     file = path.join(this.config.rootDir, file.bucket, file.path);
     logger.info(`Removing oldest file from disk cache: ${file}`);
     if( fs.existsSync(file) ) fs.removeSync(file);
+    else logger.warn(`Removing file not found on disk!: ${file}.  no space cleared.`);
     return file;
   }
 
