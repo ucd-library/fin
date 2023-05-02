@@ -9,6 +9,7 @@ program
   .version(pkg.version)
   .command('auth', 'log in/out of fin instance')
   .command('config', 'setup fin cli')
+  .command('es-index-management', 'manage ElasticSearch indexes for data models')
   .command('http', 'wrapper around standard LDP api')
   .command('io', 'fin commands for data management via git repositories')
   .command('reindex', 'start the reindex process on a container')

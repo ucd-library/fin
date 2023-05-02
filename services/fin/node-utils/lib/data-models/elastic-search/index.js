@@ -529,8 +529,6 @@ class FinEsDataModel extends FinDataModel {
                 ]
               }
             }
-
-            
           }
         },
         mappings : schema
