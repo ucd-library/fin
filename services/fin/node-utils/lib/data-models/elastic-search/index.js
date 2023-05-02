@@ -520,8 +520,17 @@ class FinEsDataModel extends FinDataModel {
                   "letter",
                   "digit"
                 ]
+              },
+
+              xml: {
+                type: 'char_group',
+                'tokenize_on_chars': [
+                  '-', '.', ',', '>', '<', ' '
+                ]
               }
             }
+
+            
           }
         },
         mappings : schema
