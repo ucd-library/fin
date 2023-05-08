@@ -82,6 +82,9 @@ ${this.getGcWorkflowUrl(data.data.gcExecution)}
     if( args.options.force ) {
       flags.force = true;
     }
+    if( args.options.gcDebug ) {
+      flags.gcDebug = true;
+    }
 
     if( Object.keys(flags).length ) {
       baseOptions.headers = {

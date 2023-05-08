@@ -53,6 +53,7 @@ COPY ${FIN_REPO_SERVICE_ROOT}/gcs gcs
 COPY ${FIN_REPO_SERVICE_ROOT}/node-utils node-utils
 COPY ${FIN_REPO_SERVICE_ROOT}/oidc oidc
 COPY ${FIN_REPO_SERVICE_ROOT}/workflow workflow
+COPY ${FIN_REPO_SERVICE_ROOT}/admin-ui admin-ui
 
 # Leave us in the service root dir
 WORKDIR ${FIN_SERVICE_ROOT}

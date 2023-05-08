@@ -20,6 +20,7 @@ program
   .description('Run a workflow on a container')
   .option('-w, --wait', 'Wait for workflow to complete')
   .option('-f, --force', 'Force workflow to run even it is already been run on the container')
+  .option('-d, --gc-debug', 'Log execution steps in google cloud workflow console')
   .option('-k, --keep-tmp-data', 'For debugging purposes, keep data in tmp bucket after workflow is finishes')
   .action((finPath, workflowName, options) => {
     workflowCli.start({finPath, workflowName, options})

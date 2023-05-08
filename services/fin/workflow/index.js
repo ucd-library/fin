@@ -59,6 +59,9 @@ app.post('/:workflowName', bodyParser.json(), async (req, res) => {
   if( req.body.force === true ) {
     opts.force = true;
   }
+  if( req.body.gcDebug === true ) {
+    opts.gcDebug = true;
+  }
   if( req.body.gracefulReload === true ) {
     opts.gracefulReload = true;
   }

@@ -419,12 +419,18 @@ class FinGcWorkflowModel {
     // https://github.com/googleapis/google-cloud-node/blob/main/packages/google-cloud-workflows-executions/samples/generated/v1/executions.create_execution.js#L56
     // https://cloud.google.com/workflows/docs/reference/executions/rest/v1/projects.locations.workflows.executions#Execution
 
+    let execution = {
+      argument: JSON.stringify(workflowInfo.data)
+    }
+
+    if( workflowInfo.data?.options?.gcDebug ) {
+      execution.callLogLevel = 'LOG_ALL_CALLS';
+    }
+
     let parent = this.getGcWorkflowParentParam(workflowInfo.data.gcWorkflowName);
     const createExecutionProm = this.eClient.createExecution({
       parent,
-      execution: {
-        argument: JSON.stringify(workflowInfo.data)
-      }
+      execution
     });
 
     // TODO: add gcWorkflow id / path

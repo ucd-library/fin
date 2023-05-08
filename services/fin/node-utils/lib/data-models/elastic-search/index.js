@@ -222,6 +222,11 @@ class FinEsDataModel extends FinDataModel {
     return this.client.search(options);
   }
 
+  async count(index) {
+    if( !index ) index = this.readIndexAlias;
+    return (await this.client.count({index})).count;
+  }
+
   async update(jsonld, index) {
     if( !index ) index = this.writeIndexAlias;
     let roles = await this.getAccessRoles(jsonld);
