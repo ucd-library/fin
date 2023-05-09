@@ -1,10 +1,18 @@
 const router = require('express').Router();
-const {keycloak, models, config, dataModels, gc} = require('@ucd-lib/fin-service-utils');
+const {keycloak, models, config, logger, gc} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('../models/services.js');
-const {FinEsDataModel, FinDataModel} = dataModels;
-const {workflowModel} = gc;
+const httpProxy = require('http-proxy');
 const fetch = require('node-fetch');
 const clone = require('clone');
+
+let proxy = httpProxy.createProxyServer({
+  ignorePath : true
+});
+
+proxy.on('error', e => {
+  logger.error('http-proxy error', e.message, e.stack);
+});
+
 
 router.get('/status', keycloak.protect(['admin']), async (req, res) => {
   try {
@@ -73,6 +81,14 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
       details : e.stack
     });
   }
+});
+
+router.all(/^\/pg(\/.*)$/, keycloak.protect(['admin']), async (req, res) => {
+  let url = 'http://pg-rest:3000'+req.originalUrl.replace('/fin/pg', '');
+
+  proxy.web(req, res, {
+    target : url
+  });
 });
 
 module.exports = router;
