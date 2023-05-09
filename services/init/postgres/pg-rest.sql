@@ -29,11 +29,17 @@ CREATE OR REPLACE VIEW gcssync_update_state AS
 CREATE OR REPLACE VIEW gcssync_disk_cache AS
   SELECT * FROM gcssync.disk_cache;
 
+CREATE OR REPLACE VIEW gcssync_disk_cache_stats AS
+  SELECT content_type, count(*) as count, sum(size) as total_size_kb FROM gcssync.disk_cache GROUP BY content_type;
+
 CREATE OR REPLACE VIEW workflow_workflow AS
   SELECT * FROM workflow.workflow;
 
 CREATE OR REPLACE VIEW workflow_workflow_gcs AS
   SELECT * FROM workflow.workflow_gcs;
+
+CREATE OR REPLACE VIEW workflow_stats AS
+  SELECT name, state, count(*) as count from workflow.workflow GROUP BY name, state ORDER BY name, count;
 
 GRANT SELECT, INSERT, UPDATE, DELETE
 ON ALL TABLES IN SCHEMA restapi 
