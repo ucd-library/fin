@@ -17,6 +17,9 @@ CREATE OR REPLACE VIEW dbsync_event_queue AS
 CREATE OR REPLACE VIEW dbsync_update_status AS
   SELECT * FROM dbsync.update_status;
 
+CREATE OR REPLACE VIEW dbsync_stats AS
+  SELECT action, count(*) as count FROM dbsync.update_status GROUP BY action;
+
 CREATE OR REPLACE VIEW dbsync_reindex_crawl_status AS
   SELECT * FROM dbsync.reindex_crawl_status;
 

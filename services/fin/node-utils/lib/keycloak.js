@@ -8,9 +8,9 @@ const finac = new FinAC();
 class KeycloakUtils {
 
   constructor() {
-    // we will cache all tokens for 5 seconds
+    // we will cache all tokens for 30 seconds
     this.tokenCache = new Map();
-    this.tokenCacheTTL = 1000*5;
+    this.tokenCacheTTL = 1000*30;
 
     this.setUser = this.setUser.bind(this);
     this.protect = this.protect.bind(this);
@@ -78,7 +78,7 @@ class KeycloakUtils {
 
     token = token.replace(/^Bearer /i, '');
 
-    // 5 second caching
+    // 30 second caching
     if( this.tokenCache.has(token) ) {
       return this.tokenCache.get(token);
     }
@@ -115,7 +115,7 @@ class KeycloakUtils {
       return result;
     } catch(e) {
       if (e.name === 'AbortError' || e.name === 'FetchError') {
-        logger.warn('Failed to verify jwt from keycloak, attempting pub key decryption')
+        logger.warn('Failed to verify jwt from keycloak, attempting pub key decryption', e)
         let user = await jwt.validate(token);
         if( user ) {
           return {

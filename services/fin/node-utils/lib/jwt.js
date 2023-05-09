@@ -23,12 +23,12 @@ class JwtUtils {
       this.signingKeyFail = false;
       this._getSigningKey = this._getSigningKey.bind(this);
       this.getSigningKey(config.jwt.jwksUri);
-      setInterval(() => this.getSigningKey(config.jwt.jwksUri), 1000*60);
+      setInterval(() => this.getSigningKey(config.jwt.jwksUri), 1000*60*60);
     }
   }
 
   async getSigningKey(url) {
-    logger.debug('Fetching rsa signing key from: '+url);
+    logger.info('Fetching rsa signing key from: '+url);
 
     let parts = new URL(url);
     await waitUntil(parts.hostname, parts.port || 80);

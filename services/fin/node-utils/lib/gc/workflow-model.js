@@ -617,6 +617,7 @@ class FinGcWorkflowModel {
       await this.reloadGcsFolder(bucket, 'workflows');
     }
 
+    logger.info('reloading workflows complete');
     this.reloadRunning = false;
   }
 
@@ -637,7 +638,7 @@ class FinGcWorkflowModel {
     }
 
     for( let folder of resp.folders ) {
-      this.reloadGcsFolder(bucket, folder);
+      await this.reloadGcsFolder(bucket, folder);
     }
   }
 
@@ -689,7 +690,7 @@ class FinGcWorkflowModel {
 
     if( exists ) {
       // debugging this, list cloud get LONG.
-      logger.debug('Workflow file '+gcsFilePath+' already exists in db');
+      logger.info('Workflow file '+gcsFilePath+' already exists in db');
       return;
     }
 

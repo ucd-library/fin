@@ -14,6 +14,8 @@ app.get('/reload', async (req, res) => {
   try {
     workflowModel.reload(buckets => {
       res.json({buckets});
+    }).catch(e => {
+      logger.error('Error reloading workflows', e);
     });
   } catch(e) {
     res.status(500).json({
