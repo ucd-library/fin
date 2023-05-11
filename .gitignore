@@ -12,5 +12,6 @@ fcrepo-webapp-*-SNAPSHOT*
 tests
 test
 temp/
-services/fin/ucd-lib-client/client/public/js
-services/fin/ucd-lib-client/client/dist
+services/fin/admin-ui/client/public/js
+services/fin/admin-ui/client/public/css
+services/fin/admin-ui/client/dist
