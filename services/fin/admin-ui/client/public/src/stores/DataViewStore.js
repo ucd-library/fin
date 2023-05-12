@@ -41,25 +41,38 @@ class DataViewStore extends BaseStore {
     this.emit(this.events.CORE_DATA_UPDATE, data);
   }
 
-  setPgQueryLoading(name, request) {
+  setPgQueryLoading(name, pgQuery, request) {
     this._setPgQuery(name, {
       name,
+      pgQuery,
       state : 'loading',
       request
     });
   }
 
-  setPgQueryLoad(name, payload) {
+  setPgQueryLoad(name, payload, pgQuery, headers) {
+    let resultSet = headers.get('content-range');
+    if( resultSet ) {
+      let [startStop, total] = resultSet.split('/');
+      let [start, stop] = startStop.split('-').map(v => parseInt(v));
+      resultSet = {
+        start, stop, total: parseInt(total)
+      }
+    }
+
     this._setPgQuery(name, {
       name,
+      resultSet,
+      pgQuery,
       state : 'loaded',
       payload
     });
   }
 
-  setPgQueryError(name, error) {
+  setPgQueryError(name, pgQuery, error) {
     this._setPgQuery(name, {
       name,
+      pgQuery,
       state : 'error',
       error
     });

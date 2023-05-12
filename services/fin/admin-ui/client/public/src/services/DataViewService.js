@@ -20,22 +20,19 @@ class DataViewService extends BaseService {
   }
 
   async pgQuery(table, query={}, name) {
-    let params = [];
-    for( let key in query ) {
-      params.push(`${key}=${encodeURIComponent(query[key])}`);
-    }
-
-    if( params.length ) {
-      params = '?'+params.join('&');
-    } else {
-      params = '';
-    }
+    let pgQuery = {table, query};
 
     return this.request({
-      url : `${this.baseUrl}/pg/${table}${params}`,
-      onLoading : request => this.store.setPgQueryLoading(name, request),
-      onLoad : result => this.store.setPgQueryLoad(name, result.body),
-      onError : e => this.store.setPgQueryError(name, e)
+      url : `${this.baseUrl}/pg/${table}`,
+      qs: query,
+      fetchOptions : {
+        headers : {
+          'Prefer' : 'count=exact'
+        }
+      },
+      onLoading : request => this.store.setPgQueryLoading(name, request, pgQuery),
+      onLoad : result => this.store.setPgQueryLoad(name, result.body, pgQuery, result.response.headers),
+      onError : e => this.store.setPgQueryError(name, pgQuery ,e)
     });
   }
 

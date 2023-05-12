@@ -16,6 +16,10 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       query : {type: String},
       data : {type: Array},
       keys : {type: Array},
+      renderType : {
+        type: String,
+        attribute: 'render-type'
+      },
     }
   }
 
@@ -33,6 +37,8 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     this.data = [];
     this.keys = [];
     this.ignoreKeys = [];
+
+    this.renderType = 'table';
 
     this._injectModel('DataViewModel');
   }
@@ -79,6 +85,23 @@ export default class FinAdminDataTable extends Mixin(LitElement)
 
     this.loading = false;
     this.data = e.payload;
+    this.resultSet = e.resultSet;
+    console.log(e.pgQuery, e.payload, this.resultSet);
+  }
+
+  getRowClass(row) {
+    if( !this.renderRowClass ) return '';
+    return this.renderRowClass(row);
+  }
+
+  getCellClass(row, key) {
+    if( !this.renderCellClass ) return '';
+    return this.renderCellClass(row, key);
+  }
+
+  getCellValue(row, key) {
+    if( !this.renderCellValue ) return row[key];
+    return this.renderCellValue(row, key);
   }
 
 }

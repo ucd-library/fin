@@ -18,9 +18,8 @@ return html`
 
 <div>
   <h2>DB Sync Stats</h2>
-  <fin-admin-data-table
-    name="dashboard-dbsync-stats"
-    table="dbsync_stats">
+  <fin-admin-data-table 
+    name="dashboard-dbsync-stats">
   </fin-admin-data-table>
 </div>
 

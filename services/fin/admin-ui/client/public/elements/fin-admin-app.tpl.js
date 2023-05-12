@@ -17,16 +17,17 @@ return html`
   site-name="Fin Admin"
   slogan=""
   figure-src="/img/book-logo.png"
-  prevent-fixed
-  is-demo>
+  prevent-fixed>
 
   <ucd-theme-primary-nav>
-    <a href=#>Dashboard</a>
-    <a href="#">Workflows</a>
+    <a href="#">Dashboard</a>
+    <a href="#dbsync">DBSync</a>
   </ucd-theme-primary-nav>
 
 </ucd-theme-header>
 
-<fin-admin-dashboard></fin-admin-dashboard>
-
+<ucdlib-pages selected="${this.currentPage}">
+  <fin-admin-dashboard id="dashboard"></fin-admin-dashboard>
+  <fin-admin-dbsync id="dbsync"></fin-admin-dbsync>
+</ucdlib-pages>
 `;}
