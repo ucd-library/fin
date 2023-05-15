@@ -32,7 +32,7 @@ module.exports = async (app) => {
   spaMiddleware({
     app: app,
     htmlFile : path.join(assetsDir, 'index.html'),
-    root : /^\/fin\/admin\/?$/,
+    rootPath : /^\/fin\/admin\/?$/,
     appRoutes : appRoutes,
     static : {
       opts : {

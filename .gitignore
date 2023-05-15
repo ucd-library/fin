@@ -13,5 +13,4 @@ tests
 test
 temp/
 services/fin/admin-ui/client/public/js
-services/fin/admin-ui/client/public/css
 services/fin/admin-ui/client/dist
