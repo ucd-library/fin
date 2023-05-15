@@ -23,6 +23,20 @@ CREATE OR REPLACE VIEW dbsync_stats AS
 CREATE OR REPLACE VIEW dbsync_reindex_crawl_status AS
   SELECT * FROM dbsync.reindex_crawl_status;
 
+CREATE OR REPLACE VIEW fcrepo_path_type AS
+  SELECT fedora_id, rdf_type_uri
+  FROM simple_search ss
+  LEFT JOIN search_resource_rdf_type srrt ON ss.id = srrt.resource_id
+  LEFT JOIN search_rdf_type srt ON srrt.rdf_type_id = srt.id;
+
+CREATE OR REPLACE VIEW fcrepo_type_stats AS
+  SELECT 
+    rdf_type_uri, count(*) AS count 
+  FROM 
+    fcrepo_path_type 
+  GROUP BY rdf_type_uri 
+  ORDER BY count DESC;
+
 CREATE OR REPLACE VIEW gcssync_update_state AS
   SELECT * FROM gcssync.update_status;
 

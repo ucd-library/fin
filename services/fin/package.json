@@ -13,7 +13,8 @@
     "gcs": "node gcs/index.js",
     "gateway": "node gateway/index.js",
     "workflow": "node workflow/index.js",
-    "admin-ui-watch": "./admin-ui/client/watch.sh"
+    "admin-ui-watch": "./admin-ui/client/watch.sh",
+    "admin-ui-dist": "./admin-ui/client/dist.sh"
   },
   "author": "jrmerz@ucdavis.edu",
   "license": "MIT",

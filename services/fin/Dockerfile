@@ -53,7 +53,10 @@ COPY ${FIN_REPO_SERVICE_ROOT}/gcs gcs
 COPY ${FIN_REPO_SERVICE_ROOT}/node-utils node-utils
 COPY ${FIN_REPO_SERVICE_ROOT}/oidc oidc
 COPY ${FIN_REPO_SERVICE_ROOT}/workflow workflow
+
+# Admin UI
 COPY ${FIN_REPO_SERVICE_ROOT}/admin-ui admin-ui
+RUN npm run admin-ui-dist
 
 # Leave us in the service root dir
 WORKDIR ${FIN_SERVICE_ROOT}
