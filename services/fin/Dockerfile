@@ -56,6 +56,7 @@ COPY ${FIN_REPO_SERVICE_ROOT}/workflow workflow
 
 # Admin UI
 COPY ${FIN_REPO_SERVICE_ROOT}/admin-ui admin-ui
+RUN cd ${FIN_REPO_SERVICE_ROOT}/admin-ui/client/public && npm install
 RUN npm run admin-ui-dist
 
 # Leave us in the service root dir
