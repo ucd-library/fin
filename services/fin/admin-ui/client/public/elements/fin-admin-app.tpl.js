@@ -13,6 +13,17 @@ export function styles() {
 export function render() { 
 return html`
 
+<style>
+  ucdlib-pages > * {
+    padding: 40px;
+  }
+  @media (max-width: 600px) {
+    ucdlib-pages > * {
+      padding: 20px;
+    }
+  }
+</style>
+
 <ucd-theme-header
   site-name="Fin Admin"
   slogan=""

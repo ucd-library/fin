@@ -19,10 +19,8 @@ return html`
   }
 </style>
 
-<h1>Dashboard</h1>
-
 <div>
-  <h2>Data Models</h2>
+  <h2 class="heading--weighted-underline">Data Models</h2>
   <div class="o-flex-region">
   ${this.dataModels.map(model => html`
     <div class="o-flex-region__item data-model-panel">
@@ -40,7 +38,7 @@ return html`
 </div>
 
 <div>
-  <h2>DB Sync Stats</h2>
+  <h2 class="heading--weighted-underline">DB Sync Stats</h2>
   <div>Queue Length: ${this.dbSyncQueueLength}<div>
   <fin-admin-data-table 
     name="dashboard-dbsync-stats">
@@ -48,7 +46,7 @@ return html`
 </div>
 
 <div>
-  <h2>Workflow Stats</h2>
+  <h2 class="heading--weighted-underline">Workflow Stats</h2>
   <fin-admin-data-table
     name="dashboard-workflow-stats"
     table="workflow_stats">
@@ -56,7 +54,7 @@ return html`
 </div>
 
 <div>
-  <h2>GCS Disk Cache Stats</h2>
+  <h2 class="heading--weighted-underline">GCS Disk Cache Stats</h2>
   <fin-admin-data-table
     name="dashboard-gcs-diskcache-stats"
     table="gcssync_disk_cache_stats">

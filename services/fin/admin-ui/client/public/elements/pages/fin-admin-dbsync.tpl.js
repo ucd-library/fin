@@ -13,6 +13,7 @@ export function styles() {
 export function render() { 
 return html`
 
+<h1 class="heading--weighted-underline">DbSync</h1>
 
 <fin-admin-data-table 
   name="dbsync-main"

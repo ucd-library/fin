@@ -14,7 +14,7 @@ export function render() {
 return html`
 
 <div>
-  <h2>Registered Workflows</h2>
+  <h2 class="heading--weighted-underline">Registered Workflows</h2>
   <div class="o-flex-region">
   ${this.workflows.map(workflow => html`
     <div class="o-flex-region__item data-model-panel">
@@ -29,7 +29,7 @@ return html`
 </div>
 
 
-<h2>Executed Workflows</h2>
+<h2 class="heading--weighted-underline">Executed Workflows</h2>
 <fin-admin-data-table 
   name="workflows-main"
   render-type="list"
