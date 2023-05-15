@@ -7,7 +7,7 @@ cd $ROOT_DIR
 rm -rf dist
 mkdir dist
 
-cp -r public/img dist/
+# cp -r public/img dist/
 # cp -r public/fonts dist/
 cp -R -L public/loader dist/
 
