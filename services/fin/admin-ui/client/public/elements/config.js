@@ -31,6 +31,24 @@ const viewConfig = {
     }
   },
 
+  'workflows-main' : {
+    table : 'workflow_workflow',
+    query : {
+      limit : 10
+    },
+    renderCellValue : (row, key) => {
+      if( key === 'data' ) {
+        if( row[key] ) {
+          return html`${unsafeHTML(
+            replaceWhitespace(JSON.stringify(row[key], null, null))
+          )}`;
+        }
+        return '';
+      }
+      return row[key];
+    }
+  },
+
   'dashboard-dbsync-stats' : {
     table : 'dbsync_stats',
     renderCellValue : (row, key) => {

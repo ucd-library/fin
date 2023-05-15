@@ -2,9 +2,7 @@ import { html, css } from 'lit';
 
 export function styles() {
   const elementStyles = css`
-    :host {
-      display: block;
-    }
+
   `;
 
   return [elementStyles];
@@ -13,11 +11,37 @@ export function styles() {
 export function render() { 
 return html`
 
+<style>
+  .data-model-panel {
+    margin: 10px;
+    padding: 20px;
+    background-color: var(--ucd-blue-30);
+  }
+</style>
 
 <h1>Dashboard</h1>
 
 <div>
+  <h2>Data Models</h2>
+  <div class="o-flex-region">
+  ${this.dataModels.map(model => html`
+    <div class="o-flex-region__item data-model-panel">
+      <h3>${model.props.id}</h3>
+      <div><b>Database Items</b>: ${model.count}</div>
+
+      <div ?hidden="${!model.hasApiEndpoint}"><b>API Endpoint</b>: /api/${model.props.id}</div>
+      <div ?hidden="${model.hasApiEndpoint}">No API Endpoint Registered</div>
+      ${model.propsView.map(prop => html`
+        <div style="font-size: 12px"><b>${prop.name}</b>: ${prop.value}</div>
+      `)}
+    </div>
+  `)}
+  </div>
+</div>
+
+<div>
   <h2>DB Sync Stats</h2>
+  <div>Queue Length: ${this.dbSyncQueueLength}<div>
   <fin-admin-data-table 
     name="dashboard-dbsync-stats">
   </fin-admin-data-table>

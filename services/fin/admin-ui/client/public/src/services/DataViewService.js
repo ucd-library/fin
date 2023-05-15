@@ -12,9 +12,9 @@ class DataViewService extends BaseService {
 
   async getCoreData() {
     return this.request({
-      url : `${this.baseUrl}/stats`,
+      url : `${this.baseUrl}/status`,
       onLoading : request => this.store.setCoreDataLoading(request),
-      onLoad : result => this.store.setCoreDataLoad(result),
+      onLoad : result => this.store.setCoreDataLoad(result.body),
       onError : e => this.store.setCoreDataError(e)
     });
   }

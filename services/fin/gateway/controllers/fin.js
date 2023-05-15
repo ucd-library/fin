@@ -54,7 +54,12 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
       };
     }
 
-
+    let finServiceAccount = {};
+    try {
+      finServiceAccount.token = await keycloak.getServiceAccountToken();
+    } catch(e) {
+      finServiceAccount.error = e.message;
+    }
 
     let cleanConfig = clone(config);
     cleanConfig.elasticsearch.password = '********';
@@ -67,6 +72,7 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
       services : serviceModel.services,
       config : cleanConfig,
       workflows,
+      finServiceAccount,
       env : {
         FIN_APP_VERSION : process.env.FIN_APP_VERSION,
         FIN_REPO_TAG : process.env.FIN_REPO_TAG,

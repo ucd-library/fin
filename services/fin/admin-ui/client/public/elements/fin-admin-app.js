@@ -11,6 +11,7 @@ import '@ucd-lib/theme-elements/ucdlib/ucdlib-pages/ucdlib-pages.js'
 
 import "./pages/fin-admin-dashboard.js"
 import "./pages/fin-admin-dbsync.js"
+import "./pages/fin-admin-workflows.js"
 
 export default class FinAdminApp extends Mixin(LitElement)
   .with(MainDomElement, LitCorkUtils) {

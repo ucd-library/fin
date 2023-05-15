@@ -39,12 +39,16 @@ class KeycloakUtils {
     if( resp.status === 200 ) {
       this.finServiceAccountToken = resp.body.access_token;
 
-      setTimeout(() => this.finServiceAccountToken = null, 1000*60*60*24);
+      setTimeout(() => this.finServiceAccountToken = null, 1000*60*60*12);
 
       return this.finServiceAccountToken;
     }
     
-    throw new Error('Failed to get service account token: '+config.serviceAccount.username);
+    let body = resp.body;
+    if( typeof body === 'object' ) {
+      body = JSON.stringify(body, null, 2);
+    }
+    throw new Error('Failed to get service account token: '+config.serviceAccount.username+'. '+resp.status+' '+body);
   }
 
   async loginServiceAccount(username, secret) {

@@ -14,6 +14,9 @@ CREATE OR REPLACE VIEW activemq_debug_log AS
 CREATE OR REPLACE VIEW dbsync_event_queue AS
   SELECT * FROM dbsync.event_queue;
 
+CREATE OR REPLACE VIEW dbsync_event_queue_size AS
+  SELECT count(*) FROM dbsync.event_queue;
+
 CREATE OR REPLACE VIEW dbsync_update_status AS
   SELECT * FROM dbsync.update_status;
 

@@ -8,5 +8,6 @@ rm -rf public/css
 mkdir -p public/css
 
 cp public/node_modules/\@ucd-lib/theme-sass/style-ucdlib.css public/css/style-ucdlib.css
+cp public/node_modules/\@ucd-lib/theme-sass/css-properties.css public/css/css-properties.css
 
 webpack --watch

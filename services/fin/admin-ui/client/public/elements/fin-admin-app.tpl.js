@@ -22,6 +22,7 @@ return html`
   <ucd-theme-primary-nav>
     <a href="#">Dashboard</a>
     <a href="#dbsync">DBSync</a>
+    <a href="#workflows">Workflows</a>
   </ucd-theme-primary-nav>
 
 </ucd-theme-header>
@@ -29,5 +30,6 @@ return html`
 <ucdlib-pages selected="${this.currentPage}">
   <fin-admin-dashboard id="dashboard"></fin-admin-dashboard>
   <fin-admin-dbsync id="dbsync"></fin-admin-dbsync>
+  <fin-admin-workflows id="workflows"></fin-admin-workflows>
 </ucdlib-pages>
 `;}

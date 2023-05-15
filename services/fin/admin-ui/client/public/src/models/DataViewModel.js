@@ -26,6 +26,10 @@ class DataViewModel extends BaseModel {
     return this.store.data.core;
   }
 
+  dbSyncEventQueueSize(opts = {}) {
+    return this.pgQuery('dbsync_event_queue_size', {}, opts, 'dbsync_event_queue_size');
+  }
+
   dbSyncStats(opts = {}) {
     return this.pgQuery('dbsync_stats', {}, opts);
   }
