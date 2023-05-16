@@ -14,20 +14,28 @@ const viewConfig = {
       limit : 10
     },
     renderCellValue : (row, key) => {
-      if( key === 'container_types' || key === 'update_types') {
-        return row[key].join(', ');
-      } else if( key === 'source' || key === 'db_response') {
-        if( row[key] ) {
-          return html`${unsafeHTML(
-            replaceWhitespace(JSON.stringify(row[key], null, 2))
-          )}`;
-        }
-        return '';
+      if( key === 'container_types' || key === 'update_types' || key === 'workflow_types') {
+        return row[key].map(item => {
+          if( typeof item === 'object' ) {
+            item = item.url;
+          } else if( item.match(/^{.*}$/) ) {
+            item = JSON.parse(item).url;
+          }
+          return item.split(/#|\//).pop()
+        }).join(', ');
       } else if( key === 'message' ) {
           return html`${unsafeHTML(replaceWhitespace(row[key]))}`;
-      } else {
-        return row[key];
+      } else if ( key === 'transform_service' && row[key] ) {
+        return html`<a href="${row[key]}" target="_blank">${row[key]}</a>`;
       }
+      return standardRender(row, key);
+    },
+    filters : {
+      action : {
+        type : 'keyword',
+        options: ['ignored', 'updated', 'delete', 'error']
+      },
+      path : {type : 'text'}
     }
   },
 
@@ -36,27 +44,39 @@ const viewConfig = {
     query : {
       limit : 10
     },
-    renderCellValue : (row, key) => {
-      if( key === 'data' ) {
-        if( row[key] ) {
-          return html`${unsafeHTML(
-            replaceWhitespace(JSON.stringify(row[key], null, null))
-          )}`;
-        }
-        return '';
+    filters : {
+      state : {
+        type : 'keyword',
+        options: ['pending', 'init', 'running', 'completed', 'deleted', 'error']
       }
-      return row[key];
-    }
+    },
+    renderCellValue : standardRender
+  },
+
+  'dashboard-fcrepo-stats' : {
+    table : 'fcrepo_type_stats',
+    hideTotal : true,
   },
 
   'dashboard-dbsync-stats' : {
     table : 'dbsync_stats',
+    hideTotal : true,
     renderCellValue : (row, key) => {
       if( key === 'action' ) {
         return html`<a href="#dbsync?action=eq.${row[key]}">${row[key]}</a>`;
-      } else {
-        return row[key];
       }
+      return standardRender(row, key);
+    }
+  },
+
+  'dashboard-workflow-stats' : {
+    table : 'workflow_stats',
+    hideTotal : true,
+    renderCellValue : (row, key) => {
+      if( key === 'state' || key === 'name' ) {
+        return html`<a href="#workflows?${key}=eq.${row[key]}">${row[key]}</a>`;
+      }
+      return standardRender(row, key);
     }
   },
 
@@ -69,6 +89,43 @@ const viewConfig = {
     }
   }
 
+}
+
+function standardRender(row, key) {
+  let value = row[key];
+  if( Array.isArray(value) ) {
+    return html`${unsafeHTML(formatJson(value))}`;
+  }
+  if( typeof value === 'object' ) {
+    return html`${unsafeHTML(formatJson(value))}`;
+  }
+  if( typeof value === 'string' && value.match(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d/) ) {
+    return new Date(value).toLocaleString();
+  }
+  return value;
+}
+
+function formatJson(json, arr=[], currentKey='', depth=0) {
+
+
+  if( Array.isArray(json) ) {
+    for( let i = 0; i < json.length; i++ ) {
+      formatJson(json[i], arr, `${currentKey}[${i}]`, depth+1);
+    }
+  } else if( typeof json === 'object' ) {
+    for( let key in json ) {
+      let depthKey = currentKey ? `${currentKey}.${key}` : key;
+      formatJson(json[key], arr, depthKey, depth+1);
+    }
+  } else {
+    arr.push(`<div class="json-row">
+        <span class="json-key depth-${depth}">${currentKey}:</span>
+        <span class="json-value">${json}</span>
+      </div>`);
+  }
+  
+
+  return arr.join('');
 }
 
 export default viewConfig;

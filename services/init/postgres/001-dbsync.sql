@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS update_status (
 );
 CREATE INDEX IF NOT EXISTS update_status_path_idx ON update_status (path);
 CREATE INDEX IF NOT EXISTS update_status_action_idx ON update_status (action);
+CREATE INDEX IF NOT EXISTS update_status_model_idx ON update_status (model);
 
 -- upsert function for update_status
 CREATE OR REPLACE FUNCTION upsert_update_status (

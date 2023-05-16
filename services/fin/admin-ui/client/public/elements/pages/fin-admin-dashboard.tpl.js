@@ -54,14 +54,22 @@ return html`
 </div>
 
 <div>
+  <h2 class="heading--weighted-underline">Fcrepo Type Stats</h2>
+  <fin-admin-data-table 
+    name="dashboard-fcrepo-stats">
+  </fin-admin-data-table>
+</div>
+
+<div>
   <h2 class="heading--weighted-underline">GCS Disk Cache Stats</h2>
   <fin-admin-data-table
     name="dashboard-gcs-diskcache-stats"
-    table="gcssync_disk_cache_stats">
+    table="gcssync_disk_cache_stats"
+    hide-total>
   </fin-admin-data-table>
 
   <div>
-    <div>Largest Items</div>
+    <h2 class="heading--weighted-underline">GCS Disk Cache</h2>
     <fin-admin-data-table
       name="dashboard-gcs-diskcache-largest">
     </fin-admin-data-table>

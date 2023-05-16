@@ -19,8 +19,8 @@ class DataViewService extends BaseService {
     });
   }
 
-  async pgQuery(table, query={}, name) {
-    let pgQuery = {table, query};
+  async pgQuery(table, query={}, name, queryCount) {
+    let pgQuery = {table, query, queryCount};
 
     return this.request({
       url : `${this.baseUrl}/pg/${table}`,

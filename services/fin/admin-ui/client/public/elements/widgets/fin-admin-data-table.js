@@ -1,10 +1,12 @@
-import { LitElement } from 'lit';
+import { LitElement, html } from 'lit';
 import {render, styles} from "./fin-admin-data-table.tpl.js";
 import {Mixin} from '@ucd-lib/theme-elements/utils/mixins';
+import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
+
+import '@ucd-lib/theme-elements/brand/ucd-theme-pagination/ucd-theme-pagination.js'
 
 import dataViewConfig from '../config.js';
 
-import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
 
 export default class FinAdminDataTable extends Mixin(LitElement)
   .with(LitCorkUtils) {
@@ -13,13 +15,25 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     return {
       name : {type: String},
       table : {type: String},
-      query : {type: String},
+      query : {type: Object},
       data : {type: Array},
       keys : {type: Array},
       renderType : {
         type: String,
         attribute: 'render-type'
       },
+      resultSet : {type: Object},
+      showPagination : {type: Boolean},
+      currentPage : {type: Number},
+      totalPages : {type: Number},
+      hideTotal : {
+        type: Boolean,
+        attribute: 'hide-total'
+      },
+      updateHash : {
+        type: Boolean,
+        attribute: 'update-hash'
+      }
     }
   }
 
@@ -32,11 +46,20 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     this.render = render.bind(this);
 
     this.dataOpts = {
-      refresh: true
+      refresh: true,
+      queryCount : 0
     }
     this.data = [];
     this.keys = [];
     this.ignoreKeys = [];
+    this.hideTotal = false;
+    this.updateHash = false;
+
+    this.resultSet = {
+      total : 0
+    };
+
+    this.queryCount = 0;
 
     this.renderType = 'table';
 
@@ -58,6 +81,8 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       if( this.query ) {
         query = (typeof this.query === 'string') ? JSON.parse(this.query) : this.query;
       }
+      
+      this.dataOpts.queryCount++;
       this.DataViewModel.pgQuery(this.table, query, this.dataOpts, this.name);
     }
   }
@@ -69,6 +94,8 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       this.loading = true;
       return;
     }
+
+    if( e.pgQuery.queryCount !== this.dataOpts.queryCount ) return;
 
     if( e.payload.length ) {
       this.keys = Object.keys(e.payload[0]);
@@ -86,7 +113,19 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     this.loading = false;
     this.data = e.payload;
     this.resultSet = e.resultSet;
-    console.log(e.pgQuery, e.payload, this.resultSet);
+    let query = e.pgQuery.query || {};
+
+    if( !query.limit ) {
+      this.showPagination = false;
+    } else {
+      this.currentPage = Math.floor(this.resultSet.stop / query.limit)+1;
+      this.totalPages = Math.ceil(this.resultSet.total / query.limit);
+      if( this.totalPages < 2 ) {
+        this.showPagination = false;
+      } else {
+        this.showPagination = true;
+      }
+    }
   }
 
   getRowClass(row) {
@@ -102,6 +141,106 @@ export default class FinAdminDataTable extends Mixin(LitElement)
   getCellValue(row, key) {
     if( !this.renderCellValue ) return row[key];
     return this.renderCellValue(row, key);
+  }
+
+  renderFilters() {
+    let filters = [];
+    if( !this.filters ) return filters;
+
+    let query = (typeof this.query === 'string') ? JSON.parse(this.query) : this.query;
+
+    for( let key in this.filters ) {
+      if( this.filters[key].type === 'keyword' ) {
+        filters.push(this.renderKeywordFilter(key, query));
+      } else if( this.filters[key].type === 'text' ) {
+        filters.push(this.renderTextFilter(key, query));
+      }
+    }
+    return html`
+      <div class="o-flex-region">
+        ${filters.map(filter => html`
+        <div class="o-flex-region__item">
+          ${filter}
+        </div>`)}
+      </div>
+      `;
+  }
+
+  renderKeywordFilter(key, query) {
+    let options = this.filters[key].options || [];
+    let value = (query[key] || '').split('.').pop();
+
+    return html`
+    <fieldset>
+      <div class="field-container">
+        <label for="${key}-picker">${key}</label>
+        <select id="${key}-picker" key="${key}" @change="${this._onKeywordFilterChange}">
+          <option value="">All</option>
+          ${options.map(option => html`
+            <option value="eq.${option}" ?selected="${option === value}">${option}</option>
+          `)}
+        </select>
+      </div>
+    </fieldset>
+    `;
+  }
+
+  renderTextFilter(key, query) {
+    let value = (query[key] || '').split('.').pop();
+
+    return html`
+    <fieldset>
+      <div class="field-container">
+        <label for="${key}-text">${key}</label>
+        <input type="${key}-text" value="${value}" key="${key}" @change="${this._onKeywordFilterChange}">
+      </div>
+    </fieldset>
+    `;
+  }
+
+  _onKeywordFilterChange(e) {
+    let ele = e.currentTarget;
+    let value = ele.value;
+
+    if( value && !value.match(/^eq\./) ) {
+      value = 'eq.' + value;
+    }
+
+    let key = ele.getAttribute('key');
+
+    let query = Object.assign({}, this.query);
+
+    if( !value ) {
+      if( query[key] ) {
+        delete query[key];
+      }
+    } else {
+      query[key] = value;
+    }
+    
+    query.offset = 0;
+
+    if( this.updateHash ) {
+      let hash = window.location.hash.split('?')[0];
+      window.location.hash = hash + '?' + this._objToQuery(query);
+    } else {
+      this.query = query;
+    }
+  }
+
+  _objToQuery(obj) {
+    let query = [];
+    for( let key in obj ) {
+      query.push(key+'='+obj[key]);
+    }
+    return query.join('&');
+  }
+
+  _onPageChange(e) {
+    let query = Object.assign({}, this.query);
+    if( !query.limit ) query.limit = 10;
+    query.offset = (e.detail.page-1) * query.limit;
+    this.query = query;
   }
 
 }

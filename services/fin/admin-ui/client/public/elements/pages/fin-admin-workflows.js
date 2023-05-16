@@ -41,6 +41,7 @@ export default class FinAdminWorkflows extends Mixin(LitElement)
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
 
+    let workflowNames = Object.keys(e.payload.workflows);
     let workflows = [];
     for( let key in e.payload.workflows ) {
       let tmp = [];
@@ -58,6 +59,14 @@ export default class FinAdminWorkflows extends Mixin(LitElement)
       });
     }
     this.workflows = workflows;
+
+    let ele = this.querySelector('fin-admin-data-table[name="workflows-main"]')
+    ele.filters.name = {
+      type : 'keyword',
+      options : workflowNames
+    };
+    ele.requestUpdate();
+
   }
 
   _onAppStateUpdate(e) {

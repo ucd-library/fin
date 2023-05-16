@@ -15,7 +15,7 @@ class DataViewModel extends BaseModel {
 
   async coreData(opts = {}) {
     let core = this.store.data.core;
-    if( core?.state == 'loaded' ) {
+    if( core?.state === 'loading' ) {
       await core.request;
     } else {
       if( core && opts.refresh !== true ) {
@@ -47,13 +47,13 @@ class DataViewModel extends BaseModel {
     if( !name ) name = table;
 
     let pg = this.store.data.pg[name];
-    if( pg?.state == 'loaded' ) {
+    if( pg?.state === 'loading' && opts.refresh !== true ) {
       await pg.request;
     } else {
       if( pg && opts.refresh !== true ) {
         return pg;
       }
-      await this.service.pgQuery(table, query, name);
+      await this.service.pgQuery(table, query, name, opts.queryCount);
     }
     return this.store.data.pg[name];
   }

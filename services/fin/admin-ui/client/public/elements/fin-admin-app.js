@@ -41,7 +41,10 @@ export default class FinAdminApp extends Mixin(LitElement)
 
   _onAppStateUpdate(e) {
     if( !e.page ) return;
+    if( e.page === this.currentPage ) return;
+
     this.currentPage = e.page;
+    window.scrollTo(0, 0);
   }
 
 }

@@ -33,6 +33,7 @@ return html`
 <fin-admin-data-table 
   name="workflows-main"
   render-type="list"
+  update-hash
   .query="${this.query}">
 </fin-admin-data-table>
 

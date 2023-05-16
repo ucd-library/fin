@@ -42,7 +42,7 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
     }
 
     let workflows = {};
-    let wResp;
+    let wResp = {};
     try {
       wResp = await fetch('http://workflow:3000/list?fcPath=/fcrepo/rest');
       workflows = await wResp.json();
