@@ -18,7 +18,8 @@ return html`
 <fin-admin-data-table 
   name="dbsync-main"
   render-type="list"
-  .query="${this.query}">
+  .query="${this.query}"
+  update-hash>
 </fin-admin-data-table>
 
 `;}

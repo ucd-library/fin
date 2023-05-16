@@ -2,6 +2,7 @@
  * Wrapper for API requests with Authorization token
  */
 const requestCallback = require('request');
+// const fetch = require('node-fetch');
 const config = require('../config');
 const auth = require('../auth');
 
@@ -68,7 +69,9 @@ async function request(options) {
 
   if( options.printCurl ) printCurl(options);
 
-  return new Promise((resolve, reject) => {
+  if( !options.timeout ) options.timeout = 20*1000;
+
+  return new Promise(async (resolve, reject) => {
     requestCallback(options, (error, response, body) => {
       if( error ) {
         response = {

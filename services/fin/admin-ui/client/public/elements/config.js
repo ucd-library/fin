@@ -13,23 +13,7 @@ const viewConfig = {
     query : {
       limit : 10
     },
-    renderCellValue : (row, key) => {
-      if( key === 'container_types' || key === 'update_types' || key === 'workflow_types') {
-        return row[key].map(item => {
-          if( typeof item === 'object' ) {
-            item = item.url;
-          } else if( item.match(/^{.*}$/) ) {
-            item = JSON.parse(item).url;
-          }
-          return item.split(/#|\//).pop()
-        }).join(', ');
-      } else if( key === 'message' ) {
-          return html`${unsafeHTML(replaceWhitespace(row[key]))}`;
-      } else if ( key === 'transform_service' && row[key] ) {
-        return html`<a href="${row[key]}" target="_blank">${row[key]}</a>`;
-      }
-      return standardRender(row, key);
-    },
+    renderCellValue : dbsync,
     filters : {
       action : {
         type : 'keyword',
@@ -37,6 +21,15 @@ const viewConfig = {
       },
       path : {type : 'text'}
     }
+  },
+
+  'path-info-dbsync' : {
+    renderCellValue : dbsync,
+  },
+
+  'path-info-workflows' : {
+    table : 'workflow_workflow',
+    renderCellValue : standardRender
   },
 
   'workflows-main' : {
@@ -50,7 +43,13 @@ const viewConfig = {
         options: ['pending', 'init', 'running', 'completed', 'deleted', 'error']
       }
     },
-    renderCellValue : standardRender
+    renderCellValue : (row, key) => {
+      if( key === 'path' ) {
+        let path = (row[key] || '').replace(/\/fcr:metadata$/, '');
+        return html`<a href="#path-info${path}">${row[key]}</a>`;
+      }
+      return standardRender(row, key);
+    }
   },
 
   'dashboard-fcrepo-stats' : {
@@ -100,7 +99,7 @@ function standardRender(row, key) {
     return html`${unsafeHTML(formatJson(value))}`;
   }
   if( typeof value === 'string' && value.match(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d/) ) {
-    return new Date(value).toLocaleString();
+    return new Date(new Date(value).getTime() - (new Date().getTimezoneOffset()*60*1000)).toLocaleString();
   }
   return value;
 }
@@ -126,6 +125,27 @@ function formatJson(json, arr=[], currentKey='', depth=0) {
   
 
   return arr.join('');
+}
+
+function dbsync(row, key) {
+  if( key === 'path' ) {
+    let path = (row[key] || '').replace(/\/fcr:metadata$/, '');
+    return html`<a href="#path-info${path}">${row[key]}</a>`;
+  } else if( key === 'container_types' || key === 'update_types' || key === 'workflow_types') {
+    return row[key].map(item => {
+      if( typeof item === 'object' ) {
+        item = item.url;
+      } else if( item.match(/^{.*}$/) ) {
+        item = JSON.parse(item).url;
+      }
+      return item.split(/#|\//).pop()
+    }).join(', ');
+  } else if( key === 'message' ) {
+      return html`${unsafeHTML(replaceWhitespace(row[key]))}`;
+  } else if ( key === 'transform_service' && row[key] ) {
+    return html`<a href="${row[key]}" target="_blank">${row[key]}</a>`;
+  }
+  return standardRender(row, key);
 }
 
 export default viewConfig;

@@ -66,6 +66,7 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
     cleanConfig.jwt.secret = '********';
     cleanConfig.serviceAccount.secret = '********';
     cleanConfig.server.cookieSecret = '********';
+    cleanConfig.oidc.secret = '********';
 
     res.json({
       registeredModels,

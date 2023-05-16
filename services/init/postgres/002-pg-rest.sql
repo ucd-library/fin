@@ -50,7 +50,7 @@ CREATE OR REPLACE VIEW gcssync_disk_cache_stats AS
   SELECT content_type, count(*) as count, sum(size) as total_size_kb FROM gcssync.disk_cache GROUP BY content_type;
 
 CREATE OR REPLACE VIEW workflow_workflow AS
-  SELECT * FROM workflow.workflow;
+  SELECT *, data->>'finPath' as path FROM workflow.workflow;
 
 CREATE OR REPLACE VIEW workflow_workflow_gcs AS
   SELECT * FROM workflow.workflow_gcs;

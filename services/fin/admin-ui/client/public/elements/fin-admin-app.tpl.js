@@ -34,6 +34,7 @@ return html`
     <a href="#">Dashboard</a>
     <a href="#dbsync">DBSync</a>
     <a href="#workflows">Workflows</a>
+    <a href="#path-info">Path Info</a>
     <a href="#config">Config</a>
   </ucd-theme-primary-nav>
 
@@ -43,6 +44,7 @@ return html`
   <fin-admin-dashboard id="dashboard"></fin-admin-dashboard>
   <fin-admin-dbsync id="dbsync"></fin-admin-dbsync>
   <fin-admin-workflows id="workflows"></fin-admin-workflows>
+  <fin-admin-path-info id="path-info"></fin-admin-path-info>
   <fin-admin-config id="config"></fin-admin-config>
 </ucdlib-pages>
 `;}

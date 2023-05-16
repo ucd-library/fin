@@ -351,12 +351,13 @@ class DbSync {
    * @returns {Promise}
    */
   async getTransformedContainer(event, model, transformCache) {
-    let path = event.path.replace(/\/fcr:(metadata|acl)$/, '');
+    let path = event.path;
 
     let headers = {};
 
     let servicePath = '';
     if( model.transformService ) {
+      path = path.replace(/\/fcr:(metadata|acl)$/, '');
       servicePath = path+`/svc:${model.transformService}`;
     } else {
       headers = {
