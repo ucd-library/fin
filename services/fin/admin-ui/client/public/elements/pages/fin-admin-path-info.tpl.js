@@ -25,6 +25,8 @@ return html`
   name="path-info-dbsync"
   table="${this.dbsyncTable}"
   render-type="list"
+  ?auto-refresh="${this.autoRefresh}"
+  @reindex="${this._onReindexClick}"
   .query="${this.dbsyncQuery}">
 </fin-admin-data-table>
 
@@ -34,5 +36,9 @@ return html`
   render-type="list"
   .query="${this.workflowQuery}">
 </fin-admin-data-table>
+
+<div class="note">
+  This page is auto-refreshing every 10 seconds.
+</div>
 
 `;}

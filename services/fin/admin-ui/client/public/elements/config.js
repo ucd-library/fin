@@ -11,7 +11,8 @@ const viewConfig = {
   'dbsync-main' : {
     table : 'dbsync_update_status',
     query : {
-      limit : 10
+      limit : 10,
+      order : 'path.asc'
     },
     renderCellValue : dbsync,
     filters : {
@@ -20,11 +21,19 @@ const viewConfig = {
         options: ['ignored', 'updated', 'delete', 'error']
       },
       path : {type : 'text'}
-    }
+    },
+    actions : [{
+      type : 'reindex',
+      label : 'Reindex Path'
+    }]
   },
 
   'path-info-dbsync' : {
     renderCellValue : dbsync,
+    actions : [{
+      type : 'reindex',
+      label : 'Reindex Path'
+    }]
   },
 
   'path-info-workflows' : {

@@ -35,16 +35,18 @@ return html`
     <a href="#dbsync">DBSync</a>
     <a href="#workflows">Workflows</a>
     <a href="#path-info">Path Info</a>
+    <a href="#es-management">ES Management</a>
     <a href="#config">Config</a>
   </ucd-theme-primary-nav>
 
 </ucd-theme-header>
 
-<ucdlib-pages selected="${this.currentPage}">
+<ucdlib-pages selected="${this.currentPage}" selected-attribute="active">
   <fin-admin-dashboard id="dashboard"></fin-admin-dashboard>
   <fin-admin-dbsync id="dbsync"></fin-admin-dbsync>
   <fin-admin-workflows id="workflows"></fin-admin-workflows>
   <fin-admin-path-info id="path-info"></fin-admin-path-info>
   <fin-admin-config id="config"></fin-admin-config>
+  <fin-admin-es-management id="es-management"></fin-admin-es-management>
 </ucdlib-pages>
 `;}

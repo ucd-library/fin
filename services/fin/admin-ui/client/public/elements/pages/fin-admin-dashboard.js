@@ -2,11 +2,12 @@ import { LitElement } from 'lit';
 import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
 import {render, styles} from "./fin-admin-dashboard.tpl.js";
 import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
+import AutoRefresh from '../mixins/page-refresh.js';
 
 import "../widgets/fin-admin-data-table.js"
 
 export default class FinAdminDashboard extends Mixin(LitElement)
-  .with(MainDomElement, LitCorkUtils) {
+  .with(MainDomElement, LitCorkUtils, AutoRefresh) {
 
   static get properties() {
     return {
@@ -36,6 +37,17 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         if( e.payload.length < 1 ) return;
         this.dbSyncQueueLength = e.payload[0].count;
       });
+  }
+
+  _onAutoRefresh() {
+    this.DataViewModel.dbSyncEventQueueSize({refresh: true})
+      .then(e => {
+        if( e.payload.length < 1 ) return;
+        this.dbSyncQueueLength = e.payload[0].count;
+      });
+
+    this.DataViewModel.coreData({refresh: true})
+      .then(e => this._onCoreDataUpdate(e));
   }
 
   _onCoreDataUpdate(e) {

@@ -2,9 +2,10 @@ import { LitElement } from 'lit';
 import {render, styles} from "./fin-admin-path-info.tpl.js";
 import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
+import AutoRefresh from '../mixins/page-refresh.js';
 
 export default class FinAdminPathInfo extends Mixin(LitElement)
-  .with(MainDomElement, LitCorkUtils) {
+  .with(MainDomElement, LitCorkUtils, AutoRefresh) {
 
   static get properties() {
     return {
@@ -26,7 +27,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     this.path = '';
 
     this.dbsyncTable = 'dbsync_update_status';
-    this.dbsyncQuery = {limit: 0};
+    this.dbsyncQuery = {limit: 0, order: 'path.asc'};
     this.workflowQuery = {limit: 0};
 
     this._injectModel('AppStateModel', 'DataViewModel');
@@ -62,6 +63,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     let query = {
       limit : 1000,
       offset : 0,
+      order : 'path.asc',
       or : `(path.eq.${path},path.eq.${path}/fcr:metadata)`
     };
 
@@ -80,6 +82,11 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     };
 
     this.workflowQuery = query;
+  }
+
+  _onReindexClick(e) {
+    e = e.detail;
+    document.querySelector('fin-admin-reindex-path').open(e);
   }
 
 }

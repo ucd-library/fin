@@ -4,6 +4,7 @@ import _tablesBaseCss from '@ucd-lib/theme-sass/2_base_class/_tables.css.js';
 import _formsCss from '@ucd-lib/theme-sass/2_base_class/_forms.css';
 import _formsBaseCss from '@ucd-lib/theme-sass/1_base_html/_forms.css.js';
 import _flexRegion from '@ucd-lib/theme-sass/3_objects/_index.css.js';
+import _buttonsCss from '@ucd-lib/theme-sass/2_base_class/_buttons.css.js';
 
 export function styles() {
   const elementStyles = css`
@@ -50,12 +51,17 @@ export function styles() {
       margin: 10px;
     }
 
+    .actions-cell .value {
+      margin-left: auto;
+    }
+
     input {
       box-sizing: border-box;
     }
   `;
 
-  return [elementStyles, _tablesCss, _tablesBaseCss, _formsCss, _formsBaseCss, _flexRegion];
+  return [elementStyles, _tablesCss, _tablesBaseCss, 
+    _formsCss, _formsBaseCss, _flexRegion, _buttonsCss];
 }
 
 export function render() { 

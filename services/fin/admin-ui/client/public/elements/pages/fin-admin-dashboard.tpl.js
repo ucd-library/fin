@@ -17,6 +17,11 @@ return html`
     padding: 20px;
     background-color: var(--ucd-blue-30);
   }
+  .note {
+    color: var(--ucd-black-50);
+    text-align: center;
+    font-size: 14px;
+  }
 </style>
 
 <div>
@@ -39,9 +44,10 @@ return html`
 
 <div>
   <h2 class="heading--weighted-underline">DB Sync Stats</h2>
-  <div>Queue Length: ${this.dbSyncQueueLength}<div>
+  <div>Event Queue Length: ${this.dbSyncQueueLength}<div>
   <fin-admin-data-table 
-    name="dashboard-dbsync-stats">
+    name="dashboard-dbsync-stats"
+    ?auto-refresh="${this.autoRefresh}">
   </fin-admin-data-table>
 </div>
 
@@ -49,14 +55,16 @@ return html`
   <h2 class="heading--weighted-underline">Workflow Stats</h2>
   <fin-admin-data-table
     name="dashboard-workflow-stats"
-    table="workflow_stats">
+    table="workflow_stats"
+    ?auto-refresh="${this.autoRefresh}">
   </fin-admin-data-table>
 </div>
 
 <div>
   <h2 class="heading--weighted-underline">Fcrepo Type Stats</h2>
   <fin-admin-data-table 
-    name="dashboard-fcrepo-stats">
+    name="dashboard-fcrepo-stats"
+    ?auto-refresh="${this.autoRefresh}">
   </fin-admin-data-table>
 </div>
 
@@ -65,15 +73,21 @@ return html`
   <fin-admin-data-table
     name="dashboard-gcs-diskcache-stats"
     table="gcssync_disk_cache_stats"
+    ?auto-refresh="${this.autoRefresh}"
     hide-total>
   </fin-admin-data-table>
 
   <div>
     <h2 class="heading--weighted-underline">GCS Disk Cache</h2>
     <fin-admin-data-table
-      name="dashboard-gcs-diskcache-largest">
+      name="dashboard-gcs-diskcache-largest"
+      ?auto-refresh="${this.autoRefresh}">
     </fin-admin-data-table>
   </div>
+</div>
+
+<div class="note">
+  This page is auto-refreshing every 10 seconds.
 </div>
 
 `;}

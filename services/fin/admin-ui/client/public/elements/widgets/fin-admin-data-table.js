@@ -33,6 +33,10 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       updateHash : {
         type: Boolean,
         attribute: 'update-hash'
+      },
+      autoRefresh : {
+        type: Boolean,
+        attribute: 'auto-refresh'
       }
     }
   }
@@ -60,6 +64,7 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     };
 
     this.queryCount = 0;
+    this.autoRefresh = false;
 
     this.renderType = 'table';
 
@@ -77,13 +82,38 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     }
 
     if( props.has('table') || props.has('query') ) {
-      let query = null;
-      if( this.query ) {
-        query = (typeof this.query === 'string') ? JSON.parse(this.query) : this.query;
+      this._runQuery();
+    }
+
+    if( props.has('autoRefresh') ) {
+      if( this.autoRefresh ) {
+        this._startAutoRefresh();
+      } else {
+        this._stopAutoRefresh();
       }
-      
-      this.dataOpts.queryCount++;
-      this.DataViewModel.pgQuery(this.table, query, this.dataOpts, this.name);
+    }
+  }
+
+  _runQuery() {
+    let query = null;
+    if( this.query ) {
+      query = (typeof this.query === 'string') ? JSON.parse(this.query) : this.query;
+    }
+    
+    this.dataOpts.queryCount++;
+    this.DataViewModel.pgQuery(this.table, query, this.dataOpts, this.name);
+  }
+
+  _startAutoRefresh() {
+    this._autoRefreshInterval = setInterval(() => {
+      this._runQuery();
+    }, 10000);
+  }
+
+  _stopAutoRefresh() {
+    if( this._autoRefreshInterval ) {
+      clearInterval(this._autoRefreshInterval);
+      this._autoRefreshInterval = null;
     }
   }
 
@@ -97,6 +127,23 @@ export default class FinAdminDataTable extends Mixin(LitElement)
 
     if( e.pgQuery.queryCount !== this.dataOpts.queryCount ) return;
 
+    this.loading = false;
+    let data = e.payload;
+
+    if( this.actions ) {
+      for( let i = 0; i < data.length; i++ ) {
+        data[i][''] = this.actions.map(action => {
+          return html`
+            <button 
+              class="btn btn--primary btn--round" 
+              @click="${this._onActionClicked}" index="${i}" action-type="${action.type}">
+                ${action.label}
+            </button>`;
+        });
+      }
+    }
+    this.data = data;
+
     if( e.payload.length ) {
       this.keys = Object.keys(e.payload[0]);
     } else {
@@ -108,10 +155,7 @@ export default class FinAdminDataTable extends Mixin(LitElement)
         return this.ignoreKeys.indexOf(key) === -1;
       });
     }
-    
 
-    this.loading = false;
-    this.data = e.payload;
     this.resultSet = e.resultSet;
     let query = e.pgQuery.query || {};
 
@@ -134,11 +178,13 @@ export default class FinAdminDataTable extends Mixin(LitElement)
   }
 
   getCellClass(row, key) {
+    if( key === '' ) return 'actions-cell';
     if( !this.renderCellClass ) return '';
     return this.renderCellClass(row, key);
   }
 
   getCellValue(row, key) {
+    if( key === '' ) return row[key];
     if( !this.renderCellValue ) return row[key];
     return this.renderCellValue(row, key);
   }
@@ -196,6 +242,14 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       </div>
     </fieldset>
     `;
+  }
+
+  _onActionClicked(e) {
+    let ele = e.currentTarget;
+    let index = parseInt(ele.getAttribute('index'));
+    let actionType = ele.getAttribute('action-type');
+    let data = this.data[index];
+    this.dispatchEvent(new CustomEvent(actionType, { detail: { actionType, data, index } }));
   }
 
   _onKeywordFilterChange(e) {

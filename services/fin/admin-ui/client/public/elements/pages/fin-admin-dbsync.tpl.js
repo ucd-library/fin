@@ -19,7 +19,13 @@ return html`
   name="dbsync-main"
   render-type="list"
   .query="${this.query}"
+  ?auto-refresh="${this.autoRefresh}"
+  @reindex="${this._onReindexClick}"
   update-hash>
 </fin-admin-data-table>
+
+<div class="note">
+  This page is auto-refreshing every 10 seconds.
+</div>
 
 `;}

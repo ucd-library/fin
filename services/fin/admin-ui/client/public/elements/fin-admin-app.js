@@ -5,6 +5,8 @@ import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
 
 import "../src"
 
+import './widgets/fin-admin-reindex-path.js'
+
 import '@ucd-lib/theme-elements/brand/ucd-theme-header/ucd-theme-header.js'
 import '@ucd-lib/theme-elements/brand/ucd-theme-primary-nav/ucd-theme-primary-nav.js'
 import '@ucd-lib/theme-elements/ucdlib/ucdlib-pages/ucdlib-pages.js'
@@ -13,6 +15,7 @@ import "./pages/fin-admin-dashboard.js"
 import "./pages/fin-admin-dbsync.js"
 import "./pages/fin-admin-workflows.js"
 import "./pages/fin-admin-path-info.js"
+import "./pages/fin-admin-es-management.js"
 import "./pages/fin-admin-config.js"
 
 export default class FinAdminApp extends Mixin(LitElement)
