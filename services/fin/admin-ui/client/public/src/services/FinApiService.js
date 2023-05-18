@@ -16,6 +16,17 @@ class FinApiService extends BaseService {
     });
   }
 
+  startWorkflow(path, name, body) {
+    return this.request({
+      url : '/fcrepo/rest' + path + '/svc:workflow/' + name,
+      json : true,
+      fetchOptions : {
+        method: 'POST',
+        body
+      }
+    });
+  }
+
 }
 
 const service = new FinApiService();

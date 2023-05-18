@@ -78,10 +78,16 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     let query = {
       limit : 1000,
       offset : 0,
+      order : 'path.asc,name.asc',
       or : `(path.eq.${path},path.eq.${path}/fcr:metadata)`
     };
 
     this.workflowQuery = query;
+  }
+
+  _onRunWorkflowClick(e) {
+    // todo; get current workflow state from table
+    document.querySelector('fin-admin-start-workflow').open(e);
   }
 
   _onReindexClick(e) {

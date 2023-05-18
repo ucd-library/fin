@@ -34,7 +34,12 @@ return html`
   name="workflows-main"
   render-type="list"
   update-hash
+  ?auto-refresh="${this.autoRefresh}"
   .query="${this.query}">
 </fin-admin-data-table>
+
+<div class="note">
+  This page is auto-refreshing every 10 seconds.
+</div>
 
 `;}

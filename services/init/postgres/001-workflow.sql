@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS workflow (
 );
 CREATE INDEX IF NOT EXISTS workflow_data_finpath_idx ON workflow((data->>'finPath'));
 CREATE INDEX IF NOT EXISTS workflow_data_state_idx ON workflow(state);
+CREATE INDEX IF NOT EXISTS workflow_data_name_idx ON workflow(name);
+CREATE INDEX IF NOT EXISTS workflow_data_updated_idx ON workflow(updated);
 
 CREATE TABLE IF NOT EXISTS workflow_gcs (
   workflow_gcs SERIAL PRIMARY KEY,

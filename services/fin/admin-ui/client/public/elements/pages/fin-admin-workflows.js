@@ -2,11 +2,12 @@ import { LitElement } from 'lit';
 import {render, styles} from "./fin-admin-workflows.tpl.js";
 import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
 import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
+import AutoRefresh from '../mixins/page-refresh.js';
 
 import "../widgets/fin-admin-data-table.js"
 
 export default class FinAdminWorkflows extends Mixin(LitElement)
-  .with(MainDomElement, LitCorkUtils) {
+  .with(MainDomElement, LitCorkUtils, AutoRefresh) {
 
   static get properties() {
     return {
@@ -28,7 +29,7 @@ export default class FinAdminWorkflows extends Mixin(LitElement)
     };
     this.workflows = [];
 
-    this._injectModel('AppStateModel', 'DataViewModel');
+    this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
 
     this.DataViewModel.coreData()
       .then(e => this._onCoreDataUpdate(e));
@@ -74,6 +75,7 @@ export default class FinAdminWorkflows extends Mixin(LitElement)
 
     let query = Object.assign({}, e.location.hashQuery);
     if( !query.limit ) query.limit = 10;
+    if( !query.order ) query.order = 'path.asc,name.asc';
 
     this.query = query;
   }

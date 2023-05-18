@@ -37,14 +37,15 @@ const viewConfig = {
   },
 
   'path-info-workflows' : {
-    table : 'workflow_workflow',
+    table : 'workflow_lastest',
     renderCellValue : standardRender
   },
 
   'workflows-main' : {
-    table : 'workflow_workflow',
+    table : 'workflow_lastest',
     query : {
-      limit : 10
+      limit : 10,
+      order : 'path.asc,name.asc'
     },
     filters : {
       state : {
@@ -82,7 +83,7 @@ const viewConfig = {
     hideTotal : true,
     renderCellValue : (row, key) => {
       if( key === 'state' || key === 'name' ) {
-        return html`<a href="#workflows?${key}=eq.${row[key]}">${row[key]}</a>`;
+        return html`<a href="#workflows?name=eq.${row.name}&state=eq.${row.state}">${row[key]}</a>`;
       }
       return standardRender(row, key);
     }

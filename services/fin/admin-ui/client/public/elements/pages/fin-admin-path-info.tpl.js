@@ -20,6 +20,13 @@ return html`
   </div>
 </fieldset>
 
+<div>
+  <button 
+    @click="${this._onRunWorkflowClick}" 
+    class="btn btn--invert btn--lg btn--block">Run Workflow
+  </button>
+</div>
+
 <h1 class="heading--weighted-underline">DbSync</h1>
 <fin-admin-data-table 
   name="path-info-dbsync"
