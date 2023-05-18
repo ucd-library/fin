@@ -21,6 +21,14 @@ class FinApiModel extends BaseModel {
     return this.service.startWorkflow(path, name, args);
   }
 
+  listWorkflows() {
+    return this.service.listWorkflows();
+  }
+
+  getContainer(path) {
+    return this.service.getContainer(path);
+  }
+
 }
 
 const model = new FinApiModel();

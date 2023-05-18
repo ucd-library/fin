@@ -12,7 +12,8 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
       path : {type: String},
       dbsyncTable : {type: String},
       dbsyncQuery : {type: Object},
-      workflowQuery : {type: Object}
+      workflowQuery : {type: Object},
+      children : {type: Array},
     }
   }
 
@@ -29,15 +30,16 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     this.dbsyncTable = 'dbsync_update_status';
     this.dbsyncQuery = {limit: 0, order: 'path.asc'};
     this.workflowQuery = {limit: 0};
+    this.children = [];
 
-    this._injectModel('AppStateModel', 'DataViewModel');
+    this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
   }
 
   async firstUpdated() {
     this._onAppStateUpdate(await this.AppStateModel.get());
   }
 
-  _onAppStateUpdate(e) {
+  async _onAppStateUpdate(e) {
     if( e.page !== this.id ) return;
 
     let path = e.location.hash.replace('path-info', '');
@@ -47,12 +49,41 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
 
     this.queryDbSync();
     this.queryWorkflows();
+
+    try {
+      this.children = [];
+      let resp = await this.FinApiModel.getContainer(this.path);
+      let container = JSON.parse(resp.body);
+      this.setChildren(container);
+    } catch(e) {
+      console.error(e);
+    }
   }
 
   _onPathChange(e) {
     let path = e.currentTarget.value;
     if( !path.startsWith('/') ) path = '/'+path;
     window.location.hash = `#path-info${path}`;
+  }
+
+  setChildren(graph) {
+    if( graph['@graph'] ) {
+      graph = graph['@graph'];
+    }
+    if( !Array.isArray(graph) ) {
+      graph = [graph];
+    }
+
+    let containsUri = 'http://www.w3.org/ns/ldp#contains';
+    this.children = [];
+    
+    for( let node of graph ) {
+      if( !node[containsUri] ) continue;
+      this.children = node[containsUri].map(child => {
+        return child['@id'].split('/fcrepo/rest').pop();
+      });
+      break;
+    }
   }
 
   async queryDbSync() {
@@ -86,8 +117,17 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
   }
 
   _onRunWorkflowClick(e) {
+    let currentWorkflows = this
+      .querySelector('fin-admin-data-table[name="path-info-workflows"]')
+      .data
+      .map(row => ({name: row.name, state: row.state}));
+
+
     // todo; get current workflow state from table
-    document.querySelector('fin-admin-start-workflow').open(e);
+    document.querySelector('fin-admin-start-workflow').open({
+      path: this.path,
+      currentWorkflows : currentWorkflows
+    });
   }
 
   _onReindexClick(e) {

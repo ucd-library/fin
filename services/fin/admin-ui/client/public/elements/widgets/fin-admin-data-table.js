@@ -142,7 +142,18 @@ export default class FinAdminDataTable extends Mixin(LitElement)
         });
       }
     }
-    this.data = data;
+    
+    // set data and remove nulls
+    this.data = data.map(row => {
+      for( let key in row ) {
+        if( Array.isArray(row[key]) && row[key].length === 0 ) {
+          delete row[key];
+        } else if( row[key] === null || row[key] === '' ) {
+          delete row[key];
+        }
+      }
+      return row;
+    });
 
     if( e.payload.length ) {
       this.keys = Object.keys(e.payload[0]);
@@ -153,6 +164,20 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     if( this.ignoreKeys.length ) {
       this.keys = this.keys.filter(key => {
         return this.ignoreKeys.indexOf(key) === -1;
+      });
+    }
+
+    if( this.keySort ) {
+      this.keys.sort((a, b) => {
+        let ai = this.keySort.indexOf(a);
+        let bi = this.keySort.indexOf(b);
+
+        if( ai === -1 ) ai = 99999;
+        if( bi === -1 ) bi = 99999;
+
+        if( ai < bi ) return -1;
+        if( ai > bi ) return 1;
+        return 0;
       });
     }
 

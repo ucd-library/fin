@@ -10,7 +10,7 @@
     "@ucd-lib/cork-app-load": "^0.3.2",
     "@ucd-lib/cork-app-state": "^2.0.0",
     "@ucd-lib/cork-app-utils": "^5.1.0",
-    "@ucd-lib/theme-elements": "^1.2.2",
+    "@ucd-lib/theme-elements": "^1.2.3",
     "@ucd-lib/theme-sass": "^5.0.16",
     "lit": "^2.7.4"
   }

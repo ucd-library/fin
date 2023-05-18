@@ -9,7 +9,9 @@ export default class FinAdminStartWorkflow extends Mixin(LitElement)
   static get properties() {
     return {
       path : {type: String},
-      name : {type: String}
+      name : {type: String},
+      workflows : {type: Array},
+      showStartButton : {type: Boolean}
     }
   }
 
@@ -21,17 +23,59 @@ export default class FinAdminStartWorkflow extends Mixin(LitElement)
     super();
     this.render = render.bind(this);
 
-    this._injectModel('FinApiModel');
+    this._injectModel('FinApiModel', 'DataViewModel');
 
     this.path = '';
     this.name = '';
+    this.workflows = [];
+    this.showStartButton = false;
+
+    this.DataViewModel.coreData()
+      .then(e => this._onCoreDataUpdate(e));
   }
 
-  open(e) {
-    this.path = e.data.path;
-    this.workflow = e.data.name;
+  async open(e) {
+    this.path = e.path;
     document.body.style.overflow = 'hidden';
     this.style.display = 'flex';
+    this.showStartButton = false;
+
+    let workflows = [];
+    for( let workflow of this.availableWorkflows ) {
+      let current = e.currentWorkflows.find(w => w.name === workflow);
+
+      if( current ) {
+        let label = current.name;
+        if( current.state === 'running' ) {
+          label += ' (running)';
+        } else {
+          label += ' (Force Rerun)';
+        }
+        current.label = label;
+
+        workflows.push(current);
+        continue;
+      }
+
+      workflows.push({
+        label : workflow,
+        name : workflow
+      });
+    }
+
+    this.workflows = workflows;
+  }
+
+  _onWorkflowSelect(e) {
+    let val = e.target.value;
+    this.showStartButton = (val !== '');
+    this.selectedWorkflow = val;
+  }
+
+  _onCoreDataUpdate(e) {
+    if( e.state !== 'loaded' ) return;
+    this.availableWorkflows = Object.keys(e.payload.workflows);
+    this.availableWorkflows.sort();
   }
 
   close() {
@@ -39,14 +83,15 @@ export default class FinAdminStartWorkflow extends Mixin(LitElement)
     this.style.display = 'none';
   }
 
-  async reindex() {
-    let opts = {
-      force: true
-    };
-    // let follow = this.shadowRoot.querySelector('#follow-reindex-input').value;
-    // if( follow ) opts.follow = follow.replace(/ /g, '');
+  async run() {
+    let opts = {};
 
-    let resp = await this.FinApiModel.startWorkflow(this.path, this.workflow, opts);
+    let selected = this.workflows.find(w => w.name === this.selectedWorkflow);
+    // if the workflow has a state, then it's already been run
+    // and we need to force it to run again
+    if( selected.state ) opts.force = true;
+
+    let resp = await this.FinApiModel.startWorkflow(this.path, selected.name, opts);
     let httpResp = resp.response;
     if( httpResp.status !== 200 ) {
       alert('Failed to reindex path: '+httpResp.status);

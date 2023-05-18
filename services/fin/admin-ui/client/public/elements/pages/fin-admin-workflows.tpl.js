@@ -18,10 +18,10 @@ return html`
   <div class="o-flex-region">
   ${this.workflows.map(workflow => html`
     <div class="o-flex-region__item data-model-panel">
-      <h3>${workflow.name}</h3>
+      <h3 class="heading--weighted">${workflow.name}</h3>
 
       ${workflow.props.map(prop => html`
-        <div style="font-size: 12px"><b>${prop.name}</b>: ${prop.value}</div>
+        <div style="font-size: 14px"><b>${prop.name}</b>: ${prop.value}</div>
       `)}
     </div>
   `)}

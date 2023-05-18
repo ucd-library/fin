@@ -20,6 +20,7 @@ export function styles() {
       margin: 10px;
       padding: 20px;
       background-color: var(--ucd-blue-30);
+      border-radius: 1.25em;
     }
 
     .list-cell {

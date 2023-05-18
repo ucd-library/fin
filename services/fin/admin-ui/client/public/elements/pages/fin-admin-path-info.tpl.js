@@ -13,18 +13,36 @@ export function styles() {
 export function render() { 
 return html`
 
+<style>
+  .contains-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+</style>
+
 <fieldset>
   <div class="field-container">
     <label for="path-info-input">Path</label>
-    <input type="text" value="${this.path}" @change="${this._onPathChange}">
+    <input type="text" .value="${this.path}" @change="${this._onPathChange}">
   </div>
 </fieldset>
 
-<div>
+<div style="text-align:right">
   <button 
     @click="${this._onRunWorkflowClick}" 
-    class="btn btn--invert btn--lg btn--block">Run Workflow
+    class="btn btn--primary btn--round">Run Workflow
   </button>
+</div>
+
+<div ?hidden="${this.children.length === 0}">
+  <h1 class="heading--weighted-underline">Contains</h1>
+  <div class="contains-list">
+    ${this.children.map(child => html`
+      <div class="child">
+        <a href="#path-info${child}">${child}</a>
+      </div>
+    `)}
+  </div>
 </div>
 
 <h1 class="heading--weighted-underline">DbSync</h1>
@@ -41,6 +59,7 @@ return html`
 <fin-admin-data-table 
   name="path-info-workflows"
   render-type="list"
+  ?auto-refresh="${this.autoRefresh}"
   .query="${this.workflowQuery}">
 </fin-admin-data-table>
 

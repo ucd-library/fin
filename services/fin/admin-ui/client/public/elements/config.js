@@ -14,6 +14,8 @@ const viewConfig = {
       limit : 10,
       order : 'path.asc'
     },
+    keySort : ['path', 'model', 'action', 'message', 'updated', 'container_types', 'workflow_types',
+      'transform_service', 'update_types', 'db_response', 'update_count'],
     renderCellValue : dbsync,
     filters : {
       action : {
@@ -30,6 +32,8 @@ const viewConfig = {
 
   'path-info-dbsync' : {
     renderCellValue : dbsync,
+    keySort : ['path', 'model', 'action', 'message', 'updated', 'container_types', 'workflow_types',
+              'transform_service', 'update_types', 'db_response', 'update_count'],
     actions : [{
       type : 'reindex',
       label : 'Reindex Path'
@@ -38,6 +42,8 @@ const viewConfig = {
 
   'path-info-workflows' : {
     table : 'workflow_lastest',
+    keySort : ['path', 'name', 'state', 'workflow_id', 'updated', 
+              'created', 'error', 'data', 'type'],
     renderCellValue : standardRender
   },
 
@@ -53,6 +59,8 @@ const viewConfig = {
         options: ['pending', 'init', 'running', 'completed', 'deleted', 'error']
       }
     },
+    keySort : ['path', 'name', 'state', 'workflow_id', 'updated', 
+              'created', 'error', 'data', 'type'],
     renderCellValue : (row, key) => {
       if( key === 'path' ) {
         let path = (row[key] || '').replace(/\/fcr:metadata$/, '');

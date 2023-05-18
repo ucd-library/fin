@@ -16,6 +16,10 @@ return html`
     margin: 10px;
     padding: 20px;
     background-color: var(--ucd-blue-30);
+    border-radius: 1.25em;
+  }
+  .data-model-panel h3 {
+    color: var(--ucd-gold-100);
   }
   .note {
     color: var(--ucd-black-50);
@@ -29,7 +33,7 @@ return html`
   <div class="o-flex-region">
   ${this.dataModels.map(model => html`
     <div class="o-flex-region__item data-model-panel">
-      <h3>${model.props.id}</h3>
+      <h3 class="heading--weighted">${model.props.id}</h3>
       <div><b>Database Items</b>: ${model.count}</div>
 
       <div ?hidden="${!model.hasApiEndpoint}"><b>API Endpoint</b>: /api/${model.props.id}</div>

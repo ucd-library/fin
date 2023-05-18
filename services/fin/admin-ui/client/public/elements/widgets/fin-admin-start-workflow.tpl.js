@@ -40,6 +40,10 @@ export function styles() {
     input {
       box-sizing: border-box;
     }
+
+    [hidden] {
+      display: none !important;
+    }
   `;
 
   return [elementStyles, _buttonsCss, _headingsCss, _headingsBaseCss,
@@ -51,31 +55,32 @@ return html`
 
 <div class="container">
   <div class="header">
-    <h1 class="heading--weighted-underline">Workflows</h1>
+    <h1 class="heading--weighted-underline">Run Workflow</h1>
     <div style="width: 100px"></div>
     <button @click="${this.close}" class="btn btn--primary btn--sm">Close</button>
   </div>
 
-  <div style="margin:30px 0">
+  <div style="margin-bottom:40px">
     <div>
       Path: <b>${this.path}</b>
     </div>
-    <div class="field-container">
-      <label for="workflow-picker">Select Workflow</label>
-      <select id="workflow-picker">
-        ${this.workflows.map(option => html`
-          <option value=""></option>
-          <option value="${option.value}">
-            ${option.value}
-            ${option.hasRun ? '(Force Rerun)' : ''}
-          </option>
-        `)}
-      </select>
-    </div>
   </div>
 
-  <div>
-    <button @click="${this.reindex}" class="btn btn--invert btn--lg  btn--block">Start Workflow</button>
+  <div class="field-container">
+    <label for="workflow-picker">Select Workflow</label>
+    <select id="workflow-picker" @change="${this._onWorkflowSelect}">
+      <option value=""></option>
+      ${this.workflows.map(option => html`
+        <option value="${option.name}" ?disabled="${option.state === 'running'}">
+          ${option.label}
+        </option>
+      `)}
+    </select>
+  </div>
+  
+
+  <div ?hidden="${!this.showStartButton}">
+    <button @click="${this.run}" class="btn btn--invert btn--lg  btn--block">Start</button>
   </div>
 
 </div>
