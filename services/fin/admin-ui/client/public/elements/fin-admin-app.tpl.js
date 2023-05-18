@@ -34,8 +34,8 @@ return html`
     <a href="#">Dashboard</a>
     <a href="#dbsync">DBSync</a>
     <a href="#workflows">Workflows</a>
-    <a href="#path-info">Path Info</a>
     <a href="#es-management">ES Management</a>
+    <a href="#path-info">Path Info</a>
     <a href="#config">Config</a>
   </ucd-theme-primary-nav>
 

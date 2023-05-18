@@ -29,6 +29,34 @@ class FinApiModel extends BaseModel {
     return this.service.getContainer(path);
   }
 
+  getDataModelIndexes(id) {
+    return this.service.getDataModelIndexes(id);
+  }
+
+  getEsIndex(indexName) {
+    return this.service.getEsIndex(indexName);
+  }
+
+  createIndex(modelName) {
+    return this.service.createIndex(modelName);
+  }
+
+  deleteIndex(indexName) {
+    return this.service.deleteIndex(indexName);
+  }
+
+  setAlias(modelName, indexName, type) {
+    return this.service.setAlias(modelName, indexName, type);
+  }
+
+  copyIndex(modelName, indexName) {
+    return this.service.copyIndex(modelName, indexName);
+  }
+
+  getEsTask(modelName, taskId) {
+    return this.service.getEsTask(modelName, taskId);
+  }
+
 }
 
 const model = new FinApiModel();
