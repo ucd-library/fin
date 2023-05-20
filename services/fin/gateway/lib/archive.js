@@ -8,7 +8,6 @@ module.exports = (zipName, paths=[], finAuthToken, res) => {
   if( !zipName ) {
     zipName = config.projectName+'-archive.zip';
   }
-
   return new Promise(async (resolve, reject) => {
     let resolved = false;
 
@@ -65,7 +64,7 @@ module.exports = (zipName, paths=[], finAuthToken, res) => {
 
       archive.append(stream, {
         name: pathParts.base,
-        prefix: pathParts.dir,
+        // prefix: pathParts.dir,
       });
       await promise;
     }
