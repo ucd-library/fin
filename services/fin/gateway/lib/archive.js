@@ -6,7 +6,7 @@ const archiver = require("archiver");
 
 module.exports = (zipName, paths=[], finAuthToken, res) => {
   if( !zipName ) {
-    zipName = config.projectName+'-archive.zip';
+    zipName = config.projectName+'-archive';
   }
   return new Promise(async (resolve, reject) => {
     let resolved = false;
