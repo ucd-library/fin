@@ -25,10 +25,11 @@ return html`
 </style>
 
 <ucd-theme-header
-  site-name="Fin Admin"
-  slogan=""
-  figure-src="/img/book-logo.png"
   prevent-fixed>
+
+  <ucdlib-branding-bar
+    site-name="Fin Admin">
+  </ucdlib-branding-bar>
 
   <ucd-theme-primary-nav>
     <a href="#">Dashboard</a>

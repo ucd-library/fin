@@ -1,9 +1,11 @@
 const router = require('express').Router();
-const {keycloak, models, config, logger, gc} = require('@ucd-lib/fin-service-utils');
+const {keycloak, models, config, logger, gc, jwt} = require('@ucd-lib/fin-service-utils');
+const api = require('@ucd-lib/fin-api');
 const serviceModel = require('../models/services.js');
 const httpProxy = require('http-proxy');
 const fetch = require('node-fetch');
 const clone = require('clone');
+const archive = require('../lib/archive.js');
 
 let proxy = httpProxy.createProxyServer({
   ignorePath : true
@@ -96,6 +98,41 @@ router.all(/^\/pg(\/.*)$/, keycloak.protect(['admin']), async (req, res) => {
   proxy.web(req, res, {
     target : url
   });
+});
+
+router.get('/archive', async (req, res) => {
+  try {
+    let paths = (req.query?.paths || '')
+      .split(',')
+      .map(path => decodeURIComponent(path.trim()));
+
+    let token = jwt.getJwtFromRequest(req);
+
+    await archive(req.query.name, paths, token, res);
+
+  } catch(e) {
+    res.status(500).json({
+      error : true,
+      message : e.message
+    });
+  }
+});
+
+router.post('/archive', async (req, res) => {
+  try {
+    let paths = (req.body || [])
+      .map(path => decodeURIComponent(path.trim()));
+
+    let token = jwt.getJwtFromRequest(req);
+
+    await archive(req.query.name, paths, token, res);
+
+  } catch(e) {
+    res.status(500).json({
+      error : true,
+      message : e.message
+    });
+  }
 });
 
 module.exports = router;
