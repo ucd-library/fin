@@ -341,13 +341,12 @@ class FinGcWorkflowModel {
           data : data
         });
 
-        return this.initWorkflow(finWorkflowId);
+        return await this.initWorkflow(finWorkflowId);
       }
 
     } catch(e) {
       logger.error('Error initializing workflow', e);
       await pg.updateWorkflow({finWorkflowId, state: 'error', error: e.message+'\n'+e.stack});
-      throw e;
     }
   }
 
@@ -393,7 +392,6 @@ class FinGcWorkflowModel {
     } catch(e) {
       logger.error('Error initializing workflow', e);
       await pg.updateWorkflow({finWorkflowId, state: 'error', error: e.message+'\n'+e.stack});
-      throw e;
     }
   }
 
