@@ -421,9 +421,11 @@ class DbSync {
     let modelNames = await models.names();
     for( let name of modelNames ) {
       let {model} = await models.get(name);
-      let isModel = model.is(event.path, event.container_types, event.workflow_types);
-      if( !isModel ) continue;
-      result.push(model);
+      if( model ) {
+        let isModel = model.is(event.path, event.container_types, event.workflow_types);
+        if( !isModel ) continue;
+        result.push(model);  
+      }
     }
 
     return result;
