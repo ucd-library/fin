@@ -16,6 +16,10 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       name : {type: String},
       table : {type: String},
       query : {type: Object},
+      rawData : {
+        type: Array,
+        attribute : 'raw-data'
+      },
       data : {type: Array},
       keys : {type: Array},
       renderType : {
@@ -53,6 +57,7 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       refresh: true,
       queryCount : 0
     }
+    this.rawData = [];
     this.data = [];
     this.keys = [];
     this.ignoreKeys = [];
@@ -92,6 +97,10 @@ export default class FinAdminDataTable extends Mixin(LitElement)
         this._stopAutoRefresh();
       }
     }
+
+    if( props.has('rawData') ) {
+      this._onRawDataUpdate();
+    }
   }
 
   _runQuery() {
@@ -128,7 +137,26 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     if( e.pgQuery.queryCount !== this.dataOpts.queryCount ) return;
 
     this.loading = false;
-    let data = e.payload;
+    this.rawData = e.payload;
+
+    this.resultSet = e.resultSet;
+    let query = e.pgQuery.query || {};
+
+    if( !query.limit ) {
+      this.showPagination = false;
+    } else {
+      this.currentPage = Math.floor(this.resultSet.stop / query.limit)+1;
+      this.totalPages = Math.ceil(this.resultSet.total / query.limit);
+      if( this.totalPages < 2 ) {
+        this.showPagination = false;
+      } else {
+        this.showPagination = true;
+      }
+    }
+  }
+
+  _onRawDataUpdate() {
+    let data = this.rawData || [];
 
     if( this.actions ) {
       for( let i = 0; i < data.length; i++ ) {
@@ -155,8 +183,8 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       return row;
     });
 
-    if( e.payload.length ) {
-      this.keys = Object.keys(e.payload[0]);
+    if( data.length ) {
+      this.keys = Object.keys(data[0]);
     } else {
       this.keys = [];
     }
@@ -179,21 +207,6 @@ export default class FinAdminDataTable extends Mixin(LitElement)
         if( ai > bi ) return 1;
         return 0;
       });
-    }
-
-    this.resultSet = e.resultSet;
-    let query = e.pgQuery.query || {};
-
-    if( !query.limit ) {
-      this.showPagination = false;
-    } else {
-      this.currentPage = Math.floor(this.resultSet.stop / query.limit)+1;
-      this.totalPages = Math.ceil(this.resultSet.total / query.limit);
-      if( this.totalPages < 2 ) {
-        this.showPagination = false;
-      } else {
-        this.showPagination = true;
-      }
     }
   }
 

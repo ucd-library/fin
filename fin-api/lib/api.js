@@ -359,6 +359,16 @@ class FinApi {
 
       let {sha, md5} = await this.hash(options.file, shaNum);
       options.headers.digest = `sha${shaNum}=${sha}, md5=${md5}`;
+
+      // set the fin-tag header
+      let tags = {};
+      if( options.headers['fin-tag'] ) {
+        tags = JSON.parse(options.headers['fin-tag']);        
+      }
+      tags[`binary-sha${shaNum}`] = sha;
+      tags['binary-md5'] = md5;
+      tags['binary'] = true;
+      options.headers['fin-tag'] = JSON.stringify(tags);
     }
 
     // set the content disposition from file name or provided filename option

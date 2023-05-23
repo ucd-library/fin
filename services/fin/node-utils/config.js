@@ -212,7 +212,8 @@ module.exports = {
       env : env.WORKFLOW_ENV,
       serviceAccountEmail : env.GOOGLE_CLOUD_WORKFLOW_SERVICE_ACCOUNT_EMAIL || env.GOOGLE_SERVICE_ACCOUNT_EMAIL || gcServiceAccount.client_email,
       maxConcurrentWorkflows : parseInt(env.GOOGLE_MAX_CONCURRENT_WORKFLOWS || 3),
-      finWorkflowPath : '/fin/workflows/gc'
+      finWorkflowPath : '/fin/workflows/gc',
+      timeoutMinutes : parseInt(env.GOOGLE_WORKFLOW_TIMEOUT_MINUTES || 30)
     }
 
   },

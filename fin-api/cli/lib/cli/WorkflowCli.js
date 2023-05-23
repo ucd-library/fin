@@ -133,6 +133,41 @@ ${this.getGcWorkflowUrl(data.data.gcExecution)}
     Logger.log(lastPing);
   }
 
+  async delete(args) {
+    args.path = args.finPath + '/svc:workflow/' + args.workflowName;
+    delete args.finPath;
+    delete args.workflowName;
+
+    let qs = {};
+    if( args.options.gcsBucket ) {
+      qs.gcsBucket = args.options.gcsBucket;
+    }
+
+    if( Object.keys(qs).length ) {
+      let tmp = [];
+      for( let key in qs ) {
+        tmp.push(key + '=' + qs[key]);
+      }
+      args.path += '?' + tmp.join('&'); 
+    }
+
+    let response = await http.delete(args);
+
+    if( args.options.print ) return;
+
+    response = response.response.data;
+    if( response.statusCode !== 200 ) {
+      Logger.error(response.statusCode, response.body);
+      return;
+    }
+
+    let data = JSON.parse(response.body);
+
+    Logger.log();
+    Logger.log(JSON.stringify(data, null, 2));
+    Logger.log();
+  }
+
   async reload(args) {
     args.path = '/svc:workflow/reload';
     let response = await http.get(args);

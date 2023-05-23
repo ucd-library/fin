@@ -113,16 +113,19 @@ app.get('/:workflowId', async (req, res) => {
   }
 });
 
-// app.delete('/:workflowId', async (req, res) => {
-//   try {
-//     res.json(await workflowModel.cleanupWorkflow(req.params.workflowId));
-//   } catch(e) {
-//     res.status(500).json({
-//       error : e.message,
-//       stack : e.stack
-//     });
-//   }
-// });
+app.delete('/:workflowName', async (req, res) => {
+  try {
+    let finPath = req.query.fcPath.replace(/\/fcrepo\/rest/, '');
+    let workflowName = req.params.workflowName;
+
+    res.json(await workflowModel.deleteWorkflow(finPath, workflowName));
+  } catch(e) {
+    res.status(500).json({
+      error : e.message,
+      stack : e.stack
+    });
+  }
+});
 
 workflowModel.load();
 

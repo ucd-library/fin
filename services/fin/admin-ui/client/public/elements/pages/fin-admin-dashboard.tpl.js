@@ -65,10 +65,19 @@ return html`
 </div>
 
 <div>
-  <h2 class="heading--weighted-underline">Fcrepo Type Stats</h2>
+  <h2 class="heading--weighted-underline">Fcrepo - Type Stats</h2>
   <fin-admin-data-table 
     name="dashboard-fcrepo-stats"
     ?auto-refresh="${this.autoRefresh}">
+  </fin-admin-data-table>
+</div>
+
+<div>
+  <h2 class="heading--weighted-underline">Fcrepo - Open Transactions</h2>
+  <fin-admin-data-table 
+    id="open-transactions"
+    hide-total
+    .rawData="${this.openTransactions}">
   </fin-admin-data-table>
 </div>
 

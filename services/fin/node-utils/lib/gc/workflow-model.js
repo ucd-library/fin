@@ -50,6 +50,10 @@ class FinGcWorkflowModel {
       logger.info('Reloading workflow config from fcrepo: '+this.CONFIG_PATH, 'Updated by: '+id);
       this.getConfig();
     }, 1000);
+
+    setInterval(() => {
+      this._checkTimeouts();
+    }, 1000*60*30);
   }
 
   load() {
@@ -206,36 +210,36 @@ class FinGcWorkflowModel {
   }
 
   getNotifyOnSuccess(workflowName) {
-    return this.definitions[workflowName].notifyOnSuccess ||
+    return this.definitions[workflowName]?.notifyOnSuccess ||
       this.defaults.notifyOnSuccess;
   }
 
   getGcsBucket(workflowName) {
-    return this.definitions[workflowName].gcsBucket ||
+    return this.definitions[workflowName]?.gcsBucket ||
       this.defaults.gcsBucket ||
       config.workflow.gcsBuckets.product;
   }
 
   getTmpGcsBucket(workflowName) {
-    return this.definitions[workflowName].tmpGcsBucket ||
+    return this.definitions[workflowName]?.tmpGcsBucket ||
       this.defaults.tmpGcsBucket ||
       config.workflow.gcsBuckets.tmp;
   }
 
   getGoogleCloudProjectId(workflowName) {
-    return this.definitions[workflowName].gcProjectId ||
+    return this.definitions[workflowName]?.gcProjectId ||
       this.defaults.gcProjectId ||
       config.google.project;
   }
 
   getGoogleCloudLocation(workflowName) {
-    return this.definitions[workflowName].gcLocation ||
+    return this.definitions[workflowName]?.gcLocation ||
       this.defaults.gcLocation ||
       config.google.location;
   }
 
   getGoogleCloudServiceAccountEmail(workflowName) {
-    return this.definitions[workflowName].gcServiceAcountEmail ||
+    return this.definitions[workflowName]?.gcServiceAcountEmail ||
       this.defaults.gcServiceAcountEmail ||
       config.google.workflow.serviceAcountEmail ||
       config.google.serviceAcountEmail;
@@ -381,6 +385,10 @@ class FinGcWorkflowModel {
         .then(async () => {
           await gcs.getGcsFileObjectFromPath('gs://'+path.join(data.tmpGcsBucket, finWorkflowId, 'workflow.json'))
             .save(JSON.stringify(workflowInfo, null, 2));  
+
+          // remove all current files in the the main bucket
+          await gcs.cleanFolder(data.gcsBucket, data.finPath+'/'+data.gcsSubpath);
+
           this.startWorkflow(workflowInfo);
         })
         .catch(async e => {
@@ -466,9 +474,51 @@ class FinGcWorkflowModel {
     return this.wClient.workflowPath(this.getGoogleCloudProjectId(finWorkflowName), this.getGoogleCloudLocation(finWorkflowName), gcWorkflowName);
   }
 
-  async cleanupWorkflow(workflowId) {
-    let workflowInfo = await this.getWorkflowInfo(workflowId);
-    await gcs.cleanFolder(workflowInfo.data.tmpGcsBucket, workflowId);
+  /**
+   * @method deleteWorkflow
+   * @description USE WITH CAUTION!  This will take a workflow name and fin path,
+   * lookup the current workflow file and delete it the subPath from gcs.  Then it
+   * will remove all path/name entries from postgres.  Finally it will call reindex
+   * if the workflow flag is set.
+   * 
+   * @param {*} finPath 
+   * @param {*} workflowName 
+   * @param {Object} opts
+   */
+  async deleteWorkflow(finPath, workflowName, opts={}) {
+    let bucket = opts.gcsBucket || this.getGcsBucket(workflowName);
+    let workflowFile = 'gs://'+path.join(bucket, 'workflows', finPath, workflowName+'.json');
+
+    let workflow = await gcs.loadFileIntoMemory(workflowFile);
+    workflow = JSON.parse(workflow);
+
+    // delete the workflow data
+    await gcs.cleanFolder(bucket, finPath+'/'+workflow.data.gcsSubpath);
+
+    // delete the workflow from postgres
+    await pg.deleteWorkflows(finPath, workflowName);
+
+    // delete the workflow file
+    await gcs.getGcsFileObjectFromPath(workflowFile).delete();
+
+    if( workflow.data.notifyOnSuccess ) {
+      let svcPath = workflow.data.notifyOnSuccess;
+      if( !svcPath.startsWith('/') ) {
+        svcPath = '/'+svcPath;
+      }
+
+      logger.info('notifying on workflow delete '+workflowName+' : ', workflow.data.finPath+svcPath);
+
+      let jwt = await keycloak.getServiceAccountToken();
+      let response = await api.get({
+        path : workflow.data.finPath+svcPath,
+        host : config.gateway.host,
+        jwt
+      });
+      logger.info('Workflow notify delete response', workflowName, workflow.data.finPath+svcPath, response.last.statusCode, response.last.body);
+    }
+
+    return {deleted: true, workflow};
   }
 
   async getWorkflowInfo(workflowId) {
@@ -649,6 +699,7 @@ class FinGcWorkflowModel {
       let pendingWorkflow = await pg.getNextPendingWorkflow();
       if( pendingWorkflow ) {
         this.initWorkflow(pendingWorkflow.workflow_id);
+        this.checkPendingWorkflows();
       }
     }
   }
@@ -721,6 +772,19 @@ class FinGcWorkflowModel {
     let gcsFile = 'gs://'+data.gcsBucket+'/workflows'+finPath+'/'+finWorkflowName+'.json';
     gcsFile = gcs.getGcsFileObjectFromPath(gcsFile);
     return (await gcsFile.exists())[0];
+  }
+
+  async _checkTimeouts() {
+    let timeout = config.google.workflow.timeoutMinutes;
+    let rows = await pg.getTimeoutActiveAndInitWorkflows(timeout);
+    for( let row of rows ) {
+      await pg.updateWorkflow({
+        finWorkflowId : row.workflow_id, 
+        state: 'error', 
+        error: `Workflow timed out, ${row.state} ran for longer than ${timeout} minutes` 
+      });
+
+    }
   }
 
 }

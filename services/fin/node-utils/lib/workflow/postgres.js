@@ -122,6 +122,26 @@ class WorkflowPostgresUtils {
     return resp.rows;
   }
 
+  async getTimeoutActiveAndInitWorkflows(expireTimeMin=30) {
+    let resp = await this.pg.query(
+      `SELECT * FROM ${this.schema}.workflow WHERE state = 'running' or state = 'init' and updated < NOW() - INTERVAL '${expireTimeMin} minutes'`
+    );
+    return resp.rows;
+  }
+
+  async deleteWorkflows(finPath, workflowName) {
+    let respGcs = await this.pg.query(
+      `DELETE FROM ${this.schema}.workflow_gcs WHERE workflow_id in 
+        (SELECT workflow_id FROM ${this.schema}.workflow WHERE data->>'finPath' = $1 and name = $2)`,
+      [finPath, workflowName]
+    );
+    let respWork = await this.pg.query(
+      `DELETE FROM ${this.schema}.workflow WHERE data->>'finPath' = $1 and name = $2`,
+      [finPath, workflowName]
+    );
+    return respWork.rows;
+  }
+
   async getActiveWorkflows() {
     let resp = await this.pg.query(
       `SELECT * FROM ${this.schema}.workflow WHERE state = 'running'`

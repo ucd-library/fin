@@ -13,6 +13,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
   static get properties() {
     return {
       dataModels : [],
+      openTransactions : {type: Array},
       dbSyncQueueLength : {type: String}
     }
   }
@@ -26,6 +27,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.render = render.bind(this);
     
     this.dataModels = [];
+    this.openTransactions = [];
 
     this._injectModel('DataViewModel');
 
@@ -53,6 +55,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
 
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
+
+    this.openTransactions = e.payload.openTransactions || [];
 
     this.dataModels = Object.values(e.payload.registeredModels || {});
     this.dataModels = clone(this.dataModels);

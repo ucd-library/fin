@@ -1,13 +1,15 @@
 const {URL} = require('url');
 const api = require('@ucd-lib/fin-api');
-const {logger, config, jwt, workflow, FinAC, pg, FinGroups, RDF_URIS} = require('@ucd-lib/fin-service-utils');
+const {logger, config, jwt, workflow, FinAC, pg, FinTag, RDF_URIS} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('./services');
 const proxy = require('../lib/http-proxy');
 const serviceProxy = require('./service-proxy');
 const forwardedHeader = require('../lib/forwarded-header');
 const authenticationServiceProxy = require('./service-proxy/authentication-service');
 const clientServiceProxy = require('./service-proxy/client-service');
+const transactionHelper = require('../lib/transactions.js');
 const finac = new FinAC();
+const finTag = new FinTag();
 
 // TODO: uncomment to enable finGroups
 // const finGroups = new FinGroups();
@@ -108,6 +110,11 @@ class ProxyModel {
     
     // we had a true fcrepo request, append appropriate fin service link headers
     this._appendServiceLinkHeaders(req, proxyRes);
+
+    // append fin tag header
+    if( req.finTag && Object.keys(req.finTag).length ) {
+      proxyRes.headers[finTag.HEADER] = JSON.stringify(req.finTag);
+    }
 
     // this is a hack for browser caching, see method details
     this._setNoCacheHeaders(proxyRes);
@@ -229,11 +236,11 @@ class ProxyModel {
     req.workflows = await workflow.postgres.getLatestWorkflowsByPath(path);
 
     if( req.user && req.user.roles.includes(config.finac.agents.admin) ) {
-      req.openTransaction = await this.getOpenTransaction(path);
+      req.openTransaction = await transactionHelper.getOpenTransaction(path);
     }
 
-    // TODO: uncomment to enable finGroups
-    // req.finGroup = await finGroups.get(path);
+    // handle fin tag in request
+    await finTag.onFcrepoRequest(req);
 
     // set base user auth
     let fcrepoApiConfig = api.getConfig();
@@ -248,7 +255,7 @@ class ProxyModel {
 
     // hack for nuking transaction
     if( req.originalUrl.startsWith('/fcrepo/rest/fcr:tx/nuke/') ) {
-      await this.nukeTransaction(req.originalUrl.replace('/fcrepo/rest/fcr:tx/nuke/', ''));
+      await transactionHelper.nukeTransaction(req.originalUrl.replace('/fcrepo/rest/fcr:tx/nuke/', ''));
       return res.status(200).send();
     }
 
@@ -395,54 +402,6 @@ class ProxyModel {
         })
     }
   }
-
-  /**
-   * @method getOpenTransaction
-   * @description get the open transaction for a given path
-   * 
-   * @param {String} path 
-   * @returns {String} transaction id
-   */
-  async getOpenTransaction(path) {
-    path = path.replace(/^\/fcrepo\/rest/, '');
-    path = 'info:fedora'+path;
-
-    let resp = await pg.query(`select 
-        ct.transaction_id as txid_1
-      from 
-        containment_transactions ct
-      where
-        ct.fedora_id = $1
-      limit 1
-    `, [path]);
-
-    if( resp.rows && resp.rows.length ) {
-      let row = resp.rows[0];
-      if( row.txid_1 ) return row.txid_1;
-    }
-
-    return '';
-  }
-
-  /**
-   * @method nukeTransaction
-   * @description remove all traces of a transaction from the database.  This
-   * is a total hack to get around fcrepo tx issues.  Fcrepo will need to be restarted
-   * after calling this method.
-   * 
-   * @param {String} txid
-   * 
-   * @returns {Promise} 
-   */
-  async nukeTransaction(txid) {
-    await pg.query(`delete from containment_transactions where transaction_id = $1`, [txid]);
-    await pg.query(`delete from membership_tx_operations where tx_id = $1`, [txid]);
-    await pg.query(`delete from ocfl_id_map_session_operations where session_id = $1`, [txid]);
-    await pg.query(`delete from reference_transaction_operations where transaction_id = $1`, [txid]);
-    await pg.query(`delete from search_resource_rdf_type_transactions where transaction_id = $1`, [txid]);
-    await pg.query(`delete from simple_search_transactions where transaction_id = $1`, [txid]);
-  }
-
 }
 
 module.exports = new ProxyModel();

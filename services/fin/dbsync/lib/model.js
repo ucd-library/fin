@@ -192,8 +192,8 @@ class DbSync {
       // under this condition, the acl may have been updated.  Remove item and any 
       // child items in elastic search.  We need to do it here so we can mark PG why we
       // did it.
-      if( response.data.statusCode !== 200 ) {
-        logger.info('Container '+event.path+' was publicly inaccessible ('+response.data.statusCode+') from LDP, removing from index. url='+response.data.request.url);
+      if( response.last.statusCode !== 200 ) {
+        logger.info('Container '+event.path+' was publicly inaccessible ('+response.last.statusCode+') from LDP, removing from index. url='+response.last.request.url);
 
         event.action = 'ignored';
         event.message = 'inaccessible';
@@ -203,7 +203,7 @@ class DbSync {
         return;
       }
 
-      let jsonld = JSON.parse(response.data.body);
+      let jsonld = JSON.parse(response.last.body);
       
 
       // if no esId, we don't add to elastic search
@@ -293,7 +293,7 @@ class DbSync {
         host: config.fcrepo.host
       });
 
-      if( response.data.statusCode === 200 ) {
+      if( response.last.statusCode === 200 ) {
         var link = response.last.headers['link'];
         if( link ) {
           link = api.parseLinkHeader(link);

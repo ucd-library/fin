@@ -19,6 +19,8 @@ class GcsWrapper {
   constructor() {
     this.JSON_LD_EXTENTION = '.jsonld.json';
 
+    this.storage = storage;
+
     // omit these properties for jsonld stored in gcs
     this.OMIT = [
       'http://www.w3.org/ns/ldp#PreferMembership',
@@ -740,6 +742,8 @@ class GcsWrapper {
       writeStream.on('finish', resolve);
     });
   }
+
+
 
   /**
    * @method cleanFolder

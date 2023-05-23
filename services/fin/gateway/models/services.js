@@ -1,5 +1,5 @@
 const api = require('@ucd-lib/fin-api');
-const {logger, config, ActiveMqClient} = require('@ucd-lib/fin-service-utils');
+const {logger, config, ActiveMqClient, FinTag} = require('@ucd-lib/fin-service-utils');
 const request = require('request');
 const {URL} = require('url');
 const jsonld = require('jsonld');
@@ -8,6 +8,7 @@ const util = require('util');
 const redis = require('../lib/redisClient')();
 const jwt = require('jsonwebtoken');
 const label = require('../models/label');
+const finTag = new FinTag();
 
 jsonld.frame = util.promisify(jsonld.frame);
 
@@ -334,9 +335,12 @@ class ServiceModel {
       .map(item => item.trim())
       .filter(item => item)
 
-    // TODO: uncomment when fin groups are ready
-    // handle fin groups
-    // await finGroups.onFcrepoEvent(event);
+    // let fin tag see events
+    try {
+      await finTag.onFcrepoEvent(event);
+    } catch(e) {
+      logger.error(e);
+    }
 
     if( !types.includes(SERVICE_TYPE) ) {
       return;

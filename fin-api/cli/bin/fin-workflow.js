@@ -28,6 +28,16 @@ program
 );
 
 stdOptionWrapper(
+  program
+    .command('delete <path> <workflow-name>')
+    .description('Delete a workflow from GCS')
+    .option('-b, --gcs-bucket <name>', 'GCS Bucket workflow is stored in')
+    .action((finPath, workflowName, options) => {
+      workflowCli.delete({finPath, workflowName, options})
+    })
+  );
+
+stdOptionWrapper(
 program
   .command('reload')
   .description('Reload completed workflows from registered GCS Buckets')

@@ -1,11 +1,13 @@
 const router = require('express').Router();
-const {keycloak, models, config, logger, gc, jwt} = require('@ucd-lib/fin-service-utils');
+const {keycloak, models, config, logger, FinTag, jwt} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const serviceModel = require('../models/services.js');
 const httpProxy = require('http-proxy');
 const fetch = require('node-fetch');
 const clone = require('clone');
 const archive = require('../lib/archive.js');
+const transactionHelper = require('../lib/transactions.js');
+const finTag = new FinTag();
 
 let proxy = httpProxy.createProxyServer({
   ignorePath : true
@@ -63,6 +65,8 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
       finServiceAccount.error = e.message;
     }
 
+    let openTransactions = await transactionHelper.getTransactionStats();
+
     let cleanConfig = clone(config);
     cleanConfig.elasticsearch.password = '********';
     cleanConfig.jwt.secret = '********';
@@ -76,6 +80,7 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
       config : cleanConfig,
       workflows,
       finServiceAccount,
+      openTransactions,
       env : {
         FIN_APP_VERSION : process.env.FIN_APP_VERSION,
         FIN_REPO_TAG : process.env.FIN_REPO_TAG,

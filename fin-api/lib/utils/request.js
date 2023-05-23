@@ -13,7 +13,7 @@ async function request(options) {
 
   let directAccess = options.directAccess !== undefined ? options.directAccess : config.directAccess;
   
-  let jwt = options.jwt || auth.getJwt();
+  let jwt = (options.jwt !== undefined) ? options.jwt : auth.getJwt();
 
   if( jwt && directAccess === false ) {
     authUsed = true;
