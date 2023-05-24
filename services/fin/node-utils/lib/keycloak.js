@@ -4,12 +4,14 @@ const logger = require('./logger.js');
 const jwt = require('./jwt.js');
 const FinAC = require('./fin-ac/index.js');
 const finac = new FinAC();
+const clone = require('clone');
 
 class KeycloakUtils {
 
   constructor() {
     // we will cache all tokens for 30 seconds
     this.tokenCache = new Map();
+    this.tokenRequestCache = new Map();
     this.tokenCacheTTL = 1000*30;
 
     this.setUser = this.setUser.bind(this);
@@ -84,39 +86,61 @@ class KeycloakUtils {
 
     // 30 second caching
     if( this.tokenCache.has(token) ) {
-      return this.tokenCache.get(token);
+      let result = this.tokenCache.get(token);
+      return clone(result);
     }
 
     let resp = {};
 
     try {
+      let result;
+
+      // if we get multiple requests at once, just make one 
+      // request to the auth server
+      if( this.tokenRequestCache.has(token) ) {
+        let promise = this.tokenRequestCache.get(token);
+        result = await promise;
+
+        return clone(result);
+      }
+
       // short abort
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1000);
 
-      resp = await fetch(config.oidc.baseUrl+'/protocol/openid-connect/userinfo', {
+      let request = fetch(config.oidc.baseUrl+'/protocol/openid-connect/userinfo', {
         signal: controller.signal,
         headers : {
           authorization : 'Bearer '+token
         }
       });
+
+      let requestResolve;
+      let promise = new Promise((resolve, reject) => {
+        requestResolve = resolve;
+      });
+      this.tokenRequestCache.set(token, promise);
+      
+      let resp = await request;
+      let body = await resp.text();
       clearTimeout(timeoutId);
 
-      let body = await resp.text();
-
-      let result = {
+      result = {
         active : resp.status === 200,
         status : resp.status,
         user : body ? JSON.parse(body) : null
       }
 
       this.tokenCache.set(token, result);
-      
       setTimeout(() => {
         this.tokenCache.delete(token);
       }, this.tokenCacheTTL);
+
+
+      requestResolve(result);
+      this.tokenRequestCache.delete(token);
       
-      return result;
+      return clone(result);
     } catch(e) {
       if (e.name === 'AbortError' || e.name === 'FetchError') {
         logger.warn('Failed to verify jwt from keycloak, attempting pub key decryption', e)
@@ -126,7 +150,7 @@ class KeycloakUtils {
             active : true,
             status : 200,
             fallback : true,
-            user
+            user : clone(user)
           }
         }
       }

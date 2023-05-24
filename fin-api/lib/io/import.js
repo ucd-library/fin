@@ -14,6 +14,12 @@ class FinIoImport {
   constructor(_api) {
     api = _api;
     this.DEFAULT_TIMEOUT = 1000 * 60 * 5; // 5min
+
+    this.FIN_TAGS = {
+      AG_HASH : 'finio-ag-hash',
+      BINARY_HASH : 'finio-binary-sha256',
+      METADATA_HASH : 'finio-metadata-sha256'
+    }
   }
 
   addSigIntCallback() { 
@@ -193,43 +199,58 @@ class FinIoImport {
     let indirectContainers = null;
     let indirectContainerSha = null;
     let forceRootUpdate = false;
+    let agHash = '';
+    let newAgHash = '';
 
     // check for changes
     if( isArchivalGroup ) {
 
       console.log('ARCHIVAL GROUP: '+dir.fcrepoPath);
       console.log(' -> crawling fcrepo and local fs for changes');
-      console.log('  |-> crawling fcrepo...');
-      let fcrManifest = await this.createArchivalGroupFcrManifest(dir.fcrepoPath);
-      if( process.stdout && process.stdout.clearLine ) {
-        process.stdout.clearLine();
-        process.stdout.cursorTo(0);
-      }
+
+      let headResp = await api.head({path: dir.fcrepoPath});
+      let finTag = this.getFinTags(headResp.last);
+      agHash = finTag[this.FIN_TAGS.AG_HASH];
+
       console.log('  |-> crawling local fs...');
       let dirManifest = await this.createArchivalGroupDirManifest(dir);
       console.log('  \\-> Comparing...');
-      let response = this.checkArchivalGroupManifest(fcrManifest, dirManifest);
+
+      let hash = crypto.createHash('sha256');
+      hash.update(JSON.stringify(dirManifest));
+      newAgHash = hash.digest('hex');
+
+      // let response = this.checkArchivalGroupManifest(fcrManifest, dirManifest);
 
       // maybe required below
       if( dir.typeConfig && dir.typeConfig.virtualIndirectContainers ) {
         indirectContainers = this.getIndirectContainerList(rootDir, dir);
-      
+
         // if collection, we need to check if the indirect references as changed
         let hash = crypto.createHash('sha256');
         hash.update(JSON.stringify(indirectContainers));
         indirectContainerSha = hash.digest('hex');
 
-        if( response.equal === true ) { 
-          if( !fcrManifest[dir.fcrepoPath].indirectSha ) {
-            response = {equal:false, message: 'No indirect reference sha found: '+dir.fcrepoPath};
-          } else if( indirectContainerSha !== fcrManifest[dir.fcrepoPath].indirectSha ) {
-            response = {equal:false, message: 'indirect reference sha mismatch: '+dir.fcrepoPath};
-          }
-        }
+        newAgHash += '-'+indirectContainerSha;
+
+        // if( response.equal === true ) { 
+        //   if( !fcrManifest[dir.fcrepoPath].indirectSha ) {
+        //     response = {equal:false, message: 'No indirect reference sha found: '+dir.fcrepoPath};
+        //   } else if( indirectContainerSha !== fcrManifest[dir.fcrepoPath].indirectSha ) {
+        //     response = {equal:false, message: 'indirect reference sha mismatch: '+dir.fcrepoPath};
+        //   }
+        // }
 
         dir.finIoNode = this.createFinIoNode();
         dir.finIoNode.indirectContainerSha = indirectContainerSha;
         dir.finIoNode[utils.PROPERTIES.FIN_IO.INDIRECT_REFERENCE_SHA] = [{'@value': indirectContainerSha}];
+      }
+
+      let response = null;
+      if( agHash === newAgHash ) {
+        response = {equal:true, message: 'No changes archivalgroup detected: '+dir.fcrepoPath};
+      } else {
+        response = {equal:false, message: 'Changes detected: '+dir.fcrepoPath};
       }
 
       if( response.equal === true && this.options.forceMetadataUpdate !== true ) {
@@ -243,7 +264,9 @@ class FinIoImport {
         this.currentOp = api.startTransaction({timeout: this.DEFAULT_TIMEOUT});
         let tResp = await this.currentOp;
         if( tResp.last.statusCode !== 201 ) {
+          console.log(tResp.last);
           console.error('Unable to start transaction: ', tResp.last.statusCode, tResp.last.body);
+          process.exit(1);
           return;
         }
         console.log(' -> changes found, running transaction based update ('+api.getConfig().transactionToken+'): '+response.message);
@@ -260,6 +283,8 @@ class FinIoImport {
 
     // does the archive group need a container?
     if( isArchivalGroup || dir.containerGraph) {
+      if( !dir.finTag ) dir.finTag = {};
+      dir.finTag[this.FIN_TAGS.AG_HASH] = newAgHash;
       await this.putContainer(dir, forceRootUpdate);
     }
 
@@ -347,14 +372,14 @@ class FinIoImport {
 
     // collections might have already created the node in the manifest check set
     let finIoNode = container.finIoNode || this.createFinIoNode();
-    let finTag = {};
+    let finTag = container.finTag || {};
 
     // check if d exists and if there is the ucd metadata sha.
     let forceUpdate = this.options.forceMetadataUpdate || force;
     if( !forceUpdate && 
         response.last.statusCode === 200 && localpath !== '_virtual_' ) {
       
-      let tags = JSON.parse(response.last.headers['fin-tag'] || '{}');
+      let tags = this.getFinTags(response.last);
       if( await this.isMetaShaMatch(tags, finIoNode, localpath ) ) {
         console.log(` -> IGNORING (sha match)`);
         this.diskLog({verb: 'ignore', path: containerPath, file: localpath, message : 'sha match'});
@@ -364,12 +389,11 @@ class FinIoImport {
       let hash = await api.hash(localpath);
       finIoNode[utils.PROPERTIES.FIN_IO.METADATA_SHA] = [{'@value': hash.sha}];
       finIoNode[utils.PROPERTIES.FIN_IO.METADATA_MD5] = [{'@value': hash.md5}];
-      finTag['metadata-sha'] = hash.sha;
-      finTag['metadata-md5'] = hash.md5;
+      finTag[this.FIN_TAGS.METADATA_HASH] = hash.sha;
     }
 
     if( finIoNode.indirectContainerSha ) {
-      finTag['metadata-sha'] = finIoNode.indirectContainerSha;
+      finTag[this.FIN_TAGS.METADATA_HASH] = finIoNode.indirectContainerSha;
       delete finIoNode.indirectContainerSha;
     }
 
@@ -415,8 +439,8 @@ class FinIoImport {
     });
 
     if( response.last.statusCode === 200 ) {
-      response = JSON.parse(response.last.headers['fin-tag'] || '{}');
-      if( response['binary-sha256'] ) {
+      response = this.getFinTags(response.last);
+      if( response[this.FIN_TAGS.BINARY_HASH] ) {
         // let shas = response[utils.PROPERTIES.PREMIS.HAS_MESSAGE_DIGEST]
         //   .map(item => {
         //     let [urn, sha, hash] = item['@id'].split(':')
@@ -428,7 +452,7 @@ class FinIoImport {
         // if( !sha ) {
         //   shas.find(item => item[0].match(/^sha-/));
         // }
-        let sha = response['binary-sha256'];
+        let sha = response[this.FIN_TAGS.BINARY_HASH];
 
         if( sha ) {
           let localSha = await api.sha(binary.localpath, '256');
@@ -515,7 +539,7 @@ class FinIoImport {
 
       // check if d exists and if there is the ucd metadata sha.
       if( this.options.forceMetadataUpdate !== true && response.last.statusCode === 200 ) {
-        response = JSON.parse(response.last.headers['fin-tag'] || '{}');
+        response = this.getFinTags(response.last);
         if( await this.isMetaShaMatch(response, finIoContainer, binary.containerFile ) ) {
           console.log(` -> IGNORING (sha match)`);
           this.diskLog({verb: 'ignore', path: containerPath, file: binary.containerFile, message : 'sha match'});
@@ -523,7 +547,7 @@ class FinIoImport {
         }
       } else {
         let localSha = await api.sha(binary.containerFile);
-        headers[`fin-tag`] = {'binary-metadata-sha': localSha};
+        headers[`fin-tag`] = {[this.FIN_TAGS.BINARY_HASH]: localSha};
         finIoContainer[utils.PROPERTIES.FIN_IO.METADATA_SHA] = [{'@value': localSha}];
       }
 
@@ -748,14 +772,14 @@ class FinIoImport {
 
     // let finIoIndirectRef = utils.getGraphNode(nodeGraph.graph, utils.TYPES.FIN_IO_INDIRECT_REFERENCE);
 
-    let tags = JSON.parse(headRequest.last.headers['fin-tag'] || '{}');
+    let tags = this.getFinTags(headRequest.last);
     let found = false;
-    if( tags['binary-sha256'] ) {
-      manifest[path].binarySha = tags['binary-sha256'];
+    if( tags[this.FIN_TAGS.BINARY_HASH] ) {
+      manifest[path].binarySha = tags[this.FIN_TAGS.BINARY_HASH];
       found = true;
     }
-    if( tags['metadata-sha'] ) {
-      manifest[path].metadataSha = tags['metadata-sha'];
+    if( tags[this.FIN_TAGS.METADATA_HASH] ) {
+      manifest[path].metadataSha = tags[this.FIN_TAGS.METADATA_HASH];
       found = true;
     }
     if( !found ) {
@@ -881,7 +905,7 @@ class FinIoImport {
     // newJsonLd might not be a graph, but the node itself
     // if( !Array.isArray(newJsonld) ) newJsonld = [newJsonld];
 
-    let currentSha = tags['binary-sha256'] || tags['metadata-sha'];
+    let currentSha = tags[this.FIN_TAGS.BINARY_HASH] || tags[this.FIN_TAGS.METADATA_HASH];
     // let currentSha = utils.getGraphValue(currentJsonLd, utils.PROPERTIES.FIN_IO.METADATA_SHA);
 
     // check sha match
@@ -966,6 +990,16 @@ class FinIoImport {
 
     data.timestamp = new Date().toISOString();
     this.diskLogBuffer.push(data);
+  }
+
+  getFinTags(request) {
+    if( request.last ) {
+      request = request.last;
+    }
+    if( !request.headers ) {
+      return {};
+    }
+    return JSON.parse(request.headers['fin-tag'] || '{}');
   }
 
   saveDiskLog() {
