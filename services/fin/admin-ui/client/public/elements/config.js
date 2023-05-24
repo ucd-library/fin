@@ -83,7 +83,11 @@ const viewConfig = {
         return html`<a href="#dbsync?action=eq.${row[key]}">${row[key]}</a>`;
       }
       return standardRender(row, key);
-    }
+    },
+    actions : [{
+      type : 'reindex',
+      label : 'Reindex All'
+    }]
   },
 
   'dashboard-workflow-stats' : {
@@ -104,6 +108,13 @@ const viewConfig = {
       limit : 10,
       order : 'size.desc'
     }
+  },
+
+  'open-transactions' : {
+    actions : [{
+      type : 'delete-tx',
+      label : 'Delete Transaction'
+    }]
   }
 
 }

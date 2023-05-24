@@ -1,4 +1,4 @@
-const {config, logger, ActiveMqClient, models, RDF_URIS, workflow} = require('@ucd-lib/fin-service-utils');
+const {config, logger, waitUntil, ActiveMqClient, models, RDF_URIS, workflow} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const postgres = require('./postgres');
 const clone = require('clone');
@@ -10,19 +10,27 @@ class DbSync {
   constructor() {
     this.READ_LOOP_WAIT = 2000;
 
-    this.activemq = new ActiveMqStompClient('dbsync');
-    this.activemq.onMessage(e => this.handleMessage(e));
-    this.activemq.connect({queue: config.activeMq.queues.dbsync});
-
     this.UPDATE_TYPES = {
       UPDATE : ['Create', 'Update'],
       DELETE : ['Delete', 'Purge']
     }
 
-    models.load();
+    this.init();
+  }
 
-    postgres.connect()
-      .then(() => this.readLoop());
+  async init() {
+    // first connect to es, fcrepo and postgres
+    await waitUntil(config.fcrepo.hostname, config.fcrepo.port);
+    await waitUntil(config.elasticsearch.host, config.elasticsearch.port);
+    await postgres.connect();
+
+    await models.load();
+
+    this.activemq = new ActiveMqStompClient('dbsync');
+    this.activemq.onMessage(e => this.handleMessage(e));
+    this.activemq.connect({queue: config.activeMq.queues.dbsync});
+
+    this.readLoop();
   }
 
   async readLoop() {

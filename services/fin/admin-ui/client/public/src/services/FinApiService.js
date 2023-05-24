@@ -90,6 +90,15 @@ class FinApiService extends BaseService {
     });
   }
 
+  async deleteTransaction(transactionId) {
+    return this.request({
+      url : '/fcrepo/rest/fcr:tx/' + transactionId,
+      fetchOptions : {
+        method : 'DELETE'
+      }
+    });
+  }
+
   async getContainer(path) {
     // find container type
     if( !path.match(/\/fcr:metadata/) ) {

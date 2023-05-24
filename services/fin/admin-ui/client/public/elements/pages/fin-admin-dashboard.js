@@ -14,7 +14,9 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     return {
       dataModels : [],
       openTransactions : {type: Array},
-      dbSyncQueueLength : {type: String}
+      dbSyncQueueLength : {type: String},
+      reindexing : {type: Boolean},
+      reindexPath : {type: String}
     }
   }
 
@@ -28,8 +30,10 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     
     this.dataModels = [];
     this.openTransactions = [];
+    this.reindexing = false;
+    this.reindexPath = '';
 
-    this._injectModel('DataViewModel');
+    this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
 
     this.DataViewModel.coreData()
       .then(e => this._onCoreDataUpdate(e));
@@ -40,6 +44,20 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         if( e.payload.length < 1 ) return;
         this.dbSyncQueueLength = e.payload[0].count;
       });
+  }
+
+  _onAppStateUpdate(e) {
+    if( e.page !== 'dashboard' ) return;
+  
+    let parts = e.location.hash.split('/');
+    if( parts.length <= 1 ) return;
+
+    let ele = this.querySelector('#'+parts[1]);
+    if( !ele ) return;
+
+    setTimeout(() => {
+      window.scrollTo(0, ele.offsetTop);
+    }, 100);
   }
 
   _onAutoRefresh() {
@@ -70,6 +88,61 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         });
       }
     });
+  }
+
+  async _onDeleteTx(e) {
+    let transaction_id = e.detail.data.transaction_id;
+
+    if( !confirm(`Are you sure you want to delete transaction ${transaction_id}?`) ) return;
+
+    this.FinApiModel.deleteTransaction(transaction_id)
+      .then(e => {
+        console.log(e);
+        this.DataViewModel.coreData({refresh: true});
+      })
+      .catch(e => {
+        alert('Error deleting transaction: '+e.message);
+      });
+  }
+
+  async _onReindexClick(e) {
+    let action = e.detail.data.action;
+    if( this.reindexing ) return alert('Already reindexing');
+
+    if( !confirm('Are you sure you want to reindex all '+action+' containers?') ) return;
+
+    this.reindexing = true;
+    this.reindexPath = '';
+    this.reindex(action, 0, 100);
+  }
+
+  async reindex(action, offset, limit) {
+    let query = {
+      action: 'eq.'+action,
+      select: 'path',
+      limit,
+      offset,
+      order: 'path.asc'
+    }
+
+    let results = await this.DataViewModel.pgQuery(
+      'dbsync_update_status', 
+      query, 
+      {refresh: true}, 
+      'dashboard-reindex'
+    );
+
+    for( let row of results.payload ) {
+      this.reindexPath = row.path;
+      await this.FinApiModel.reindex(row.path);
+    }
+
+    let rs = results.resultSet;
+    if( rs.total > rs.stop+1 ) {
+      this.reindex(action, rs.start+limit, limit);
+    } else {
+      this.reindexing = false;
+    }
   }
 
 }

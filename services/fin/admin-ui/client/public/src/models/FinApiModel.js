@@ -57,6 +57,10 @@ class FinApiModel extends BaseModel {
     return this.service.getEsTask(modelName, taskId);
   }
 
+  deleteTransaction(transactionId) {
+    return this.service.deleteTransaction(transactionId);
+  }
+
 }
 
 const model = new FinApiModel();

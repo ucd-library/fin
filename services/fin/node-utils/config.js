@@ -11,6 +11,7 @@ function processArray(value) {
 }
 
 var fcrepoHostname = process.env.FCREPO_HOST || 'fcrepo';
+var fcrepoPort = process.env.FCREPO_PORT || '8080';
 var esHostname = process.env.ES_HOST || 'elasticsearch';
 var esPort = process.env.ES_PORT || 9200;
 
@@ -65,7 +66,8 @@ module.exports = {
 
   fcrepo : {
     hostname : fcrepoHostname,
-    host : `http://${fcrepoHostname}:8080`,
+    port : fcrepoPort,
+    host : `http://${fcrepoHostname}:${fcrepoPort}`,
     root : '/fcrepo/rest',
 
   },

@@ -29,7 +29,7 @@ return html`
 </style>
 
 <div>
-  <h2 class="heading--weighted-underline">Data Models</h2>
+  <h2 id="data-models" class="heading--weighted-underline">Data Models</h2>
   <div class="o-flex-region">
   ${this.dataModels.map(model => html`
     <div class="o-flex-region__item data-model-panel">
@@ -47,16 +47,20 @@ return html`
 </div>
 
 <div>
-  <h2 class="heading--weighted-underline">DB Sync Stats</h2>
+  <h2 id="db-sync-stats" class="heading--weighted-underline">DB Sync Stats</h2>
   <div>Event Queue Length: ${this.dbSyncQueueLength}<div>
+  <div ?hidden="${!this.reindexing}">
+    <div>Queuing reindex: ${this.reindexPath}</div>
+  </div>
   <fin-admin-data-table 
     name="dashboard-dbsync-stats"
+    @reindex="${this._onReindexClick}"
     ?auto-refresh="${this.autoRefresh}">
   </fin-admin-data-table>
 </div>
 
 <div>
-  <h2 class="heading--weighted-underline">Workflow Stats</h2>
+  <h2 id="workflow-stats" class="heading--weighted-underline">Workflow Stats</h2>
   <fin-admin-data-table
     name="dashboard-workflow-stats"
     table="workflow_stats"
@@ -65,7 +69,7 @@ return html`
 </div>
 
 <div>
-  <h2 class="heading--weighted-underline">Fcrepo - Type Stats</h2>
+  <h2 id="fcrepo-type-stats" class="heading--weighted-underline">Fcrepo - Type Stats</h2>
   <fin-admin-data-table 
     name="dashboard-fcrepo-stats"
     ?auto-refresh="${this.autoRefresh}">
@@ -73,16 +77,17 @@ return html`
 </div>
 
 <div>
-  <h2 class="heading--weighted-underline">Fcrepo - Open Transactions</h2>
+  <h2 id="fcrepo-open-tx" class="heading--weighted-underline">Fcrepo - Open Transactions</h2>
   <fin-admin-data-table 
-    id="open-transactions"
+    name="open-transactions"
     hide-total
+    @delete-tx="${this._onDeleteTx}"
     .rawData="${this.openTransactions}">
   </fin-admin-data-table>
 </div>
 
 <div>
-  <h2 class="heading--weighted-underline">GCS Disk Cache Stats</h2>
+  <h2 id="gcs-cache-stats" class="heading--weighted-underline">GCS Disk Cache Stats</h2>
   <fin-admin-data-table
     name="dashboard-gcs-diskcache-stats"
     table="gcssync_disk_cache_stats"
@@ -91,7 +96,7 @@ return html`
   </fin-admin-data-table>
 
   <div>
-    <h2 class="heading--weighted-underline">GCS Disk Cache</h2>
+    <h2 id="gcs-cache" class="heading--weighted-underline">GCS Disk Cache</h2>
     <fin-admin-data-table
       name="dashboard-gcs-diskcache-largest"
       ?auto-refresh="${this.autoRefresh}">

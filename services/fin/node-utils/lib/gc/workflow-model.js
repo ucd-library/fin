@@ -521,6 +521,11 @@ class FinGcWorkflowModel {
     return {deleted: true, workflow};
   }
 
+  async cleanupWorkflowTmpFiles(workflowId) {
+    let workflowInfo = await this.getWorkflowInfo(workflowId);
+    await gcs.cleanFolder(workflowInfo.data.tmpGcsBucket, workflowId);
+  }
+
   async getWorkflowInfo(workflowId) {
     let workflowInfo = await pg.getWorkflow(workflowId);
     // if( workflowInfo ) {
@@ -567,56 +572,60 @@ class FinGcWorkflowModel {
   }
 
   async executionStatusCheck() {
-    let workflows = await pg.getActiveWorkflows();
+    try {
+      let workflows = await pg.getActiveWorkflows();
 
-    for ( let workflow of workflows ) {
-      if( workflow.type !== this.TYPE ) {
-        continue;
-      }
-      if( !workflow.data.gcExecution ) {
-        continue;
-      }
+      for ( let workflow of workflows ) {
+        if( workflow.type !== this.TYPE ) {
+          continue;
+        }
+        if( !workflow.data.gcExecution ) {
+          continue;
+        }
 
-      let response = await this.eClient.getExecution({
-        name: workflow.data.gcExecution.name
-      });
-      let execution = response[0];
-      workflow.data.gcExecution = execution;
-
-      let keepTmpData = workflow.data?.options?.keepTmpData;
-
-      if( execution.state === 'SUCCEEDED' || execution.state === 'CANCELLED' ) {
-        await pg.updateWorkflow({
-          finWorkflowId: workflow.workflow_id, 
-          state: 'completed', 
-          data: workflow.data
+        let response = await this.eClient.getExecution({
+          name: workflow.data.gcExecution.name
         });
+        let execution = response[0];
+        workflow.data.gcExecution = execution;
 
-        if( execution.state === 'SUCCEEDED' ) {
-          await this.writeStateToGcs(workflow.workflow_id);
-          this.notifyOnSuccess(workflow);
-        }
+        let keepTmpData = workflow.data?.options?.keepTmpData;
 
-        if( keepTmpData !== true ) {
-          await this.cleanupWorkflow(workflow.workflow_id);
-        }
-      } else if( execution.state === 'FAILED' ) {
-        await pg.updateWorkflow({
-          finWorkflowId: workflow.workflow_id, 
-          state: 'error', 
-          data: JSON.stringify(workflow.data),
-          error : execution.error.message
-        });
+        if( execution.state === 'SUCCEEDED' || execution.state === 'CANCELLED' ) {
+          await pg.updateWorkflow({
+            finWorkflowId: workflow.workflow_id, 
+            state: 'completed', 
+            data: workflow.data
+          });
 
-        if( keepTmpData !== true ) {
-          await this.cleanupWorkflow(workflow.workflow_id);
+          if( execution.state === 'SUCCEEDED' ) {
+            await this.writeStateToGcs(workflow.workflow_id);
+            this.notifyOnSuccess(workflow);
+          }
+
+          if( keepTmpData !== true ) {
+            await this.cleanupWorkflowTmpFiles(workflow.workflow_id);
+          }
+        } else if( execution.state === 'FAILED' ) {
+          await pg.updateWorkflow({
+            finWorkflowId: workflow.workflow_id, 
+            state: 'error', 
+            data: JSON.stringify(workflow.data),
+            error : execution.error.message
+          });
+
+          if( keepTmpData !== true ) {
+            await this.cleanupWorkflowTmpFiles(workflow.workflow_id);
+          }
+        } else {
+          // console.log('HERE', execution.state)
         }
-      } else {
-        // console.log('HERE', execution.state)
       }
+
+      this.checkPendingWorkflows();
+    } catch(e) {
+      logger.error('Error checking workflow status', e);
     }
-
-    this.checkPendingWorkflows();
   }
 
   async notifyOnSuccess(workflow) {
@@ -691,16 +700,20 @@ class FinGcWorkflowModel {
   }
 
   async checkPendingWorkflows() {
-    // now check if any pending workflows
-    let runningWorkflows = (await pg.getActiveAndInitWorkflows()).length;
+    try {
+      // now check if any pending workflows
+      let runningWorkflows = (await pg.getActiveAndInitWorkflows()).length;
 
-    // start next workflow in queue
-    if( runningWorkflows <= this.MAX_WORKFLOWS_RUNNING ) {
-      let pendingWorkflow = await pg.getNextPendingWorkflow();
-      if( pendingWorkflow ) {
-        this.initWorkflow(pendingWorkflow.workflow_id);
-        this.checkPendingWorkflows();
+      // start next workflow in queue
+      if( runningWorkflows <= this.MAX_WORKFLOWS_RUNNING ) {
+        let pendingWorkflow = await pg.getNextPendingWorkflow();
+        if( pendingWorkflow ) {
+          this.initWorkflow(pendingWorkflow.workflow_id);
+          this.checkPendingWorkflows();
+        }
       }
+    } catch(e) {
+      logger.error('Failed to check pending workflows ', e);
     }
   }
 

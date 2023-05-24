@@ -65,7 +65,7 @@ class ProxyModel {
 
     // handle AuthenticationService requests. Do not handle Fin auth endpoints
     // of /auth/token /auth/user /auth/logout /auth/mint /auth/service, these are reserved
-    app.use(/^\/auth\/(?!token|user|logout|mint|service|login-shell).*/i, authenticationServiceProxy);
+    app.use(/^\/auth\/(?!user|logout|login|login-shell).*/i, authenticationServiceProxy);
 
     app.use(/^\/label\/.*/, this._renderLabel);
 

@@ -32,7 +32,15 @@ return html`
   </ucdlib-branding-bar>
 
   <ucd-theme-primary-nav>
-    <a href="#">Dashboard</a>
+    <ul link-text="Dashboard">
+      <a href="#dashboard/data-models">Data Models</a>
+      <a href="#dashboard/db-sync-stats">DB Sync Stats</a>
+      <a href="#dashboard/workflow-stats">Workflow Stats</a>
+      <a href="#dashboard/fcrepo-type-stats">Fcrepo - Type Stats</a>
+      <a href="#dashboard/fcrepo-open-tx">Fcrepo - Open Transactions</a>
+      <a href="#dashboard/gcs-cache-stats">GCS - Disk Cache Stats</a>
+      <a href="#dashboard/gcs-cache">GCS - Disk Cache</a>
+    </ul>
     <a href="#dbsync">DBSync</a>
     <a href="#workflows">Workflows</a>
     <a href="#es-management">ES Management</a>

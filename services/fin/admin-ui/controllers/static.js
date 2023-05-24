@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const spaMiddleware = require('@ucd-lib/spa-router-middleware');
-const {logger} = require('@ucd-lib/fin-service-utils');
+const {logger, keycloak} = require('@ucd-lib/fin-service-utils');
 const config = require('../config');
 
 
@@ -21,6 +21,31 @@ const bundle = `
   <script>${loaderSrc}</script>`;
 
 module.exports = async (app) => {
+  // make sure we are on the root path
+  app.get('/fin/admin', (req, res, next) => {
+    if( req.originalUrl === '/fin/admin' ) {
+      return res.redirect('/fin/admin/');
+    }
+    next();
+  });
+
+  // make sure we are logged in
+  app.all('/fin/admin/', (req, res, next) => {
+    if( !req.user ) {
+      res.redirect('/auth/login');
+      return;
+    }
+    
+    let roles = req.user.roles || [];
+    if( !roles.includes('admin') ) {
+      res.redirect('/');
+      return;
+    }
+
+    next();
+  });
+
+
   let assetsDir = path.join(__dirname, '..', 'client', config.client.assets);
   logger.info('CLIENT_ENV='+config.client.env.CLIENT_ENV+', Serving static assets from '+assetsDir);
 
@@ -32,7 +57,7 @@ module.exports = async (app) => {
   spaMiddleware({
     app: app,
     htmlFile : path.join(assetsDir, 'index.html'),
-    rootPath : /^\/fin\/admin\/?$/,
+    rootPath : /^\/fin\/admin\/$/,
     appRoutes : appRoutes,
     static : {
       opts : {
