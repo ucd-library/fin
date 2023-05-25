@@ -9,6 +9,8 @@ class DbSync {
 
   constructor() {
     this.READ_LOOP_WAIT = 2000;
+    this.PROCESS_QUEUE_CHECK_WAIT = 1000*60*5;
+    this.PROCESS_QUEUE_EXPIRE_TIME = 1000*60*10;
 
     this.UPDATE_TYPES = {
       UPDATE : ['Create', 'Update'],
@@ -31,6 +33,7 @@ class DbSync {
     this.activemq.connect({queue: config.activeMq.queues.dbsync});
 
     this.readLoop();
+    this.processCheckQueueLoop();
   }
 
   async readLoop() {
@@ -50,6 +53,27 @@ class DbSync {
       logger.error('DbSync readLoop error', e);
       setTimeout(() => this.readLoop(), this.READ_LOOP_WAIT); 
     }
+  }
+
+  async processCheckQueueLoop() {
+    try {
+      let messages = await postgres.getQueueProcessingMessages();
+      let now = Date.now();
+      for( let msg of messages.rows ) {
+        let diffms = now - new Date(msg.updated).getTime();
+        if( diffms < this.PROCESS_QUEUE_EXPIRE_TIME ) continue;
+
+        logger.error('Failed to update, queue processing timeout: '+msg.path);
+        msg.action = 'error';
+        msg.message = 'Failed to update, event was in queue with state of "processing" for more than '+(this.PROCESS_QUEUE_EXPIRE_TIME/(1000*60))+' minutes';
+        await postgres.updateStatus(msg);
+        await postgres.clearMessage(msg.event_id);
+      }
+    } catch(e) {
+      logger.error('DbSync processCheckQueueLoop error', e);
+    }
+
+    setTimeout(() => this.processCheckQueueLoop(), this.PROCESS_QUEUE_CHECK_WAIT);
   }
 
   /**

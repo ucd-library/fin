@@ -8,7 +8,9 @@ export default class FinAdminConfig extends Mixin(LitElement)
 
   static get properties() {
     return {
-      config : {type: Object}
+      config : {type: Object},
+      serviceAccountError : {type: Boolean},
+      serviceAccount : {type: Object}
     }
   }
 
@@ -23,6 +25,8 @@ export default class FinAdminConfig extends Mixin(LitElement)
     this._injectModel('DataViewModel');
 
     this.config = {};
+    this.serviceAccountError = false;
+    this.serviceAccount = {};
 
     this.DataViewModel.coreData()
       .then(e => this._onCoreDataUpdate(e));
@@ -31,22 +35,39 @@ export default class FinAdminConfig extends Mixin(LitElement)
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
     this.config = e.payload.config;
+
+    let serviceAccount = e.payload.finServiceAccount;
+
+    if( serviceAccount.token ) {
+      this.serviceAccountError = false;
+
+      let parts = serviceAccount.token
+        .split('.')
+        .splice(0, 2)
+        .map(part => JSON.parse(atob(part)));
+
+      this.serviceAccount = parts[1];
+    } else {
+      this.serviceAccountError = true;
+      this.serviceAccount = serviceAccount;
+    }
+
   }
 
-  _renderConfig(json, arr=[], currentKey='', depth=0) {
+  _renderConfig(json, arr=[], currentKey='', depth=0, highlightRoot=true) {
 
     if( Array.isArray(json) ) {
       for( let i = 0; i < json.length; i++ ) {
-        this._renderConfig(json[i], arr, `${currentKey}[${i}]`, depth+1);
+        this._renderConfig(json[i], arr, `${currentKey}[${i}]`, depth+1, highlightRoot);
       }
     } else if( typeof json === 'object' ) {
       for( let key in json ) {
-        if( depth == 0 ) {
+        if( depth === 0 && highlightRoot === true) {
           arr.push(`<h3>${key}</h3>`);
         }
 
         let depthKey = currentKey ? `${currentKey}.${key}` : key;
-        this._renderConfig(json[key], arr, depthKey, depth+1);
+        this._renderConfig(json[key], arr, depthKey, depth+1, highlightRoot);
       }
     } else {
       arr.push(`<div class="json-row">

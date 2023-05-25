@@ -22,6 +22,24 @@ return html`
       color: var(--ucd-black-80);
     }
   </style>
+
+  <div ?hidden="${!this.serviceAccountError}">
+    <div>Fin Service Account Error</div>
+  </div>
+  <div ?hidden="${this.serviceAccountError}">
+    <h3>Current Fin Service Account</h3>
+  </div>
+  <div>
+    ${unsafeHTML(this._renderConfig(
+      this.serviceAccount, 
+      undefined, 
+      undefined, 
+      0, 
+      false
+    ))}
+  </div>
+
+
   ${unsafeHTML(this._renderConfig(this.config))}
 
 `;}

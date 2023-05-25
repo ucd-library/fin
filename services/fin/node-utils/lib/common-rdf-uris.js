@@ -10,6 +10,7 @@ module.exports = {
 
   TYPES : {
     BINARY : 'http://fedora.info/definitions/v4/repository#Binary',
+    NON_RDF_SOURCE : 'http://www.w3.org/ns/ldp#NonRDFSource',
     FIN_IO_INDIRECT : 'http://digital.ucdavis.edu/schema#FinIoIndirectReference',
     FIN_IO_GCS_METADATA : 'http://digital.ucdavis.edu/schema#FinIoGcsMetadata',
     WEBAC : 'http://fedora.info/definitions/v4/webac#Acl',

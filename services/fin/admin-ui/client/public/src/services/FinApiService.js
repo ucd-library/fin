@@ -12,6 +12,13 @@ class FinApiService extends BaseService {
   }
 
   reindex(path, args) {
+    if( !args ) {
+      args = {
+        'no-crawl' : true,
+        'no-redirect' : true
+      };
+    }
+
     return this.request({
       url : '/fcrepo/rest' + path + '/svc:reindex',
       method : 'POST',
@@ -33,6 +40,15 @@ class FinApiService extends BaseService {
   listWorkflows() {
     return this.request({
       url : '/fcrepo/rest/svc:workflow/list'
+    });
+  }
+
+  deleteWorkflow(path, name) {
+    return this.request({
+      url : '/fcrepo/rest' + path + '/svc:workflow/' + name,
+      fetchOptions : {
+        method: 'DELETE'
+      }
     });
   }
 

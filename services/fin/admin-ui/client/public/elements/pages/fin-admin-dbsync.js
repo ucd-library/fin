@@ -5,6 +5,7 @@ import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 import AutoRefresh from '../mixins/page-refresh.js';
 
 import "../widgets/fin-admin-data-table.js"
+import viewConfig from '../config.js'
 
 export default class FinAdminDbsync extends Mixin(LitElement)
   .with(MainDomElement, LitCorkUtils, AutoRefresh) {
@@ -28,11 +29,19 @@ export default class FinAdminDbsync extends Mixin(LitElement)
       order : 'path.asc'
     };
 
-    this._injectModel('AppStateModel');
+    this.tableConfig = viewConfig['dbsync-main'];
+
+    this._injectModel('AppStateModel', 'DataViewModel');
   }
 
   async firstUpdated() {
     this._onAppStateUpdate(await this.AppStateModel.get());
+  }
+
+  _onCoreDataUpdate(e) {
+    if( e.state !== 'loaded' ) return;
+    let dataModels = Object.keys(e.payload.registeredModels || {});
+    this.tableConfig.filters.model.options = dataModels;
   }
 
   _onAppStateUpdate(e) {
@@ -47,7 +56,9 @@ export default class FinAdminDbsync extends Mixin(LitElement)
 
   _onReindexClick(e) {
     e = e.detail;
-    document.querySelector('fin-admin-reindex-path').open(e);
+    document.querySelector('fin-admin-reindex-path').open({
+      path : e.data.path
+    });
   }
 
 }

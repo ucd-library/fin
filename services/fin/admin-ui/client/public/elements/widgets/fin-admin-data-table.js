@@ -87,7 +87,7 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     }
 
     if( props.has('table') || props.has('query') ) {
-      this._runQuery();
+      this.runQuery();
     }
 
     if( props.has('autoRefresh') ) {
@@ -103,7 +103,7 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     }
   }
 
-  _runQuery() {
+  runQuery() {
     let query = null;
     if( this.query ) {
       query = (typeof this.query === 'string') ? JSON.parse(this.query) : this.query;
@@ -115,7 +115,7 @@ export default class FinAdminDataTable extends Mixin(LitElement)
 
   _startAutoRefresh() {
     this._autoRefreshInterval = setInterval(() => {
-      this._runQuery();
+      this.runQuery();
     }, 10000);
   }
 

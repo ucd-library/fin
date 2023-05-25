@@ -14,6 +14,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
       dbsyncQuery : {type: Object},
       workflowQuery : {type: Object},
       children : {type: Array},
+      properties : {type: Array}
     }
   }
 
@@ -27,10 +28,19 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
 
     this.path = '';
 
+    this.displayProperties = [
+      'http://schema.org/name',
+      'http://schema.org/description',
+      'http://schema.org/keywords',
+      'http://schema.org/about',
+      'http://schema.org/identifier'
+    ];
+
     this.dbsyncTable = 'dbsync_update_status';
     this.dbsyncQuery = {limit: 0, order: 'path.asc'};
     this.workflowQuery = {limit: 0};
     this.children = [];
+    this.properties = [];
 
     this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
   }
@@ -43,6 +53,11 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     if( e.page !== this.id ) return;
 
     let path = e.location.hash.replace('path-info', '');
+    if( !path ) {
+      if( this.path ) return;
+      path = '/';
+    }
+
     if( path === this.path ) return;
 
     this.path = path;
@@ -52,6 +67,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
 
     try {
       this.children = [];
+      this.properties = [];
       let resp = await this.FinApiModel.getContainer(this.path);
       let container = JSON.parse(resp.body);
       this.setChildren(container);
@@ -77,12 +93,38 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     let containsUri = 'http://www.w3.org/ns/ldp#contains';
     this.children = [];
     
+
+    let mainNode = graph.find(node => {
+      return (node['@id'] || '').split('/fcrepo/rest').pop() === this.path
+    });
+
     for( let node of graph ) {
       if( !node[containsUri] ) continue;
       this.children = node[containsUri].map(child => {
         return child['@id'].split('/fcrepo/rest').pop();
       });
       break;
+    }
+
+    if( !mainNode ) return;
+    for( let dp of this.displayProperties ) {
+      if( !mainNode[dp] ) continue;
+      let value = mainNode[dp];
+      
+      if( Array.isArray(value) ) {
+        value = value.map(v => v['@id'] || v['@value'] || v).join(', ');
+      } else if( typeof value === 'object' ) {
+        value = value['@id'] || value['@value'];
+      }
+
+      if( typeof value === 'string' && value.length > 100 ) {
+        value = value.substring(0, 97)+'...';
+      }
+
+      this.properties.push({
+        label : dp.split(/(\/|#)/).pop(),
+        value
+      });
     }
   }
 
@@ -130,9 +172,41 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     });
   }
 
-  _onReindexClick(e) {
+  _onReindexClick() { 
+    console.log(this.path);
+    let path = this.path.replace('/fcr:metadata', '');
+    document
+      .querySelector('fin-admin-reindex-path')
+      .open({path});
+  }
+
+  _onWorkflowDeleteClick(e) {
     e = e.detail;
-    document.querySelector('fin-admin-reindex-path').open(e);
+
+    let path = e.data.data.finPath;
+    let name = e.data.name;
+    let state = e.data.state;
+
+    if( ['running', 'init'].includes(state) ) {
+      alert('You cannot delete a workflow in a '+state+' state.');
+      return;
+    }
+
+    if( !confirm('Are you sure you want to delete workflow '+name+' on path '+path+'?') ) return;
+  
+    this.deleteWorkflow(path, name);
+  }
+
+  async deleteWorkflow(path, name) {
+    let {response, body} = await this.FinApiModel.deleteWorkflow(path, name);
+  
+    if( response.status !== 200 ) {
+      alert('Error deleting workflow: '+(body||response.statusText));
+      return;
+    }
+
+    let ele = this.querySelector('fin-admin-data-table[name="path-info-workflows"]');
+    ele.runQuery();
   }
 
 }

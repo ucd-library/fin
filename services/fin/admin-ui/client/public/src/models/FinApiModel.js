@@ -25,6 +25,10 @@ class FinApiModel extends BaseModel {
     return this.service.listWorkflows();
   }
 
+  deleteWorkflow(path, name) {
+    return this.service.deleteWorkflow(path, name);
+  }
+
   getContainer(path) {
     return this.service.getContainer(path);
   }

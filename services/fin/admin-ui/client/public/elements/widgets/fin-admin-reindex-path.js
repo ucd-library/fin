@@ -26,7 +26,7 @@ export default class FinAdminReindexPath extends Mixin(LitElement)
   }
 
   open(e) {
-    this.path = e.data.path;
+    this.path = e.path;
     document.body.style.overflow = 'hidden';
     this.style.display = 'flex';
   }
@@ -37,9 +37,15 @@ export default class FinAdminReindexPath extends Mixin(LitElement)
   }
 
   async reindex() {
-    let opts = {};
+    let opts;
     let follow = this.shadowRoot.querySelector('#follow-reindex-input').value;
-    if( follow ) opts.follow = follow.replace(/ /g, '');
+
+    if( follow ) {
+      opts = {
+        follow: follow.replace(/ /g, ''),
+        'no-redirect': true
+      };
+    }
 
     let resp = await this.FinApiModel.reindex(this.path, opts);
     let httpResp = resp.response;

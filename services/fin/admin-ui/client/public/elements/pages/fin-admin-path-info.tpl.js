@@ -18,6 +18,18 @@ return html`
     max-height: 300px;
     overflow-y: auto;
   }
+  .path-info-header {
+    display: flex;
+    margin-bottom: 20px;
+  }
+  .path-info-header > div {
+    flex: 1;
+    padding-right: 20px;
+  }
+  .path-info-header > button {
+    margin-left: 10px;
+    align-self: flex-start;
+  }
 </style>
 
 <fieldset>
@@ -27,7 +39,21 @@ return html`
   </div>
 </fieldset>
 
-<div style="text-align:right">
+<div class="path-info-header">
+  <div>
+    <div>
+      <a href="/fcrepo/rest${this.path}" target="_blank">View in Fedora</a>
+    </div>
+    ${this.properties.map(prop => html`
+      <div>
+        <b>${prop.label}:</b> ${prop.value} 
+      </div>
+    `)}
+  </div>
+  <button 
+    @click="${this._onReindexClick}" 
+    class="btn btn--primary btn--round">Reindex 
+  </button>
   <button 
     @click="${this._onRunWorkflowClick}" 
     class="btn btn--primary btn--round">Run Workflow
@@ -51,7 +77,6 @@ return html`
   table="${this.dbsyncTable}"
   render-type="list"
   ?auto-refresh="${this.autoRefresh}"
-  @reindex="${this._onReindexClick}"
   .query="${this.dbsyncQuery}">
 </fin-admin-data-table>
 
@@ -60,6 +85,7 @@ return html`
   name="path-info-workflows"
   render-type="list"
   ?auto-refresh="${this.autoRefresh}"
+  @delete="${this._onWorkflowDeleteClick}"
   .query="${this.workflowQuery}">
 </fin-admin-data-table>
 

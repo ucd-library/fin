@@ -79,7 +79,7 @@ class KeycloakUtils {
     }
   }
 
-  async verifyActiveToken(token) {
+  async verifyActiveToken(token='') {
     this.initTls();
 
     token = token.replace(/^Bearer /i, '');
@@ -91,6 +91,8 @@ class KeycloakUtils {
     }
 
     let resp = {};
+    let requestResolve;
+    let requestReject;
 
     try {
       let result;
@@ -115,9 +117,10 @@ class KeycloakUtils {
         }
       });
 
-      let requestResolve;
+
       let promise = new Promise((resolve, reject) => {
         requestResolve = resolve;
+        requestReject = reject;
       });
       this.tokenRequestCache.set(token, promise);
       
@@ -142,10 +145,17 @@ class KeycloakUtils {
       
       return clone(result);
     } catch(e) {
+      if( requestReject ){ 
+        requestReject(e);
+      }
+      this.tokenRequestCache.delete(token);
+
       if (e.name === 'AbortError' || e.name === 'FetchError') {
         logger.warn('Failed to verify jwt from keycloak, attempting pub key decryption', e)
         let user = await jwt.validate(token);
+        console.log(2)
         if( user ) {
+          console.log(3)
           return {
             active : true,
             status : 200,
@@ -155,6 +165,7 @@ class KeycloakUtils {
         }
       }
 
+      console.log(2);
       return {
         active : resp.status === 200,
         status : resp.status,

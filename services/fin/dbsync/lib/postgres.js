@@ -97,6 +97,10 @@ class DbSyncPostgresUtils {
     }
   }
 
+  getQueueProcessingMessages() {
+    return this.pg.query(`SELECT * FROM ${this.schema}.event_queue WHERE status = 'processing'`);
+  }
+
   /**
    * @method updateStatus
    * @description update indexer status

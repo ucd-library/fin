@@ -22,7 +22,10 @@ const viewConfig = {
         type : 'keyword',
         options: ['ignored', 'updated', 'delete', 'error']
       },
-      path : {type : 'text'}
+      model : {
+        type : 'keyword',
+        options : []
+      }
     },
     actions : [{
       type : 'reindex',
@@ -33,18 +36,18 @@ const viewConfig = {
   'path-info-dbsync' : {
     renderCellValue : dbsync,
     keySort : ['path', 'model', 'action', 'message', 'updated', 'container_types', 'workflow_types',
-              'transform_service', 'update_types', 'db_response', 'update_count'],
-    actions : [{
-      type : 'reindex',
-      label : 'Reindex Path'
-    }]
+              'transform_service', 'update_types', 'db_response', 'update_count']
   },
 
   'path-info-workflows' : {
     table : 'workflow_lastest',
     keySort : ['path', 'name', 'state', 'workflow_id', 'updated', 
               'created', 'error', 'data', 'type'],
-    renderCellValue : standardRender
+    renderCellValue : standardRender,
+    actions : [{
+      type : 'delete',
+      label : 'Delete'
+    }]
   },
 
   'workflows-main' : {

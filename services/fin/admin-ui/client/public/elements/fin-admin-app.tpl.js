@@ -28,11 +28,11 @@ return html`
   prevent-fixed>
 
   <ucdlib-branding-bar
-    site-name="Fin Admin">
+    site-name="${this.projectName} Admin">
   </ucdlib-branding-bar>
 
   <ucd-theme-primary-nav>
-    <ul link-text="Dashboard">
+    <ul href="#dashboard" link-text="Dashboard">
       <a href="#dashboard/data-models">Data Models</a>
       <a href="#dashboard/db-sync-stats">DB Sync Stats</a>
       <a href="#dashboard/workflow-stats">Workflow Stats</a>
@@ -45,6 +45,7 @@ return html`
     <a href="#workflows">Workflows</a>
     <a href="#es-management">ES Management</a>
     <a href="#path-info">Path Info</a>
+    <a href="#services">Services</a>
     <a href="#config">Config</a>
   </ucd-theme-primary-nav>
 
@@ -55,6 +56,7 @@ return html`
   <fin-admin-dbsync id="dbsync"></fin-admin-dbsync>
   <fin-admin-workflows id="workflows"></fin-admin-workflows>
   <fin-admin-path-info id="path-info"></fin-admin-path-info>
+  <fin-admin-services id="services"></fin-admin-services>
   <fin-admin-config id="config"></fin-admin-config>
   <fin-admin-es-management id="es-management"></fin-admin-es-management>
 </ucdlib-pages>

@@ -1,6 +1,7 @@
 const {ActiveMqClient, logger, config, RDF_URIS} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const postgres = require('./postgres.js');
+const clone = require('clone');
 
 const {ActiveMqStompClient} = ActiveMqClient;
 
@@ -41,7 +42,8 @@ class ReindexCrawler {
    * 
    * @returns {Array}
    */
-  async reindex(writeIndex) {
+  async reindex() {
+    let writeIndex = this.options.writeIndex;
     let crawled = new Set();
     this.crawled = crawled;
 
@@ -116,13 +118,25 @@ class ReindexCrawler {
     });
     mainNode['@type'] = Array.from(types);
 
-    // hack events for binary containers.
+    // send reindex event
+    this.sendReindexEvent(mainNode, writeIndex);
+
+    // hack events for binary metadata containers.
     if( mainNode['@type'] && mainNode['@type'].includes(RDF_URIS.TYPES.BINARY) ) {
-      mainNode['@id'] = mainNode['@id'] + '/fcr:metadata';
-      mainNode['@type'].splice(mainNode['@type'].indexOf(RDF_URIS.TYPES.BINARY), 1);
+      let binaryMetadataNode = {
+        '@id' : mainNode['@id'] + '/fcr:metadata',
+        '@type' : clone(mainNode['@type'])
+      };
+      binaryMetadataNode['@type'].splice(binaryMetadataNode['@type'].indexOf(RDF_URIS.TYPES.BINARY), 1);
+      binaryMetadataNode['@type'].splice(binaryMetadataNode['@type'].indexOf(RDF_URIS.TYPES.NON_RDF_SOURCE), 1);
+
+      this.sendReindexEvent(binaryMetadataNode, writeIndex);
     }
 
-    this.sendReindexEvent(mainNode, writeIndex);
+
+    if( this.options.noCrawl ) {
+      return;
+    }
 
     for( let followProp of this.options.follow ) {
       let prop = mainNode[followProp];
@@ -147,6 +161,8 @@ class ReindexCrawler {
    * @param {String} writeIndex Optional.  Index to write to. mostly used for reindex
    */
   sendReindexEvent(node, writeIndex) {
+    logger.info('Sending reindex event for: '+node['@id']);
+    
     let headers = {
       'edu.ucdavis.library.eventType' : 'Reindex'
     };

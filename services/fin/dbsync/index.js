@@ -22,6 +22,13 @@ app.get(/^\/reindex\/.*/, keycloak.protect(['admin']), async (req, res) => {
 
   let status = await postgres.getReindexCrawlStatus(path);
   let force = (req.query.force || '').toLowerCase() === 'true';
+  let follow = (req.query.follow || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(item => item);
+  let noCrawl = (req.query['no-crawl'] || '').toLowerCase() === 'true';
+  let noRedirect = (req.query['no-redirect'] || '').toLowerCase() === 'true';
+  let writeIndex = req.query['write-index'] || null;
 
   if( req.query.status === 'true' ) {
     if( !status ) status = {status : 'none'};
@@ -36,13 +43,15 @@ app.get(/^\/reindex\/.*/, keycloak.protect(['admin']), async (req, res) => {
 
   try {
     let crawler = new ReindexCrawler(path, {
-      follow : (req.query.follow || '')
-        .split(',')
-        .map(item => item.trim())
-        .filter(item => item)
+      follow, noCrawl, writeIndex
     });
 
     crawler.reindex();
+
+    if( noRedirect === true ) {
+      res.json({status: 'started'});
+      return;
+    }
 
     res.redirect(req.headers['x-fin-original-url'].replace(/\?.*/, '')+'?status=true');
   } catch(e) {
