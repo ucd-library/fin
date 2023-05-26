@@ -489,8 +489,20 @@ class FinGcWorkflowModel {
     let bucket = opts.gcsBucket || this.getGcsBucket(workflowName);
     let workflowFile = 'gs://'+path.join(bucket, 'workflows', finPath, workflowName+'.json');
 
-    let workflow = await gcs.loadFileIntoMemory(workflowFile);
-    workflow = JSON.parse(workflow);
+    let workflow = null;
+    try {
+      workflow = await gcs.loadFileIntoMemory(workflowFile);
+      workflow = JSON.parse(workflow);
+    } catch(e) {
+      logger.warn('Unable to load workflow file from gcs: '+workflowFile);
+    }
+
+    if( !workflow ) {
+      workflow = pg.getLatestWorkflowByPath(finPath, workflowName);
+      if( !workflow ) {
+        throw new Error('Unable to find workflow: '+finPath+' '+workflowName);
+      }
+    }
 
     // delete the workflow data
     await gcs.cleanFolder(bucket, finPath+'/'+workflow.data.gcsSubpath);

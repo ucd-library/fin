@@ -198,15 +198,19 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
   }
 
   async deleteWorkflow(path, name) {
-    let {response, body} = await this.FinApiModel.deleteWorkflow(path, name);
-  
-    if( response.status !== 200 ) {
-      alert('Error deleting workflow: '+(body||response.statusText));
-      return;
-    }
+    try {
+      let {response, body} = await this.FinApiModel.deleteWorkflow(path, name);
 
-    let ele = this.querySelector('fin-admin-data-table[name="path-info-workflows"]');
-    ele.runQuery();
+      if( response.status !== 200 ) {
+        alert('Error deleting workflow: '+(body||response.statusText));
+        return;
+      }
+
+      let ele = this.querySelector('fin-admin-data-table[name="path-info-workflows"]');
+      ele.runQuery();
+    } catch(e) {
+      alert('Error deleting workflow: '+e.message);
+    }
   }
 
 }

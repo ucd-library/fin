@@ -107,7 +107,7 @@ class WorkflowPostgresUtils {
 
   async getLatestWorkflowByPath(path, workflowName) {
     let resp = await this.pg.query(
-      `select workflow_id, state from ${this.schema}.workflow where data->>'finPath' = $1 AND name = $2 order by created desc limit 1;`, 
+      `select * from ${this.schema}.workflow where data->>'finPath' = $1 AND name = $2 order by created desc limit 1;`, 
       [path, workflowName]
     );
 
