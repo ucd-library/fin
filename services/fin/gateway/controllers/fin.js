@@ -36,13 +36,17 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
         registeredModels[modelName].hasApiEndpoint = true;
       }
 
-      let props = Object.getOwnPropertyNames(model.model);
-      let modelProps = {}
-      for( let prop of props ) {
-        if( typeof model.model[prop] === 'object' ) continue;
-        modelProps[prop] = model.model[prop];
+      if( model.model ) {
+        let props = Object.getOwnPropertyNames(model.model);
+        let modelProps = {}
+        for( let prop of props ) {
+          if( typeof model.model[prop] === 'object' ) continue;
+          modelProps[prop] = model.model[prop];
+        }
+        registeredModels[modelName].props = modelProps;
+      } else {
+        registeredModels[modelName].props = {};
       }
-      registeredModels[modelName].props = modelProps;
     }
 
     let workflows = {};
@@ -113,7 +117,7 @@ router.get('/archive', async (req, res) => {
 
     let token = jwt.getJwtFromRequest(req);
 
-    await archive(req.query.name, paths, token, res);
+    await archive(req.query?.name, paths, token, res);
 
   } catch(e) {
     res.status(500).json({
@@ -125,12 +129,12 @@ router.get('/archive', async (req, res) => {
 
 router.post('/archive', async (req, res) => {
   try {
-    let paths = (req.body || [])
+    let paths = (req.body?.paths || req.body || [])
       .map(path => decodeURIComponent(path.trim()));
 
     let token = jwt.getJwtFromRequest(req);
 
-    await archive(req.query.name, paths, token, res);
+    await archive(req.query?.name, paths, token, res);
 
   } catch(e) {
     res.status(500).json({

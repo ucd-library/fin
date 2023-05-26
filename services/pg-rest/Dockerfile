@@ -3,7 +3,7 @@ FROM debian:bullseye
 # copy PostgREST over
 COPY --from=postgrest/postgrest /bin/postgrest /bin
 
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update && apt-get install -y curl libpq5 libpq-dev
 
 COPY start.sh /start.sh
 

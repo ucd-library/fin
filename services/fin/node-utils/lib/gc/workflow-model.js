@@ -167,15 +167,23 @@ class FinGcWorkflowModel {
     if( gcWorkflowContent !== null ) {
       logger.info('Updating GC workflow: '+gcWorkflowName);
       logger.debug(request);
-      const [operation] = await this.wClient.updateWorkflow(request);
-      let [response] = await operation.promise();
-      logger.debug('Update GC workflow response: ', response);
+      try {
+        const [operation] = await this.wClient.updateWorkflow(request);
+        let [response] = await operation.promise();
+        logger.debug('Update GC workflow response: ', response);  
+      } catch(e) {
+        logger.error('Error updating GC workflow: '+gcWorkflowName, e);
+      }
     } else {
       logger.info('Creating GC workflow: '+gcWorkflowName);
       logger.debug(request);
-      const [operation] = await this.wClient.createWorkflow(request);
-      let [response] = await operation.promise();
-      logger.debug('Create GC workflow response: ', response);
+      try {
+        const [operation] = await this.wClient.createWorkflow(request);
+        let [response] = await operation.promise();
+        logger.debug('Create GC workflow response: ', response);
+      } catch(e) {
+        logger.error('Error creating GC workflow: '+gcWorkflowName, e);
+      }
     }
   }
 
