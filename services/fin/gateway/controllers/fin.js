@@ -111,7 +111,7 @@ router.all(/^\/pg(\/.*)$/, keycloak.protect(['admin']), async (req, res) => {
 
 router.get('/archive', async (req, res) => {
   try {
-    let paths = (req.body?.query?.paths || '')
+    let paths = (req.query?.paths || '')
       .split(',')
       .map(path => decodeURIComponent(path.trim()));
 
