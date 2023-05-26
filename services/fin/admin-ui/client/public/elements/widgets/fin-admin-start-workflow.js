@@ -64,6 +64,7 @@ export default class FinAdminStartWorkflow extends Mixin(LitElement)
     }
 
     this.workflows = workflows;
+    this.shadowRoot.querySelector('#workflow-picker').value = '';
   }
 
   _onWorkflowSelect(e) {

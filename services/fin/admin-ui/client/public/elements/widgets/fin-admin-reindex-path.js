@@ -8,7 +8,7 @@ export default class FinAdminReindexPath extends Mixin(LitElement)
 
   static get properties() {
     return {
-      path : {type: String},
+      path : {type: String}
     }
   }
 
@@ -25,10 +25,18 @@ export default class FinAdminReindexPath extends Mixin(LitElement)
     this.path = '';
   }
 
+  firstUpdated() {
+    this.followInput = this.shadowRoot.querySelector('#follow-reindex-input');
+    this.containsInput = this.shadowRoot.querySelector('#crawl-reindex-input');
+  }
+
   open(e) {
     this.path = e.path;
     document.body.style.overflow = 'hidden';
     this.style.display = 'flex';
+    
+    this.containsInput.checked = true;
+    this.followInput.value = '';
   }
 
   close() {
@@ -37,14 +45,18 @@ export default class FinAdminReindexPath extends Mixin(LitElement)
   }
 
   async reindex() {
-    let opts;
-    let follow = this.shadowRoot.querySelector('#follow-reindex-input').value;
+    let opts = {
+      'no-redirect' : true
+    };
+
+    let follow = this.followInput.value;
+    let contains = this.containsInput.checked === true;
 
     if( follow ) {
-      opts = {
-        follow: follow.replace(/ /g, ''),
-        'no-redirect': true
-      };
+      opts.follow = follow.replace(/ /g, '')
+    }
+    if( contains === false ) {
+      opts['no-crawl'] = true;
     }
 
     let resp = await this.FinApiModel.reindex(this.path, opts);

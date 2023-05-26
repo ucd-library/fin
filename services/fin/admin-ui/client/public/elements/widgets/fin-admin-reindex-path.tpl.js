@@ -62,8 +62,19 @@ return html`
 
   <div style="margin: 20px 0">
     <div class="field-container">
+      <label for="crawl-reindex-input">
+        <input id="crawl-reindex-input" type="checkbox">
+        Crawl Containment
+      </label>
+      <div>Reindex all child "contains" containers</div>
+    </div>
+  </div>
+
+  <div style="margin: 20px 0 40px 0">
+    <div class="field-container">
       <label for="follow-reindex-input">Follow</label>
       <input id="follow-reindex-input" type="text" placeholder="ex: hasPart">
+      <div>Crawl provided <b>http://schema.org</b> properties and reindex found containers. Comma separated.</div>
     </div>
   </div>
 
