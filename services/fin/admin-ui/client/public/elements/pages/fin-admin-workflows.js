@@ -80,6 +80,39 @@ export default class FinAdminWorkflows extends Mixin(LitElement)
     this.query = query;
   }
 
+  _onWorkflowDeleteClick(e) {
+    e = e.detail;
+
+    let path = e.data.data.finPath;
+    let name = e.data.name;
+    let state = e.data.state;
+
+    if( ['running', 'init'].includes(state) ) {
+      alert('You cannot delete a workflow in a '+state+' state.');
+      return;
+    }
+
+    if( !confirm('Are you sure you want to delete workflow '+name+' on path '+path+'?') ) return;
+  
+    this.deleteWorkflow(path, name);
+  }
+
+  async deleteWorkflow(path, name) {
+    try {
+      let {response, body} = await this.FinApiModel.deleteWorkflow(path, name);
+
+      if( response.status !== 200 ) {
+        alert('Error deleting workflow: '+(body||response.statusText));
+        return;
+      }
+
+      let ele = this.querySelector('fin-admin-data-table[name="workflows-main"]');
+      ele.runQuery();
+    } catch(e) {
+      alert('Error deleting workflow: '+e.message);
+    }
+  }
+
 }
 
 customElements.define('fin-admin-workflows', FinAdminWorkflows);

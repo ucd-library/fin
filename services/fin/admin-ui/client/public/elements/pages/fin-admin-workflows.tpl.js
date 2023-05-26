@@ -34,6 +34,7 @@ return html`
   name="workflows-main"
   render-type="list"
   update-hash
+  @delete="${this._onWorkflowDeleteClick}"
   ?auto-refresh="${this.autoRefresh}"
   .query="${this.query}">
 </fin-admin-data-table>

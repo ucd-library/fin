@@ -70,7 +70,11 @@ const viewConfig = {
         return html`<a href="#path-info${path}">${row[key]}</a>`;
       }
       return standardRender(row, key);
-    }
+    },
+    actions : [{
+      type : 'delete',
+      label : 'Delete'
+    }]
   },
 
   'dashboard-fcrepo-stats' : {

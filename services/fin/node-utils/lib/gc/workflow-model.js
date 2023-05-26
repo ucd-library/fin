@@ -489,16 +489,20 @@ class FinGcWorkflowModel {
     let bucket = opts.gcsBucket || this.getGcsBucket(workflowName);
     let workflowFile = 'gs://'+path.join(bucket, 'workflows', finPath, workflowName+'.json');
 
+    // there is a chance the workflow had an error and was never written to gcs
     let workflow = null;
+    let gcsWorkflowFileExists = false;
     try {
       workflow = await gcs.loadFileIntoMemory(workflowFile);
       workflow = JSON.parse(workflow);
+      gcsWorkflowFileExists = true;
     } catch(e) {
       logger.warn('Unable to load workflow file from gcs: '+workflowFile);
     }
 
+    // if the workflow was not found in gcs, try to load it from postgress
     if( !workflow ) {
-      workflow = pg.getLatestWorkflowByPath(finPath, workflowName);
+      workflow = await pg.getLatestWorkflowByPath(finPath, workflowName);
       if( !workflow ) {
         throw new Error('Unable to find workflow: '+finPath+' '+workflowName);
       }
@@ -510,9 +514,16 @@ class FinGcWorkflowModel {
     // delete the workflow from postgres
     await pg.deleteWorkflows(finPath, workflowName);
 
-    // delete the workflow file
-    await gcs.getGcsFileObjectFromPath(workflowFile).delete();
+    // delete the workflow file if it exists
+    if( gcsWorkflowFileExists ) {
+      try {
+        await gcs.getGcsFileObjectFromPath(workflowFile).delete();
+      } catch(e) {
+        logger.error('Unable to delete workflow file from gcs: '+workflowFile);
+      }
+    }
 
+    // notify reindex so data models can act accordingly
     if( workflow.data.notifyOnSuccess ) {
       let svcPath = workflow.data.notifyOnSuccess;
       if( !svcPath.startsWith('/') ) {
