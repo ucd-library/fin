@@ -257,9 +257,10 @@ class FinIoImport {
         console.log(' -> no changes found, ignoring');
         this.diskLog({verb: 'ignore', path: dir.fcrepoPath, file: dir.fsfull, message : 'no changes found'});
         return false;
-      } else if( this.options.agImportStrategy === 'remove' ) {
+      } else if( this.options.agImportStrategy === 'delete' ) {
         console.log(' -> changes found, removing and reimporting: '+response.message);
-        await this.write('delete', {path: dir.fcrepoPath, permanent: true}, dir.fsfull);
+        let resp = await this.write('delete', {path: dir.fcrepoPath, permanent: true}, dir.fsfull);
+        console.log(' -> delete response: '+(resp.httpStack.map(item => item.statusCode+' '+item.body).join(', ')));
       } else if( this.options.agImportStrategy === 'transaction' ) {
         this.currentOp = api.startTransaction({timeout: this.DEFAULT_TIMEOUT});
         let tResp = await this.currentOp;
@@ -273,7 +274,7 @@ class FinIoImport {
       } else if( this.options.agImportStrategy === 'version-all' ) {
         console.log(' -> changes found, WARNING versioning every change: '+response.message);
       } else {
-        throw new Error('Invalid ArchivalGroup strategy provided');
+        throw new Error('Invalid ArchivalGroup strategy provided: '+this.options.agImportStrategy);
       }
 
       if( response.equal === false ) {

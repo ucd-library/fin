@@ -8,7 +8,7 @@ const forwardedHeader = require('../lib/forwarded-header');
 const authenticationServiceProxy = require('./service-proxy/authentication-service');
 const clientServiceProxy = require('./service-proxy/client-service');
 const transactionHelper = require('../lib/transactions.js');
-const finac = new FinAC();
+const finDelete = require('../lib/delete.js');
 const finTag = new FinTag();
 
 // TODO: uncomment to enable finGroups
@@ -253,10 +253,33 @@ class ProxyModel {
     let url = `http://${config.fcrepo.hostname}:8080${req.originalUrl}`;
     logger.debug(`Fcrepo proxy request: ${url}`);
 
+    // JM - TODO
+    // Where should we move these hacks too?
+
     // hack for nuking transaction
-    if( req.originalUrl.startsWith('/fcrepo/rest/fcr:tx/nuke/') ) {
+    if( req.originalUrl.startsWith('/fcrepo/rest/fcr:tx/nuke/') && 
+        req.user && 
+        req.user.roles.includes(config.finac.agents.admin) ) {
       await transactionHelper.nukeTransaction(req.originalUrl.replace('/fcrepo/rest/fcr:tx/nuke/', ''));
       return res.status(200).send();
+    }
+
+    // hack for nuking container
+    if( req.method === 'DELETE' && 
+        req.originalUrl.match(/^\/fcrepo\/rest\/.*\/fcr:nuke$/) &&
+        req.user && 
+        req.user.roles.includes(config.finac.agents.admin) ) {
+      try {
+        await finDelete.powerwash(req.originalUrl.replace(/\/fcr:nuke$/, ''));
+        return res.status(204).send();
+      } catch(e) {
+        logger.error('Failed to powerwash container', e);
+        return res.status(500).json({
+          error : true,
+          message : 'Failed to powerwash container',
+          details : e.message
+        });
+      }
     }
 
     proxy.web(req, res, {

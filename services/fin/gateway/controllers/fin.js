@@ -1,13 +1,11 @@
 const router = require('express').Router();
-const {keycloak, models, config, logger, FinTag, jwt} = require('@ucd-lib/fin-service-utils');
-const api = require('@ucd-lib/fin-api');
+const {keycloak, models, config, logger, jwt} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('../models/services.js');
 const httpProxy = require('http-proxy');
 const fetch = require('node-fetch');
 const clone = require('clone');
 const archive = require('../lib/archive.js');
 const transactionHelper = require('../lib/transactions.js');
-const finTag = new FinTag();
 
 let proxy = httpProxy.createProxyServer({
   ignorePath : true

@@ -14,6 +14,10 @@ class IoUtils {
     this.GIT_SOURCE_PROPERTY_BASE = 'http://digital.ucdavis.edu/schema#git/';
     this.LDP_SCHEMA = ['http://www.w3.org/ns/ldp#', 'ldp:'];
     this.FEDORA_SCHEMA = ['http://fedora.info/definitions/v4/repository#', 'fedora:'];
+    this.KNOWN_PREFIX = {
+      'ldp:' : 'http://www.w3.org/ns/ldp#',
+      'fedora:' : 'http://fedora.info/definitions/v4/repository#'
+    };
 
     this.TYPES = {
       ARCHIVAL_GROUP : 'http://fedora.info/definitions/v4/repository#ArchivalGroup',
@@ -42,14 +46,11 @@ class IoUtils {
         CONTAINS : 'http://www.w3.org/ns/ldp#contains',
         MEMBERSHIP_RESOURCE : 'http://www.w3.org/ns/ldp#membershipResource',
         IS_MEMBER_OF_RELATION : 'http://www.w3.org/ns/ldp#isMemberOfRelation',
+        IS_MEMBER_OF_RELATION_SHORT : 'ldp:isMemberOfRelation',
         HAS_MEMBER_RELATION : 'http://www.w3.org/ns/ldp#hasMemberRelation',
+        HAS_MEMBER_RELATION_SHORT : 'ldp:hasMemberRelation',
         INSERTED_CONTENT_RELATION : 'http://www.w3.org/ns/ldp#insertedContentRelation'
       }
-    }
-
-    this.ROOT_FCREPO_PATHS = {
-      COLLECTION : '/collection',
-      ITEM : '/item'
     }
 
     this.GRAPH_NODES = {
@@ -58,17 +59,13 @@ class IoUtils {
     }
 
     // types that must be set in the header
+
+
     this.TO_HEADER_TYPES = [
       'http://www.w3.org/ns/ldp#DirectContainer',
       'http://www.w3.org/ns/ldp#IndirectContainer',
-      'http://fedora.info/definitions/v4/repository#ArchivalGroup'
+      'http://fedora.info/definitions/v4/repository#ArchivalGroup',
     ]
-
-    // collection part folders
-    this.COLLECTION_PART_FOLDERS = [
-      'hasPart', 'isPartOf'
-    ]
-
   }
 
   /**
@@ -102,13 +99,14 @@ class IoUtils {
     // strip @types that must be provided as a Link headers
     if( node['@type'] ) {
       if( !Array.isArray(node['@type']) ) node['@type'] = [node['@type']];
+      console.log(`  - @type: ${node['@type'].join(', ')}`);
       this.TO_HEADER_TYPES.forEach(type => {
-        let typeName = this.isNodeOfType(node, type);
+        let typeName = this.isNodeOfType(node, type, node['@context'], {returnExpanded: true});
         if( !typeName ) return;
 
         node['@type'] = node['@type'].filter(item => item !== typeName);
-
-        if( current && current.data.statusCode !== 200 ) {
+        console.log(`  - current container status: ${current ? current.last.statusCode : 'unknown'}`);
+        if( current && current.last.statusCode !== 200 ) {
           if( !headers.link ) headers.link = [];
           headers.link.push(`<${type}>;rel="type"`)
           console.log(`  - creating ${type.replace(/.*#/, '')}`);
@@ -129,6 +127,17 @@ class IoUtils {
     // Just keeping down direction required by fin UI for now.
     if( node[this.PROPERTIES.LDP.HAS_MEMBER_RELATION] && node[this.PROPERTIES.LDP.IS_MEMBER_OF_RELATION] ) {
       delete node[this.PROPERTIES.LDP.IS_MEMBER_OF_RELATION];
+    }
+
+    let hasMemberRelation = this.PROPERTIES.LDP.HAS_MEMBER_RELATION_SHORT.replace(/^.*:/, '');
+    let isMemberOfRelation = this.PROPERTIES.LDP.IS_MEMBER_OF_RELATION_SHORT.replace(/^.*:/, '');
+    if( node[hasMemberRelation] && node[isMemberOfRelation] ) {
+      delete node[isMemberOfRelation];
+    }
+
+    if( node[this.PROPERTIES.LDP.HAS_MEMBER_RELATION_SHORT] && 
+        node[this.PROPERTIES.LDP.IS_MEMBER_OF_RELATION_SHORT] ) {
+      delete node[this.PROPERTIES.LDP.IS_MEMBER_OF_RELATION_SHORT];
     }
   }
 
@@ -229,7 +238,7 @@ class IoUtils {
     node['@type'] = types; 
   }
 
-  isNodeOfType(node, type, context) {
+  isNodeOfType(node, type, context, opts={}) {
     let types = node['@type'] || [];
     if( !Array.isArray(types) ) types = [types];
     if( types.includes(type) ) return type;
@@ -240,7 +249,12 @@ class IoUtils {
       let prefix = t.split(':')[0];
 
       if( !context[prefix] ) continue;
-      if( context[prefix]+t.split(':')[1] === type ) return t;
+      if( context[prefix]+t.split(':')[1] === type ) {
+        if( opts.returnExpanded ) {
+          return context[prefix]+t.split(':')[1];
+        }
+        return t;
+      }
     }
 
     return false;

@@ -56,7 +56,9 @@ module.exports = {
   },
 
   gateway : {
-    host : 'http://gateway:3001'
+    host : 'http://gateway:3001',
+    fcrepoDataMount : env.GATEWAY_FCREPO_DATA_MOUNT || '/data',
+    ocflRoot : 'ocfl-root',
   },
 
   rdf : {
