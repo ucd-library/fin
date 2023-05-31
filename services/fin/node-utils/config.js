@@ -70,8 +70,7 @@ module.exports = {
     hostname : fcrepoHostname,
     port : fcrepoPort,
     host : `http://${fcrepoHostname}:${fcrepoPort}`,
-    root : '/fcrepo/rest',
-
+    root : '/fcrepo/rest'
   },
 
   activeMq : {

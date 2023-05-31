@@ -7,6 +7,7 @@ import "../src"
 
 import './widgets/fin-admin-reindex-path.js'
 import './widgets/fin-admin-start-workflow.js'
+import './widgets/fin-admin-data-model.js'
 
 import '@ucd-lib/theme-elements/brand/ucd-theme-header/ucd-theme-header.js'
 import '@ucd-lib/theme-elements/ucdlib/ucdlib-branding-bar/ucdlib-branding-bar.js'

@@ -8,6 +8,16 @@ function replaceWhitespace(str='') {
 
 const viewConfig = {
 
+  'dashboard-data-models' : {
+    columnLabels : {
+      dbItemCount : 'Database Items'
+    },
+    actions : [{
+      type : 'view-info',
+      label : 'View Info'
+    }]
+  },
+
   'dbsync-main' : {
     table : 'dbsync_update_status',
     query : {
@@ -110,10 +120,14 @@ const viewConfig = {
 
   'dashboard-gcs-diskcache-largest' : {
     table : 'gcssync_disk_cache',
-    ignoreKeys: ['file_md5'],
+    ignoreKeys: ['file_md5', 'disk_cache_id'],
     query : {
       limit : 10,
       order : 'size.desc'
+    },
+    renderCellValue : standardRender,
+    columnLabels : {
+      size : 'Size (KB)',
     }
   },
 

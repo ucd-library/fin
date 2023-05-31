@@ -30,6 +30,7 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       showPagination : {type: Boolean},
       currentPage : {type: Number},
       totalPages : {type: Number},
+      columnLabels : {type: Object},
       hideTotal : {
         type: Boolean,
         attribute: 'hide-total'
@@ -61,6 +62,7 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     this.data = [];
     this.keys = [];
     this.ignoreKeys = [];
+    this.columnLabels = {};
     this.hideTotal = false;
     this.updateHash = false;
 
@@ -114,6 +116,9 @@ export default class FinAdminDataTable extends Mixin(LitElement)
   }
 
   _startAutoRefresh() {
+    if( this._autoRefreshInterval ) return;
+
+    this.runQuery();
     this._autoRefreshInterval = setInterval(() => {
       this.runQuery();
     }, 10000);

@@ -30,20 +30,12 @@ return html`
 
 <div>
   <h2 id="data-models" class="heading--weighted-underline">Data Models</h2>
-  <div class="o-flex-region">
-  ${this.dataModels.map(model => html`
-    <div class="o-flex-region__item data-model-panel">
-      <h3 class="heading--weighted">${model.props.id}</h3>
-      <div><b>Database Items</b>: ${model.count}</div>
-
-      <div ?hidden="${!model.hasApiEndpoint}"><b>API Endpoint</b>: /api/${model.props.id}</div>
-      <div ?hidden="${model.hasApiEndpoint}">No API Endpoint Registered</div>
-      ${model.propsView.map(prop => html`
-        <div style="font-size: 12px"><b>${prop.name}</b>: ${prop.value}</div>
-      `)}
-    </div>
-  `)}
-  </div>
+  <fin-admin-data-table 
+    name="dashboard-data-models"
+    hide-total
+    @view-info="${this._onViewDmInfoClicked}"
+    .rawData="${this.dataModelsDtData}">
+  </fin-admin-data-table>
 </div>
 
 <div>
@@ -78,6 +70,7 @@ return html`
 
 <div>
   <h2 id="fcrepo-open-tx" class="heading--weighted-underline">Fcrepo - Open Transactions</h2>
+  <div ?hidden="${this.openTransactions > 0}">None</div>
   <fin-admin-data-table 
     name="open-transactions"
     hide-total

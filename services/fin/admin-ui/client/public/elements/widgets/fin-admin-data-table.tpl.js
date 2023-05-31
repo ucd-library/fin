@@ -56,6 +56,10 @@ export function styles() {
       margin-left: auto;
     }
 
+    .column-label {
+      text-transform: capitalize;
+    }
+
     input {
       box-sizing: border-box;
     }
@@ -92,8 +96,8 @@ return html`
     ${this.renderType === 'table' ? html`
     <table>
       <thead>
-        <tr>
-          ${this.keys.map(key => html`<th>${key}</th>`)}
+        <tr class="column-label">
+          ${this.keys.map(key => html`<th>${this.columnLabels[key] || key.replace(/_/g, ' ')}</th>`)}
         </tr>
       </thead>
       <tbody>

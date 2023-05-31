@@ -15,6 +15,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       dataModels : [],
       openTransactions : {type: Array},
       dbSyncQueueLength : {type: String},
+      dataModelsDtData : {type: Array},
       reindexing : {type: Boolean},
       reindexPath : {type: String}
     }
@@ -30,6 +31,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     
     this.dataModels = [];
     this.openTransactions = [];
+    this.dataModelsDtData = [];
     this.reindexing = false;
     this.reindexPath = '';
 
@@ -44,6 +46,10 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         if( e.payload.length < 1 ) return;
         this.dbSyncQueueLength = e.payload[0].count;
       });
+  }
+
+  firstUpdated() {
+    this.dataModelEle = document.querySelector('fin-admin-data-model');
   }
 
   _onAppStateUpdate(e) {
@@ -79,7 +85,13 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.dataModels = Object.values(e.payload.registeredModels || {});
     this.dataModels = clone(this.dataModels);
 
+    let dtData = [];
     this.dataModels.forEach(model => {
+      dtData.push({
+        name : model.props.id,
+        dbItemCount : model.count
+      });
+
       model.propsView = [];
       for( let prop in model.props ) {
         model.propsView.push({
@@ -88,6 +100,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         });
       }
     });
+
+    this.dataModelsDtData = dtData.filter(item => item.name);
   }
 
   async _onDeleteTx(e) {
@@ -114,6 +128,12 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.reindexing = true;
     this.reindexPath = '';
     this.reindex(action, 0, 100);
+  }
+
+  async _onViewDmInfoClicked(e) {
+    let dataModel = e.detail.data;
+    dataModel = this.dataModels.find(model => model.props.id === dataModel.name);
+    this.dataModelEle.open(dataModel);
   }
 
   async reindex(action, offset, limit) {
