@@ -33,6 +33,7 @@ if( esCompactTypesInclude ) {
 let esFieldsExclude = processArray(process.env.ES_FIELDS_EXCLUDE);
 let esFieldsExcludeCompact = processArray(process.env.ES_FIELDS_EXCLUDE_COMPACT);
 let gcsDiskCacheExts = processArray(process.env.GCS_DISK_CACHE_EXTS);
+let disableServices = processArray(process.env.DISABLE_FIN_SERVICES);
 
 // make sure this is set for gcssync templates
 if( !env.GCS_BUCKET_ENV ) env.GCS_BUCKET_ENV = 'local-dev';
@@ -59,6 +60,7 @@ module.exports = {
     host : 'http://gateway:3001',
     fcrepoDataMount : env.GATEWAY_FCREPO_DATA_MOUNT || '/data',
     ocflRoot : 'ocfl-root',
+    disableServices
   },
 
   rdf : {

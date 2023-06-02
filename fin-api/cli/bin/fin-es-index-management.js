@@ -61,10 +61,10 @@ stdOptionWrapper(
 
 stdOptionWrapper(
   program
-    .command('task-status <model-name> <task-id>')
+    .command('task-status <task-id>')
     .description('Get the status of a task.  Task id is returned from the copy command')
-    .action((modelName, taskId, options) => {
-      esimModel.copy({modelName, taskId, options})
+    .action((taskId, options) => {
+      esimModel.taskStatus({taskId, options})
     })
 );
 

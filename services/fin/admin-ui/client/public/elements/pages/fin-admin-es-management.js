@@ -248,11 +248,11 @@ export default class FinAdminEsManagement extends Mixin(LitElement)
     alert('Copy of '+index+' started');
 
 
-    this._waitForTask(this.selectedModel, resp.body.response.task);
+    this._waitForTask(resp.body.response.task);
   }
 
-  async _waitForTask(model, taskId) {
-    let resp = await this.FinApiModel.getEsTask(model, taskId);
+  async _waitForTask(taskId) {
+    let resp = await this.FinApiModel.getEsTask(taskId);
     this._refreshModelData();
 
     // sometimes final results don't show up right away
@@ -264,7 +264,7 @@ export default class FinAdminEsManagement extends Mixin(LitElement)
     }
     
     await sleep(10000);
-    this._waitForTask(model, taskId);
+    this._waitForTask(taskId);
   }
 
 }

@@ -80,6 +80,7 @@ docker build \
 
 # Core - Init services
 docker build \
+  --build-arg FIN_SERVER_IMAGE=${SERVER_IMAGE_NAME}:${APP_TAG} \
   --build-arg FIN_APP_VERSION=${APP_VERSION} \
   --build-arg FIN_REPO_TAG=${FIN_TAG_NAME} \
   --build-arg FIN_BRANCH_NAME=${FIN_BRANCH_NAME} \

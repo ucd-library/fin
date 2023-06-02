@@ -1,5 +1,5 @@
 const api = require('@ucd-lib/fin-api');
-const {logger, config, ActiveMqClient, FinTag} = require('@ucd-lib/fin-service-utils');
+const {logger, config, models, ActiveMqClient, FinTag} = require('@ucd-lib/fin-service-utils');
 const request = require('request');
 const {URL} = require('url');
 const jsonld = require('jsonld');
@@ -32,7 +32,12 @@ class ServiceModel {
 
   constructor() {
     this.reloadTimer = -1;
-    
+
+    this.disabledServices = config.gateway.disableServices || [];
+    if( this.disabledServices.length ) {
+      logger.info('The following services are disabled', this.disabledServices);
+    }
+  
     this.services = {};
     this.secrets = {};
     this.SIGNATURE_HEADER = 'X-FIN-SERVICE-SIGNATURE';
@@ -59,6 +64,13 @@ class ServiceModel {
     this.activemq = new ActiveMqStompClient('gateway');
     this.activemq.onMessage(e => this._onFcrepoEvent(e));
     this.activemq.connect();
+
+    // load model services
+    let modelNames = await models.names();
+    for( let name of modelNames ) {
+      let modelService = await models.get(name);
+      await this.loadModelTransformService(modelService);
+    }
 
     await this.waitForFcRepoServices();
     await this.reload();
@@ -107,6 +119,36 @@ class ServiceModel {
     }
   }
 
+  async loadModelTransformService(model) {
+    if( !model.transform ) return;
+    if( !model.model.transformService ) return;
+    let modelName = model.model.id;
+    let id = model.model.transformService;
+
+    if( this.disabledServices.includes(id) ) {
+      logger.info('Skipping data model '+modelName+' transform '+id+', service disabled. ');
+      return;
+    }
+
+    logger.info('Loading data model '+modelName+' transform : '+id);
+
+    let service = new ServiceDefinition({
+      '@id': id,
+      '@type': [
+        "http://digital.ucdavis.edu/schema#Service",
+        "http://digital.ucdavis.edu/schema#TransformService",
+        "http://digital.ucdavis.edu/schema#ModelService"
+      ],
+      description : 'Used for the '+modelName+' data model ETL',
+      identifier : id,
+      title : modelName+" transform",
+    });
+    service.transform = model.transform;
+    this.services[service.id] = service;
+
+    await transform.load(service.id, service.transform);
+  }
+
   async loadService(uri) {
     let fcPath = uri.split(api.getConfig().fcBasePath)[1];
 
@@ -127,6 +169,12 @@ class ServiceModel {
 
     if( !types ) {
       logger.warn(`Attempting load service ${uri} but not types found`);
+      return;
+    }
+
+    let id = mainNode.identifier || mainNode.id;
+    if( this.disabledServices.includes(id) ) {
+      logger.info('Skipping service '+id+', service disabled.');
       return;
     }
 

@@ -61,7 +61,7 @@ return html`
 </div>
 
 <div ?hidden="${this.children.length === 0}">
-  <h1 class="heading--weighted-underline">Contains</h1>
+  <h1 class="heading--weighted-underline">Contains (${this.children.length})</h1>
   <div class="contains-list">
     ${this.children.map(child => html`
       <div class="child">

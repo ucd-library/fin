@@ -57,8 +57,8 @@ class FinApiModel extends BaseModel {
     return this.service.copyIndex(modelName, indexName);
   }
 
-  getEsTask(modelName, taskId) {
-    return this.service.getEsTask(modelName, taskId);
+  getEsTask(taskId) {
+    return this.service.getEsTask(taskId);
   }
 
   deleteTransaction(transactionId) {

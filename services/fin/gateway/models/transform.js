@@ -598,11 +598,16 @@ class TransformService {
   }
 
   async load(name, script) {
-    // add -count so we always load a fresh instance
-    let file = path.join(ROOT_DIR, name+'-'+this.count+'.js');
-    await fs.writeFile(file, script);
-    this.transforms[name] = require(file);
-    this.count++;
+    if( typeof script === 'string' ) {
+      // add -count so we always load a fresh instance
+      let file = path.join(ROOT_DIR, name+'-'+this.count+'.js');
+      await fs.writeFile(file, script);
+      this.transforms[name] = require(file);
+      this.count++;
+      return;
+    }
+
+    this.transforms[name] = script;
   }
 
   /**

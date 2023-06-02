@@ -15,29 +15,10 @@ api.setConfig({
 const app = express();
 app.use(bodyParser.text({type: '*/*'}));
 
-function ensureRootPath(req, res, next) {
-  let path = req.headers['x-fin-original-url'].match(/\/fcrepo\/rest\/(.*\/?)svc:es-index-management/)[1];
-  let cmd = req.headers['x-fin-original-url'].match(/\/svc:es-index-management\/(.*)/)[1];
-  path = path.split('/').filter(p => p.length > 0);
-
-  // TODO: get svc id from headers
-  if( path.length > 1 ) {
-    return res.status(400).json({
-      error: true,
-      message : 'the /svc:es-index-management endpoint only works at the root of models path: /'+path.join('/'),
-      correctUrl : config.server.url+'/fcrepo/rest/'+path[0]+'/svc:es-index-management/'+cmd
-    });
-  }
-
-  req.modelName = cmd.split('/').shift();
-
-  next();
-}
-
 // list all indexes
-app.get(/^\/.*\/index$/, keycloak.protect(['admin']), ensureRootPath, async (req, res) => {
+app.get('/es-index-management/:modelName/index', keycloak.protect(['admin']), async (req, res) => {
   try {
-    let modelName = req.modelName;
+    let modelName = req.params.modelName;
 
     // make sure this is a known model
     let {model} = await models.get(modelName);
@@ -65,9 +46,9 @@ app.get(/^\/.*\/index$/, keycloak.protect(['admin']), ensureRootPath, async (req
 });
 
 // get information about an index
-app.get(/^\/.*\/index\/.+/, keycloak.protect(['admin']), ensureRootPath, async (req, res) => {
+app.get('/es-index-management/index/:indexName', keycloak.protect(['admin']), async (req, res) => {
   try {
-    let indexName = req.path.replace(/\/$/).split('/').pop();
+    let indexName = req.params.indexName;
 
     res.json(await elasticsearch.getIndex(indexName));
 
@@ -78,9 +59,9 @@ app.get(/^\/.*\/index\/.+/, keycloak.protect(['admin']), ensureRootPath, async (
 });
 
 // create index
-app.post(/^\/.*\/index(\/)?$/, keycloak.protect(['admin']), ensureRootPath, async (req, res) => {
+app.post('/es-index-management/:modelName/index', keycloak.protect(['admin']), async (req, res) => {
   try {
-    let modelName = req.modelName;
+    let modelName = req.params.modelName;
 
     // make sure this is a known model
     let {model} = await models.get(modelName);
@@ -103,9 +84,9 @@ app.post(/^\/.*\/index(\/)?$/, keycloak.protect(['admin']), ensureRootPath, asyn
 });
 
 // remove index
-app.delete(/^\/.*\/index\/.+$/, keycloak.protect(['admin']), ensureRootPath, async (req, res) => {
+app.delete('/es-index-management/index/:indexName', keycloak.protect(['admin']), async (req, res) => {
   try {
-    let indexName = req.path.split('/').pop();
+    let indexName = req.params.indexName;
 
     // check if index has aliases
     let index = await elasticsearch.getIndex(indexName);
@@ -128,10 +109,10 @@ app.delete(/^\/.*\/index\/.+$/, keycloak.protect(['admin']), ensureRootPath, asy
 });
 
 // set alias to an index
-app.put(/^\/.*\/index\/.+$/, keycloak.protect(['admin']), ensureRootPath, async (req, res) => {
+app.put('/es-index-management/:modelName/index/:indexName', keycloak.protect(['admin']), async (req, res) => {
   try {
-    let modelName = req.modelName;
-    let indexName = req.path.split('/').pop();
+    let modelName = req.params.modelName;
+    let indexName = req.params.indexName;
 
     let aliasName = req.body;
     if( typeof aliasName === 'object' ) {
@@ -161,10 +142,10 @@ app.put(/^\/.*\/index\/.+$/, keycloak.protect(['admin']), ensureRootPath, async 
 });
 
 // get information about an index
-app.post(/^\/.*\/recreate-index\/.+$/, keycloak.protect(['admin']), ensureRootPath, async (req, res) => {
+app.post('/es-index-management/:modelName/recreate-index/:indexName', keycloak.protect(['admin']), async (req, res) => {
   try {
-    let modelName = req.modelName;
-    let indexSource = req.path.replace(/\/$/, '').split('/').pop();
+    let modelName = req.params.modelName;
+    let indexSource = req.params.indexName;
 
     // make sure this is a known model
     let {model} = await models.get(modelName);
@@ -188,9 +169,9 @@ app.post(/^\/.*\/recreate-index\/.+$/, keycloak.protect(['admin']), ensureRootPa
 });
 
 // get information about an index
-app.get(/^\/.*\/task-status\/.+$/, keycloak.protect(['admin']), async (req, res) => {
+app.get('/es-index-management/task-status/:taskId', keycloak.protect(['admin']), async (req, res) => {
   try {
-    let id = req.path.split('/').pop();
+    let id = req.params.taskId;
     res.json(await elasticsearch.esClient.tasks.get({task_id: id}));
   } catch(e) {
     onError(res, e);

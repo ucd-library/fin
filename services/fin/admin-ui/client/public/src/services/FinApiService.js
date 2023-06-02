@@ -54,19 +54,19 @@ class FinApiService extends BaseService {
 
   getDataModelIndexes(id) {
     return this.request({
-      url : `/fcrepo/rest/svc:es-index-management/${id}/index`
+      url : `/es-index-management/${id}/index`
     });
   }
 
   getEsIndex(id) {
     return this.request({
-      url : `/fcrepo/rest/svc:es-index-management/index/${id}`
+      url : `/es-index-management/index/${id}`
     });
   }
 
   createIndex(id) {
     return this.request({
-      url : `/fcrepo/rest/svc:es-index-management/${id}/index`,
+      url : `/es-index-management/${id}/index`,
       fetchOptions : {
         method : 'POST'
       }
@@ -75,7 +75,7 @@ class FinApiService extends BaseService {
 
   deleteIndex(id) {
     return this.request({
-      url : `/fcrepo/rest/svc:es-index-management/index/${id}`,
+      url : `/es-index-management/index/${id}`,
       fetchOptions : {
         method : 'DELETE'
       }
@@ -84,7 +84,7 @@ class FinApiService extends BaseService {
 
   setAlias(modelName, index, type) {
     return this.request({
-      url : `/fcrepo/rest/svc:es-index-management/${modelName}/index/${index}?alias=${type}`,
+      url : `/es-index-management/${modelName}/index/${index}?alias=${type}`,
       fetchOptions : {
         method : 'PUT'
       }
@@ -93,16 +93,16 @@ class FinApiService extends BaseService {
 
   copyIndex(modelName, index) {
     return this.request({
-      url : `/fcrepo/rest/svc:es-index-management/${modelName}/recreate-index/${index}`,
+      url : `/es-index-management/${modelName}/recreate-index/${index}`,
       fetchOptions : {
         method : 'POST'
       }
     });
   }
 
-  getEsTask(modelName, taskId) {
+  getEsTask(taskId) {
     return this.request({
-      url : `/fcrepo/rest/svc:es-index-management/${modelName}/task-status/${taskId}`
+      url : `/es-index-management/task-status/${taskId}`
     });
   }
 
