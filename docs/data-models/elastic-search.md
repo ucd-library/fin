@@ -2,37 +2,6 @@
 
 The Elastic Search data model is a base class for creating data models that store data in Elastic Search.  It provides a number of helper methods for creating and updating Elastic Search documents.
 
-## Defining a Data Model
-
-The data model should expose three properties:
-  - `api` - An express router object that will be mounted at `/api/[model-name]`
-  - `model` - The business logic for the data model
-  - `schema` - The Elastic Search schema for the data model
-
-Normally each model is stored in a separate folder, with an `index.js` file that exports the three properties.  For example:
-
-```javascript
-module.exports = {
-  api : require('./api.js'),
-  model : require('./model.js'),
-  schema : require('./schema.json')
-}
-```
-
-## API
-
-An API is an express router object that will be mounted at `/api/[model-name]`.  The API should be defined in a separate file, and exported as the `api` property of the data model.  For example:
-
-```javascript
-const router = require('express').Router();
-const model = require('./model.js');
-
-router.get('/*', async (req, res) => {
-  // do stuff
-});
-
-module.exports = router;
-```
 
 ## Model
 
@@ -43,7 +12,8 @@ Developers, [see full ElasticSearchModel source here](../../services/fin/node-ut
 The most basic model would look something like this:
 
 ```javascript
-const {ElasticSearchModel} = require('@ucd-lib/fin-service-utils');
+const {dataModels} = require('@ucd-lib/fin-service-utils');
+const {FinEsDataModel} = dataModels;
 
 class ItemModel extends ElasticSearchModel {
 
@@ -78,6 +48,47 @@ This model exposes standard functions for interacting with fin Elastic Search do
   - `delete` - Delete a node in a document
   - `getEsRoles` - get the finac roles for this document
   - `getDefaultIndexConfig` - get the default elastic search index config for this document.  the mappings are set from the `schema.json` file.
+
+## API
+
+You can use the `defaultEsApiGenerator` to create a standard API around your Elastic Search model.  This will create a standard REST API for your model, including:
+
+  - `POST /api/[model-name]/` - Search for documents
+  - `GET /api/[model-name]/` - Get all documents
+  - `GET /api/[model-name]/:id` - Get a single document
+
+Here is an example that uses the `defaultEsApiGenerator` to create an API and then adds a `GET /api/[model-name]/all-lables` endpoint.
+
+```javascript
+const {dataModels, logger} = require('@ucd-lib/fin-service-utils');
+const model = require('./model.js');
+const {defaultEsApiGenerator} = dataModels;
+const {Router} = require('express');
+
+let router = Router();
+
+// you want to define your new routes BEFORE you call defaultEsApiGenerator
+router.get('/all-labels', async (req, res) => {
+  try {
+    let labels = await model.allLabels();
+    res.json(labels);
+  } catch(e) {
+    res.statu(500).json({
+      error : true,
+      message : 'Error with '+model.id+' labels retrieval',
+      details : e.message
+    });
+  }
+});
+
+// router is optional, if not provided a new router will be created
+// and returned.  That looks like this:
+// const router = defaultEsApiGenerator(model);
+defaultEsApiGenerator(model, {router});
+
+module.exports = router;
+```
+
 
 ### Overriding getDefaultIndexConfig()
 

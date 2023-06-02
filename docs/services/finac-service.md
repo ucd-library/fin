@@ -6,34 +6,12 @@ FinAC uses standard WebAC to limit access to the LDP containers and binaries via
 
 ## Setup
 
-Put the following in: `/service/finac`
+This is a default fin service.  You can [see the service definition here](../../services/init/fcrepo/service/finac.jsonld.json).
 
-```json
-{
-  "@id": "",
-  "@type": [
-    "http://digital.ucdavis.edu/schema#Service",
-    "http://digital.ucdavis.edu/schema#ProxyService"
-  ],
-  "urlTemplate": "http://finac:3000{{fcPath}}{{svcPath}}",
-  "description": "Fin WebAC wrapper",
-  "identifier": "finac",
-  "title": "finac",
-  "@context": {
-    "title": {
-      "@id": "http://purl.org/dc/elements/1.1/title"
-    },
-    "identifier": {
-      "@id": "http://purl.org/dc/elements/1.1/identifier"
-    },
-    "urlTemplate": {
-      "@id": "http://digital.ucdavis.edu/schema#urlTemplate"
-    },
-    "description": {
-      "@id": "http://purl.org/dc/elements/1.1/description"
-    }
-  }
-}
+You can disable this service by setting the `DISABLE_FIN_SERVICE` env variable
+
+```bash
+DISABLE_FIN_SERVICE=finac
 ```
 
 ## API

@@ -6,6 +6,8 @@ The google cloud sync service allows applications to:
 
 ## Setup
 
+Have the [gcs service](../gcs-service.md) setup and running.
+
 Add the following to `/fin/gcs/config.json`
 
 ```json

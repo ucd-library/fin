@@ -4,37 +4,15 @@ The GCS service allows access to files that are hosted in Google Cloud storage. 
 
 ## Setup
 
-Put the following in: `/service/gcs`
+This is a default fin service.  You can [see the service definition here](../../services/init/fcrepo/service/gcs.jsonld.json).
 
-```json
-{
-  "@id": "",
-  "@type": [
-    "http://digital.ucdavis.edu/schema#Service",
-    "http://digital.ucdavis.edu/schema#ProxyService"
-  ],
-  "urlTemplate": "http://gcs:3000{{fcPath}}?svcPath={{svcPath}}",
-  "description": "Access GCS Resources",
-  "identifier": "gcs",
-  "title": "gcs",
-  "@context": {
-    "title": {
-      "@id": "http://purl.org/dc/elements/1.1/title"
-    },
-    "identifier": {
-      "@id": "http://purl.org/dc/elements/1.1/identifier"
-    },
-    "urlTemplate": {
-      "@id": "http://digital.ucdavis.edu/schema#urlTemplate"
-    },
-    "description": {
-      "@id": "http://purl.org/dc/elements/1.1/description"
-    }
-  }
-}
+You can disable this service by setting the `DISABLE_FIN_SERVICE` env variable
+
+```bash
+DISABLE_FIN_SERVICE=gcs
 ```
 
-Then in the `/fin/gcs/config.json`
+Then you must add your configuration file to fcrepo at `/fin/gcs/config.json`
 
 ```json
 {

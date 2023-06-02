@@ -8,34 +8,12 @@ By default the reindex service will crawl the all `ldp:contains` properties.  Ad
 
 ## Setup
 
-Put the following in: `/service/reindex`
+This is a default fin service.  You can [see the service definition here](../../services/init/fcrepo/service/reindex.jsonld.json).
 
-```json
-{
-  "@id": "",
-  "@type": [
-    "http://digital.ucdavis.edu/schema#Service",
-    "http://digital.ucdavis.edu/schema#ProxyService"
-  ],
-  "urlTemplate": "http://dbsync:3000/reindex/{{fcPath}}{{svcPath}}",
-  "description": "Reindex item or collection",
-  "identifier": "reindex",
-  "title": "reindex",
-  "@context": {
-    "title": {
-      "@id": "http://purl.org/dc/elements/1.1/title"
-    },
-    "identifier": {
-      "@id": "http://purl.org/dc/elements/1.1/identifier"
-    },
-    "urlTemplate": {
-      "@id": "http://digital.ucdavis.edu/schema#urlTemplate"
-    },
-    "description": {
-      "@id": "http://purl.org/dc/elements/1.1/description"
-    }
-  }
-}
+You can disable this service by setting the `DISABLE_FIN_SERVICE` env variable
+
+```bash
+DISABLE_FIN_SERVICE=reindex
 ```
 
 ## Usage

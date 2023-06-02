@@ -4,34 +4,12 @@ This service provides authentication via the `oidc` service.  This service will 
 
 ## Setup
 
-Put the following in: `/service/keycloak`
+This is a default fin service.  You can [see the service definition here](../../services/init/fcrepo/service/keycloak-oidc.jsonld.json).
 
-```json
-{
-  "@id": "",
-  "@type": [
-    "http://digital.ucdavis.edu/schema#Service",
-    "http://digital.ucdavis.edu/schema#AuthenticationService"
-  ],
-  "url": "http://oidc:3000",
-  "description": "Keycloak oidc authentication service",
-  "identifier": "keycloak-oidc",
-  "title": "keycloak-oidc",
-  "@context": {
-    "title": {
-      "@id": "http://purl.org/dc/elements/1.1/title"
-    },
-    "identifier": {
-      "@id": "http://purl.org/dc/elements/1.1/identifier"
-    },
-    "urlTemplate": {
-      "@id": "http://digital.ucdavis.edu/schema#urlTemplate"
-    },
-    "description": {
-      "@id": "http://purl.org/dc/elements/1.1/description"
-    }
-  }
-}
+You can disable this service by setting the `DISABLE_FIN_SERVICE` env variable
+
+```bash
+DISABLE_FIN_SERVICE=keycloak-oidc
 ```
 
 ## Usage

@@ -4,6 +4,14 @@ The workflow service is responsible for starting and monitoring workflows.  The 
 
 ## Setup
 
+This is a default fin service.  You can [see the service definition here](../../services/init/fcrepo/service/workflow.jsonld.json).
+
+You can disable this service by setting the `DISABLE_FIN_SERVICE` env variable
+
+```bash
+DISABLE_FIN_SERVICE=workflow
+```
+
 The workflow definition file should exist at: `/fin/workflows/config.json`
 
 ### Fin Base Workflows Definition:

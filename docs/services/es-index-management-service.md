@@ -11,34 +11,12 @@ For all defined models FinEsDataModels.
 
 ## Setup
 
-Put the following in: `/service/es-index-management`
+This is a default fin service.  You can [see the service definition here](../../services/init/fcrepo/service/es-index-management.jsonld.json).
 
-```json
-{
-  "@id": "",
-  "@type": [
-    "http://digital.ucdavis.edu/schema#Service",
-    "http://digital.ucdavis.edu/schema#ProxyService"
-  ],
-  "urlTemplate": "http://es-index-management:3000/{{fcPath}}{{svcPath}}",
-  "description": "Manage Elastic Search aliases and indexes",
-  "identifier": "es-index-management",
-  "title": "Elastic Search Index Management Service",
-  "@context": {
-    "title": {
-      "@id": "http://purl.org/dc/elements/1.1/title"
-    },
-    "identifier": {
-      "@id": "http://purl.org/dc/elements/1.1/identifier"
-    },
-    "urlTemplate": {
-      "@id": "http://digital.ucdavis.edu/schema#urlTemplate"
-    },
-    "description": {
-      "@id": "http://purl.org/dc/elements/1.1/description"
-    }
-  }
-}
+You can disable this service by setting the `DISABLE_FIN_SERVICE` env variable
+
+```bash
+DISABLE_FIN_SERVICE=es-index-management
 ```
 
 ## Usage
