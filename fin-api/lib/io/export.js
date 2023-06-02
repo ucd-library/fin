@@ -40,7 +40,8 @@ const OMIT_F4 = [
 ];
 
 const V1_REMOVE_PROPS = [
-  'clientMediaDownload', 'clientMedia', 'accessControl'
+  'clientMediaDownload', 'clientMedia', 'accessControl',
+  'ucdlib:clientMediaDownload', 'ucdlib:clientMedia', 'webac:accessControl'
 ]
 
 class ExportCollection {
@@ -436,8 +437,20 @@ class ExportCollection {
 
     if( graph.error ) return '';
     if( graph.last.statusCode !== 200 ) return '';
+    graph = JSON.parse(graph.last.body);
 
-    graph = this.implBaseAndInfoFedoraPrefix(graph.last.body, fcrepoPath, true);
+    // expand graph so clean up bad context
+    graph = await jsonld.expand(graph);
+    graph = await jsonld.compact(graph, {
+      ldp : 'http://www.w3.org/ns/ldp#',
+      schema : 'http://schema.org/',
+      fedora: 'http://fedora.info/definitions/v4/repository#',
+      webac : 'http://fedora.info/definitions/v4/webac#',
+      ucdlib : 'http://digital.ucdavis.edu/schema#'
+    });
+    graph = JSON.stringify(graph);
+
+    graph = this.implBaseAndInfoFedoraPrefix(graph, fcrepoPath, true);
 
     if( options.fromV1 ) {
       this.applyV1Rules(graph, isArchivalGroup, graph['@context']);
