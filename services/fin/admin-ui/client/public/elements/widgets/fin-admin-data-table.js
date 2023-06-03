@@ -166,13 +166,18 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     if( this.actions ) {
       for( let i = 0; i < data.length; i++ ) {
         data[i][''] = this.actions.map(action => {
+          if( action.filter && !action.filter(data[i]) ) {
+            return null;
+          }
+
           return html`
             <button 
               class="btn btn--primary btn--round" 
               @click="${this._onActionClicked}" index="${i}" action-type="${action.type}">
                 ${action.label}
             </button>`;
-        });
+        })
+        .filter(action => action !== null);
       }
     }
     

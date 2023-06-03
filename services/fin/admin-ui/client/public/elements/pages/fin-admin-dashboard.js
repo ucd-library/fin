@@ -17,7 +17,10 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       dbSyncQueueLength : {type: String},
       dataModelsDtData : {type: Array},
       reindexing : {type: Boolean},
-      reindexPath : {type: String}
+      reindexPath : {type: String},
+      workflowName : {type: String},
+      workflowPath : {type: String},
+      deletingWorkflows : {type: Boolean}
     }
   }
 
@@ -34,6 +37,9 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.dataModelsDtData = [];
     this.reindexing = false;
     this.reindexPath = '';
+    this.workflowName = '';
+    this.workflowPath = '';
+    this.deletingWorkflows = false;
 
     this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
 
@@ -119,6 +125,12 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       });
   }
 
+  async _onViewDmInfoClicked(e) {
+    let dataModel = e.detail.data;
+    dataModel = this.dataModels.find(model => model.props.id === dataModel.name);
+    this.dataModelEle.open(dataModel);
+  }
+
   async _onReindexClick(e) {
     let action = e.detail.data.action;
     if( this.reindexing ) return alert('Already reindexing');
@@ -128,12 +140,6 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.reindexing = true;
     this.reindexPath = '';
     this.reindex(action, 0, 100);
-  }
-
-  async _onViewDmInfoClicked(e) {
-    let dataModel = e.detail.data;
-    dataModel = this.dataModels.find(model => model.props.id === dataModel.name);
-    this.dataModelEle.open(dataModel);
   }
 
   async reindex(action, offset, limit) {
@@ -165,6 +171,64 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     }
   }
 
+  _onDeleteWorkflowsClicked(e) {
+    let state = e.detail.data.state;
+    if( this.deletingWorkflows ) return alert('Already deleting');
+
+    if( !confirm('Are you sure you want to delete all workflows with state = '+state+'?') ) return;
+
+    // double check!!
+    if( state !== 'error' ) {
+      return alert('Only workflows with state = error can be deleted');
+    }
+
+    this.workflowPath = '';
+    this.workflowName = '';
+    this.deletingWorkflows = true;
+    this.deleteWorkflows(state, 0, 100);
+  }
+
+  async deleteWorkflows(state, offset, limit) {
+    state = 'error'; // triple check :)
+    let query = {
+      state: 'eq.'+state,
+      select: 'path,name',
+      limit,
+      offset,
+      order: 'path.asc'
+    }
+
+    let results = await this.DataViewModel.pgQuery(
+      'workflow_lastest', 
+      query, 
+      {refresh: true}, 
+      'dashboard-delete-workflow'
+    );
+
+
+    for( let row of results.payload ) {
+      this.workflowPath = row.path;
+      this.workflowName = row.name;
+      let {response} = await this.FinApiModel.deleteWorkflow(row.path, row.name);
+      // TODO: need error ui.  Cant use simple alert for this.
+      // if( response.status !== 200 ) {
+      //   alert('Error deleting workflow: '+response.status);
+      // }
+    }
+
+    let rs = results.resultSet;
+    if( rs.total > rs.stop+1 ) {
+      this.deleteWorkflows(action, rs.start+limit, limit);
+    } else {
+      this.deletingWorkflows = false;
+      this.querySelector('fin-admin-data-table[name="dashboard-workflow-stats"]').runQuery();
+    }
+  }
+
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 customElements.define('fin-admin-dashboard', FinAdminDashboard);

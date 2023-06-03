@@ -115,7 +115,12 @@ const viewConfig = {
         return html`<a href="#workflows?name=eq.${row.name}&state=eq.${row.state}">${row[key]}</a>`;
       }
       return standardRender(row, key);
-    }
+    },
+    actions : [{
+      type : 'delete',
+      label : 'Delete All',
+      filter : row => row.state === 'error'
+    }]
   },
 
   'dashboard-gcs-diskcache-largest' : {

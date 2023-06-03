@@ -53,9 +53,13 @@ return html`
 
 <div>
   <h2 id="workflow-stats" class="heading--weighted-underline">Workflow Stats</h2>
+  <div ?hidden="${!this.deletingWorkflows}">
+    <div>Deleting worflow <b>${this.workflowName}</b> for path <b>${this.workflowPath}</b></div>
+  </div>
   <fin-admin-data-table
     name="dashboard-workflow-stats"
     table="workflow_stats"
+    @delete="${this._onDeleteWorkflowsClicked}"
     ?auto-refresh="${this.autoRefresh}">
   </fin-admin-data-table>
 </div>
