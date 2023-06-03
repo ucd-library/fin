@@ -124,7 +124,7 @@ class WorkflowPostgresUtils {
 
   async getTimeoutActiveAndInitWorkflows(expireTimeMin=30) {
     let resp = await this.pg.query(
-      `SELECT * FROM ${this.schema}.workflow WHERE state = 'running' or state = 'init' and updated < NOW() - INTERVAL '${expireTimeMin} minutes'`
+      `SELECT * FROM ${this.schema}.workflow WHERE (state = 'running' or state = 'init') and updated < NOW() - INTERVAL '${expireTimeMin} minutes'`
     );
     return resp.rows;
   }

@@ -41,8 +41,18 @@ const OMIT_F4 = [
 
 const V1_REMOVE_PROPS = [
   'clientMediaDownload', 'clientMedia', 'accessControl',
-  'ucdlib:clientMediaDownload', 'ucdlib:clientMedia', 'webac:accessControl'
+  'ucdlib:clientMediaDownload', 'ucdlib:clientMedia', 'acl:accessControl'
 ]
+
+const METADATA_CONTEXT = {
+  ldp : 'http://www.w3.org/ns/ldp#',
+  schema : 'http://schema.org/',
+  fedora: 'http://fedora.info/definitions/v4/repository#',
+  webac : 'http://fedora.info/definitions/v4/webac#',
+  acl : 'http://www.w3.org/ns/auth/acl',
+  ucdlib : 'http://digital.ucdavis.edu/schema#',
+  ebucore : 'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#',
+}
 
 class ExportCollection {
 
@@ -441,13 +451,7 @@ class ExportCollection {
 
     // expand graph so clean up bad context
     graph = await jsonld.expand(graph);
-    graph = await jsonld.compact(graph, {
-      ldp : 'http://www.w3.org/ns/ldp#',
-      schema : 'http://schema.org/',
-      fedora: 'http://fedora.info/definitions/v4/repository#',
-      webac : 'http://fedora.info/definitions/v4/webac#',
-      ucdlib : 'http://digital.ucdavis.edu/schema#'
-    });
+    graph = await jsonld.compact(graph, METADATA_CONTEXT);
     graph = JSON.stringify(graph);
 
     graph = this.implBaseAndInfoFedoraPrefix(graph, fcrepoPath, true);
