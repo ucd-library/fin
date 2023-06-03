@@ -167,7 +167,7 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       for( let i = 0; i < data.length; i++ ) {
         data[i][''] = this.actions.map(action => {
           if( action.filter && !action.filter(data[i]) ) {
-            return null;
+            return '';
           }
 
           return html`
@@ -177,7 +177,6 @@ export default class FinAdminDataTable extends Mixin(LitElement)
                 ${action.label}
             </button>`;
         })
-        .filter(action => action !== null);
       }
     }
     
