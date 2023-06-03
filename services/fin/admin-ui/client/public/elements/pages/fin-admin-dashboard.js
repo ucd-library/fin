@@ -220,7 +220,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
 
     let rs = results.resultSet;
     if( rs.total > rs.stop+1 ) {
-      this.deleteWorkflows(state, name, rs.start+limit, limit);
+      // we are deleting, so start at 0
+      this.deleteWorkflows(state, name, 0, limit);
     } else {
       this.deletingWorkflows = false;
       this.querySelector('fin-admin-data-table[name="dashboard-workflow-stats"]').runQuery();
