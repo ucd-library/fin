@@ -173,9 +173,10 @@ export default class FinAdminDashboard extends Mixin(LitElement)
 
   _onDeleteWorkflowsClicked(e) {
     let state = e.detail.data.state;
+    let name = e.detail.data.name;
     if( this.deletingWorkflows ) return alert('Already deleting');
 
-    if( !confirm('Are you sure you want to delete all workflows with state = '+state+'?') ) return;
+    if( !confirm('Are you sure you want to delete all '+name+' workflows with state = '+state+'?') ) return;
 
     // double check!!
     if( state !== 'error' ) {
@@ -185,13 +186,14 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.workflowPath = '';
     this.workflowName = '';
     this.deletingWorkflows = true;
-    this.deleteWorkflows(state, 0, 100);
+    this.deleteWorkflows(state, name, 0, 100);
   }
 
-  async deleteWorkflows(state, offset, limit) {
+  async deleteWorkflows(state, name, offset, limit) {
     state = 'error'; // triple check :)
     let query = {
       state: 'eq.'+state,
+      name: 'eq.'+name,
       select: 'path,name',
       limit,
       offset,
@@ -218,7 +220,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
 
     let rs = results.resultSet;
     if( rs.total > rs.stop+1 ) {
-      this.deleteWorkflows(action, rs.start+limit, limit);
+      this.deleteWorkflows(action, name, rs.start+limit, limit);
     } else {
       this.deletingWorkflows = false;
       this.querySelector('fin-admin-data-table[name="dashboard-workflow-stats"]').runQuery();
