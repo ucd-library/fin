@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS update_status (
   model TEXT DEFAULT '',
   message TEXT,
   db_response JSONB,
+  validate_response_id INTEGER REFERENCES validate_response(validate_response_id),
   source JSONB,
   update_count INTEGER DEFAULT 1,
   UNIQUE(path, model)
@@ -55,6 +56,33 @@ CREATE TABLE IF NOT EXISTS update_status (
 CREATE INDEX IF NOT EXISTS update_status_path_idx ON update_status (path);
 CREATE INDEX IF NOT EXISTS update_status_action_idx ON update_status (action);
 CREATE INDEX IF NOT EXISTS update_status_model_idx ON update_status (model);
+
+CREATE TABLE IF NOT EXISTS validate_response (
+  validate_response_id SERIAL PRIMARY KEY,
+  updated timestamp NOT NULL DEFAULT NOW(),
+  db_id TEXT NOT NULL,
+  model TEXT NOT NULL,
+  response JSONB NOT NULL,
+  UNIQUE(db_id, model)
+);
+CREATE INDEX IF NOT EXISTS validate_response_model_idx ON validate_response (model);
+CREATE INDEX IF NOT EXISTS validate_response_db_id_idx ON validate_response (db_id);
+CREATE INDEX IF NOT EXISTS  validate_response_errors_idx ON validate_response (jsonb_array_length(response->'errors'));
+CREATE INDEX IF NOT EXISTS  validate_response_warnings_idx ON validate_response (jsonb_array_length(response->'warnings'));
+CREATE INDEX IF NOT EXISTS  validate_response_comments_idx ON validate_response (jsonb_array_length(response->'comments'));
+
+CREATE OR REPLACE VIEW validate_response_view AS
+  SELECT 
+    validate_response_id, 
+    updated, 
+    db_id, 
+    model, 
+    response, 
+    jsonb_array_length(response->'errors') as error_count, 
+    jsonb_array_length(response->'warnings') as warning_count, 
+    jsonb_array_length(response->'comments') as comment_count
+  FROM 
+    validate_response;
 
 -- upsert function for update_status
 CREATE OR REPLACE FUNCTION upsert_update_status (
@@ -69,7 +97,8 @@ CREATE OR REPLACE FUNCTION upsert_update_status (
   message_in TEXT, 
   db_response_in JSONB, 
   transform_service_in TEXT, 
-  source_in JSONB
+  source_in JSONB,
+  validate_response_id_in INTEGER
 ) RETURNS void AS $$
 DECLARE
   usid INTEGER;
@@ -85,9 +114,13 @@ BEGIN
 
   IF usid IS NULL THEN
     INSERT INTO 
-      update_status (path, event_id, event_timestamp, container_types, update_types, workflow_types, action, message, db_response, transform_service, model, source)
+      update_status (path, event_id, event_timestamp, container_types, 
+        update_types, workflow_types, action, message, db_response, 
+        transform_service, model, source, validate_response_id)
     VALUES 
-      (path_in, event_id_in, event_timestamp_in, container_types_in, update_types_in, workflow_types_in, action_in, message_in, db_response_in, transform_service_in, model_in, source_in);
+      (path_in, event_id_in, event_timestamp_in, container_types_in, 
+      update_types_in, workflow_types_in, action_in, message_in, db_response_in, 
+      transform_service_in, model_in, source_in, validate_response_id_in);
   ELSE
     UPDATE update_status SET
       event_id = event_id_in,
@@ -100,6 +133,7 @@ BEGIN
       db_response = db_response_in,
       transform_service = transform_service_in,
       source = source_in,
+      validate_response_id = validate_response_id_in,
       updated = NOW(),
       update_count = count + 1
     WHERE 
@@ -110,6 +144,40 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- upsert function for update_status
+CREATE OR REPLACE FUNCTION upsert_validate_response (
+  model_in TEXT,
+  db_id_in TEXT,
+  response_in JSONB
+) RETURNS INTEGER AS $$
+DECLARE
+  vrid INTEGER;
+BEGIN
+
+  SELECT 
+    validate_response_id INTO vrid
+  FROM
+    validate_response 
+  WHERE 
+    model = model_in AND db_id = db_id_in;
+
+  IF vrid IS NULL THEN
+    INSERT INTO 
+      validate_response (model, db_id, response)
+    VALUES 
+      (model_in, db_id_in, response_in)
+    RETURNING validate_response_id INTO vrid;
+  ELSE
+    UPDATE validate_response SET
+      response = response_in,
+      updated = NOW()
+    WHERE 
+      validate_response_id = vrid;
+  END IF;
+
+  RETURN vrid;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE TABLE IF NOT EXISTS reindex_crawl_status (
   reindex_crawl_status_id SERIAL PRIMARY KEY,

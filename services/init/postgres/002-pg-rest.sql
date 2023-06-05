@@ -18,10 +18,61 @@ CREATE OR REPLACE VIEW dbsync_event_queue_size AS
   SELECT count(*) FROM dbsync.event_queue;
 
 CREATE OR REPLACE VIEW dbsync_update_status AS
-  SELECT * FROM dbsync.update_status;
+  SELECT 
+    us.*, 
+    vr.db_id,
+    vr.response as validation_response,
+    vr.error_count as validation_error_count,
+    vr.warning_count as validation_warning_count,
+    vr.comment_count as validation_comment_count
+  FROM 
+    dbsync.update_status us
+  LEFT JOIN 
+    dbsync.validate_response_view vr on us.validate_response_id = vr.validate_response_id; 
 
 CREATE OR REPLACE VIEW dbsync_stats AS
   SELECT action, count(*) as count FROM dbsync.update_status GROUP BY action;
+
+CREATE OR REPLACE VIEW dbsync_model_item_stats AS 
+  WITH models AS (
+    SELECT distinct model FROM dbsync.validate_response
+  ),
+  errors AS (
+    SELECT 
+      model, 
+      count(*) AS count 
+    FROM 
+      dbsync.validate_response_view 
+    WHERE error_count > 0
+    GROUP BY model
+  ),
+  warnings AS (
+    SELECT 
+      model, 
+      count(*) AS count 
+    FROM 
+      dbsync.validate_response_view 
+    WHERE warning_count > 0
+    GROUP BY model
+  ),
+  comments AS (
+    SELECT 
+      model, 
+      count(*) AS count 
+    FROM 
+      dbsync.validate_response_view 
+    WHERE comment_count > 0
+    GROUP BY model
+  )
+  SELECT 
+    models.model, 
+    errors.count AS error_count, 
+    warnings.count AS warning_count, 
+    comments.count AS comment_count
+  FROM models
+  LEFT JOIN errors ON models.model = errors.model
+  LEFT JOIN warnings ON models.model = warnings.model
+  LEFT JOIN comments ON models.model = comments.model;
 
 CREATE OR REPLACE VIEW dbsync_reindex_crawl_status AS
   SELECT * FROM dbsync.reindex_crawl_status;

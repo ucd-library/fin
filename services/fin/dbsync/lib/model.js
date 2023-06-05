@@ -444,7 +444,36 @@ class DbSync {
     }
 
     event.dbResponse = await model.update(json);
+
+    await this.runDataValidation(event, model);
+
     await postgres.updateStatus(event);
+  }
+
+  async runDataValidation(event, model) {
+    if( !model.validate ) return;
+    if( !model.get ) return;
+
+    let graph = await model.get(event.path.replace(/\/fcr:metadata$/, ''));
+    let validateResponse = await model.validate(graph);
+
+    if( !validateResponse.id ) {
+      throw new Error('Validation response did not have an id property');
+    }
+
+    let pgParams = {
+      db_id : validateResponse.id,
+      model : model.id || model.name,
+      response : {
+        errors : validateResponse.errors || [],
+        warnings : validateResponse.warnings || [],
+        comments : validateResponse.comments || []
+      }
+    };
+
+    let response = await postgres.updateValidation(pgParams);
+    // TODO: can we name this in the postgres function?
+    event.validateResponseId = response.upsert_validate_response;
   }
 
   async getModelsForEvent(event) {

@@ -134,7 +134,8 @@ class DbSyncPostgresUtils {
         $9::TEXT, 
         $10::JSONB, 
         $11::TEXT,
-        $12::JSONB
+        $12::JSONB,
+        $13::INTEGER
       );`, 
       [
         args.path, 
@@ -148,9 +149,37 @@ class DbSyncPostgresUtils {
         args.message, 
         args.dbResponse, 
         args.tranformService, 
-        args.source
+        args.source,
+        args.validateResponseId || null
       ]
     );
+  }
+
+  /**
+   * @method updateValidation
+   * @description update model validation status for this database id
+   * 
+   * @param {Object} args
+   * @param {String} args.db_id
+   * @param {String} args.model
+   * @param {Object} args.response
+   *  
+   * @returns {Promise}
+   */
+  async updateValidation(args) {
+    let result = await this.pg.query(
+      `SELECT * from ${this.schema}.upsert_validate_response(
+        $1::TEXT, 
+        $2::TEXT, 
+        $3::JSONB
+      );`, 
+      [
+        args.model, 
+        args.db_id,
+        args.response
+      ]
+    );
+    return result.rows[0];
   }
 
   async getStatusByModel(path, model=null) {

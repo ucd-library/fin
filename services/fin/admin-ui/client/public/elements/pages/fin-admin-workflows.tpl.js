@@ -30,7 +30,7 @@ return html`
 
 
 <h2 class="heading--weighted-underline">Executed Workflows</h2>
-<fin-admin-data-table 
+<fin-admin-data-table       
   name="workflows-main"
   render-type="list"
   update-hash

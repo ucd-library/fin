@@ -6,6 +6,16 @@ Additionally, a data model COULD write data to multiple stores, if you so desire
 
   - [Elastic Search Data Model](./elastic-search.md) - How to implement standard fin data models for Elastic Search
 
+Contents:
+
+  - [Defining a Data Model](#defining-a-data-model)
+  - [API](#api)
+  - [Model](#model)
+  - [Deploying Data Models](#deploying-data-models)
+  - [Data Models and DBSync Service](#data-models-and-dbsync-service)
+  - [Validation](#validation)
+  - [Transforms](#transforms)
+
 ## Defining a Data Model
 
 The data model should expose three properties:
@@ -89,6 +99,26 @@ Fin will always look for models in the `/fin/services/models` directory.
 ## Data Models and DBSync Service
 
 Data models are designed to be used with sync services.  The dbsync service is responsible for keeping data in the backend data store (ex: Elastic Search) up to date with the data in Fedora.  When a ActiveMQ update message comes in, the `is(id, types, workflows)` method is called.  If the `is()` method returns true, the models `update()` or `remove()` method is called to update the backend data store.
+
+## Validation
+
+Dbsync can validate database objects and store the results of the validation for viewing in fin admin.  Validations can return `errors`, `warnings` and `comments`.  Validations will show as stats on the fin admin dashbard as well as in the `dbsync` and `Path Info` pages.  For validation to occure, 
+the model must define a `validate()` method and a `get()` method.  
+
+First the `get()` method is called to get the current state of the object in the database.  The `get()` method should return the current
+object regardless of container id passed.  
+
+For this example, lets say containers `/item/foo` and `/item/foo/bar` are mapped to the same database model `/item/foo`.  Then the `get()` method should return the same object for `model.get('/item/foo')` and `model.get('/item/foo/bar')`.
+
+The validate method should take the response of the `get()` method and return a validation object.  The validation object should have the following properties:
+
+  - `id` - `String`. database id.  For example above this is `/item/foo`
+  - `errors` - `Array` of errors.  Contents can be anything.  Simple strings recommened.
+  - `warnings` - `Array` of warnings.  Contents can be anything.  Simple strings recommened.
+  - `comments` - `Array` of comments.  Contents can be anything.  Simple strings recommened.
+
+
+```javascript
 
 ## Transforms
 

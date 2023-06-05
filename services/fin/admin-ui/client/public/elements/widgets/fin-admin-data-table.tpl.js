@@ -58,6 +58,7 @@ export function styles() {
 
     .column-label {
       text-transform: capitalize;
+      padding-right: 10px;
     }
 
     input {
@@ -112,8 +113,8 @@ return html`
       ${this.data.map(row => html`
         <div class="list-item ${this.getRowClass(row)}">
           ${this.keys.map(key => html`
-            <div class="list-cell ${this.getCellClass(row, key)}">
-              <div class="key">${key}</div>
+            <div class="list-cell ${this.getCellClass(row, key)}" ?hidden="${row[key] === undefined}">
+              <div class="column-label">${this.columnLabels[key] || key.replace(/_/g, ' ')}</div>
               <div class="value">
                 ${this.getCellValue(row, key)}
               </div>

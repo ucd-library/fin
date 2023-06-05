@@ -322,7 +322,8 @@ class FinEsDataModel extends FinDataModel {
         script : {
           source : `ctx._source['@graph'].removeIf((Map item) -> { item['@id'] == params['id'] });`,
           params : {id}
-        }
+        },
+        fields : '_source'
       });
       result.push(r);
 

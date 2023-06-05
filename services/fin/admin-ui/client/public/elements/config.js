@@ -10,12 +10,22 @@ const viewConfig = {
 
   'dashboard-data-models' : {
     columnLabels : {
-      dbItemCount : 'Database Items'
+      dbItemCount : 'Database Items',
+      validation_comment_count : 'Comments',
+      validation_error_count : 'Errors',
+      validation_warning_count : 'Warnings'
     },
     actions : [{
       type : 'view-info',
       label : 'View Info'
-    }]
+    }],
+    renderCellValue : (row, key) => {
+      if ( ['validation_error_count', 'validation_warning_count', 'validation_comment_count'].includes(key) ) {
+        if( row[key] === undefined || row[key] === null ) return '';
+        return html`<a href="#dbsync?${key}=gt.0&model=eq.${row.name}">${row[key]}</a>`;
+      }
+      return standardRender(row, key);
+    }
   },
 
   'dbsync-main' : {
@@ -24,8 +34,13 @@ const viewConfig = {
       limit : 10,
       order : 'path.asc'
     },
+    columnLabels : {
+      db_id : 'Database ID',
+      validation_response : 'Data Model Validation'
+    },
+    ignoreKeys : ['validate_response_id', 'validation_comment_count', 'validation_error_count', 'validation_warning_count'],
     keySort : ['path', 'model', 'action', 'message', 'updated', 'container_types', 'workflow_types',
-      'transform_service', 'update_types', 'db_response', 'update_count'],
+      'transform_service', 'update_types', 'db_response', 'update_count', 'db_id', 'validation_response'],
     renderCellValue : dbsync,
     filters : {
       action : {
@@ -35,6 +50,14 @@ const viewConfig = {
       model : {
         type : 'keyword',
         options : []
+      },
+      validation : {
+        type : 'custom',
+        options : [
+          {label: 'Has Errors', query : {validation_error_count: 'gt.0'}},
+          {label: 'Has Warnings', query : {validation_warning_count: 'gt.0'}},
+          {label: 'Has Comments', query : {validation_comment_count: 'gt.0'}}
+        ]
       }
     },
     actions : [{
@@ -44,9 +67,18 @@ const viewConfig = {
   },
 
   'path-info-dbsync' : {
+    columnLabels : {
+      db_id : 'Database ID',
+      response : 'Data Model Validation',
+    },
+    keySort : ['path', 'model', 'action', 'message', 'updated', 'container_types', 'workflow_types',
+    'transform_service', 'update_types', 'db_response', 'update_count'],
+  renderCellValue : dbsync,
+    ignoreKeys : ['validate_response_id', 'validation_comment_count', 'validation_error_count', 'validation_warning_count'],
     renderCellValue : dbsync,
     keySort : ['path', 'model', 'action', 'message', 'updated', 'container_types', 'workflow_types',
-              'transform_service', 'update_types', 'db_response', 'update_count']
+              'transform_service', 'update_types', 'db_response', 'update_count', 'db_id',
+            'validation_response']
   },
 
   'path-info-workflows' : {
@@ -187,6 +219,7 @@ function dbsync(row, key) {
     let path = (row[key] || '').replace(/\/fcr:metadata$/, '');
     return html`<a href="#path-info${path}">${row[key]}</a>`;
   } else if( key === 'container_types' || key === 'update_types' || key === 'workflow_types') {
+    if( !row[key] ) return '';
     return row[key].map(item => {
       if( typeof item === 'object' ) {
         item = item.url;

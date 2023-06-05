@@ -65,6 +65,7 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     this.columnLabels = {};
     this.hideTotal = false;
     this.updateHash = false;
+    this.loading = false;
 
     this.resultSet = {
       total : 0
@@ -138,10 +139,10 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       this.loading = true;
       return;
     }
-
+    this.loading = false;
+    
     if( e.pgQuery.queryCount !== this.dataOpts.queryCount ) return;
 
-    this.loading = false;
     this.rawData = e.payload;
 
     this.resultSet = e.resultSet;
@@ -179,6 +180,16 @@ export default class FinAdminDataTable extends Mixin(LitElement)
         })
       }
     }
+
+    // if( this.name === 'dashboard-data-models' ) {
+    //   debugger;
+    // }
+
+    if( data.length ) {
+      this.keys = Object.keys(data[0]);
+    } else {
+      this.keys = [];
+    }
     
     // set data and remove nulls
     this.data = data.map(row => {
@@ -191,12 +202,6 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       }
       return row;
     });
-
-    if( data.length ) {
-      this.keys = Object.keys(data[0]);
-    } else {
-      this.keys = [];
-    }
 
     if( this.ignoreKeys.length ) {
       this.keys = this.keys.filter(key => {
@@ -247,6 +252,8 @@ export default class FinAdminDataTable extends Mixin(LitElement)
         filters.push(this.renderKeywordFilter(key, query));
       } else if( this.filters[key].type === 'text' ) {
         filters.push(this.renderTextFilter(key, query));
+      } else if( this.filters[key].type === 'custom' ) {
+        filters.push(this.renderCustomFilter(key, query));
       }
     }
     return html`
@@ -271,6 +278,37 @@ export default class FinAdminDataTable extends Mixin(LitElement)
           <option value="">All</option>
           ${options.map(option => html`
             <option value="eq.${option}" ?selected="${option === value}">${option}</option>
+          `)}
+        </select>
+      </div>
+    </fieldset>
+    `;
+  }
+
+  renderCustomFilter(key, query) {
+    let options = this.filters[key].options || [];
+
+    // find selected option
+    let currentQuery = '';
+    for( let qkey in query ) {
+      let exists = options.find(option => option.query[qkey]);
+      if( exists ) {
+        currentQuery = JSON.stringify(exists.query);
+        break;
+      }
+    }
+
+    return html`
+    <fieldset>
+      <div class="field-container">
+        <label for="${key}-picker">${key}</label>
+        <select id="${key}-picker" key="${key}" @change="${this._onCustomFilterChange}">
+          <option value="">All</option>
+          ${options.map(option => html`
+            <option value="${JSON.stringify(option.query)}" 
+              ?selected="${JSON.stringify(option.query) === currentQuery}">
+              ${option.label}
+            </option>
           `)}
         </select>
       </div>
@@ -317,6 +355,38 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       }
     } else {
       query[key] = value;
+    }
+    
+    query.offset = 0;
+
+    if( this.updateHash ) {
+      let hash = window.location.hash.split('?')[0];
+      window.location.hash = hash + '?' + this._objToQuery(query);
+    } else {
+      this.query = query;
+    }
+  }
+
+  _onCustomFilterChange(e) {
+    let ele = e.currentTarget;
+    let value = ele.value;
+
+    let query = Object.assign({}, this.query);
+
+    // remove all custom filters
+    let options = Array.from(ele.querySelectorAll('option'));
+    for( let option of options ) {
+      let value = option.getAttribute('value');
+      if( !value ) continue;
+      value = JSON.parse(value);
+      for( let key in value ) {
+        if( query[key] ) delete query[key];
+      }
+    }
+
+    if( value ) {
+      value = JSON.parse(value);
+      query = Object.assign(query, value);
     }
     
     query.offset = 0;

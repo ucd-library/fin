@@ -83,7 +83,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       .then(e => this._onCoreDataUpdate(e));
   }
 
-  _onCoreDataUpdate(e) {
+  async _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
 
     this.openTransactions = e.payload.openTransactions || [];
@@ -106,8 +106,31 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         });
       }
     });
+    dtData = dtData.filter(item => item.name);
 
-    this.dataModelsDtData = dtData.filter(item => item.name);
+    // grab the status for the data models
+    let results = await this.DataViewModel.pgQuery(
+      'dbsync_model_item_stats',
+      null,
+      {refresh: true},
+      'dashboard-data-models-item-stats'
+    );
+
+    for( let row of dtData ) {
+      let stats = results.payload.find(item => item.model === row.name);
+      if( !stats ) {
+        row.validation_error_count = '';
+        row.validation_warning_count = '';
+        row.validation_comment_count = '';;
+        continue;
+      }
+
+      row.validation_error_count = stats.error_count || '';
+      row.validation_warning_count = stats.warning_count || '';
+      row.validation_comment_count = stats.comment_count || '';
+    }
+
+    this.dataModelsDtData = dtData;
   }
 
   async _onDeleteTx(e) {
