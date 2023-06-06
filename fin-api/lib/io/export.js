@@ -97,6 +97,10 @@ class ExportCollection {
       options.f4 = true;
     }
 
+    if( !options.ignoreTypeMappers ) {
+      options.ignoreTypeMappers = false;
+    }
+
     // if( options.ignoreBinary && options.cleanDir ) {
     //   console.error('ERROR: you cannot clean directory and ignore binary.');
     //   return;
@@ -355,27 +359,30 @@ class ExportCollection {
     //     await this.crawl(cOptions);
     //   }
     // }
-    for( let typeMapper of this.instanceConfig.typeMappers ) {
-      if( !typeMapper.virtualIndirectContainers ) continue;
-      let links = typeMapper.virtualIndirectContainers.links;
-      if( !links ) continue;
 
-      let hasMemberRelation = utils.getProp(links, HAS_MEMBER_RELATION);
-      if( !hasMemberRelation ) continue;
+    if( options.ignoreTypeMappers !== true ) {
+      for( let typeMapper of this.instanceConfig.typeMappers ) {
+        if( !typeMapper.virtualIndirectContainers ) continue;
+        let links = typeMapper.virtualIndirectContainers.links;
+        if( !links ) continue;
 
-      for( let type of typeMapper.types ) {
-        let node = utils.getGraphNode(metadata, type);
-        if( !node ) continue;
+        let hasMemberRelation = utils.getProp(links, HAS_MEMBER_RELATION);
+        if( !hasMemberRelation ) continue;
 
-        let crawlProps = utils.getProp(node, hasMemberRelation);
-        if( !crawlProps ) continue;
-        if( !Array.isArray(crawlProps) ) crawlProps = [crawlProps];
+        for( let type of typeMapper.types ) {
+          let node = utils.getGraphNode(metadata, type);
+          if( !node ) continue;
 
-        for( let prop of crawlProps ) {
-          prop = prop.replace('@base:', options.currentPath).replace(/^info:fedora/, '');
-          let cOptions = Object.assign({}, options);
-          cOptions.currentPath = prop;
-          await this.crawl(cOptions);
+          let crawlProps = utils.getProp(node, hasMemberRelation);
+          if( !crawlProps ) continue;
+          if( !Array.isArray(crawlProps) ) crawlProps = [crawlProps];
+
+          for( let prop of crawlProps ) {
+            prop = prop.replace('@base:', options.currentPath).replace(/^info:fedora/, '');
+            let cOptions = Object.assign({}, options);
+            cOptions.currentPath = prop;
+            await this.crawl(cOptions);
+          }
         }
       }
     }
@@ -414,22 +421,24 @@ class ExportCollection {
     if( options.useFcExportPath !== true ) {
       let rootDir = '.';
 
-      if( archivalGroup && archivalGroup.gitsource && archivalGroup.gitsource.moveToPath ) {
-        let agRelativePath = options.currentPath.replace(archivalGroup.gitsource.moveToPath, '/item');
-        return path.join(currentDir, agRelativePath);
-      }
+      // if( archivalGroup && archivalGroup.gitsource && archivalGroup.gitsource.moveToPath ) {
+      //   let agRelativePath = options.currentPath.replace(archivalGroup.gitsource.moveToPath, '/item');
+      //   return path.join(currentDir, agRelativePath);
+      // }
 
-      if( archivalGroup && archivalGroup.gitsource && archivalGroup.gitsource.rootDir ) {
-        rootDir = archivalGroup.gitsource.rootDir.replace(/^\//, '');
-      }
+      // if( archivalGroup && archivalGroup.gitsource && archivalGroup.gitsource.rootDir ) {
+      //   rootDir = archivalGroup.gitsource.rootDir.replace(/^\//, '');
+      // }
       
       // if( container === archivalGroup && archivalGroup.gitsource && archivalGroup.gitsource.file ) {
       //   return path.join(currentDir, archivalGroup.gitsource.file);
       // }
 
       if( archivalGroup ) {
-        let agRelativePath = options.currentPath.replace(archivalGroup.finPath, '');
-        return path.join(currentDir, rootDir, agRelativePath);
+        // console.log(options.currentPath, ' -> ', path.join(currentDir, rootDir, archivalGroup.finPath))
+        // let agRelativePath = options.currentPath.replace(archivalGroup.finPath, '');
+        // return path.join(currentDir, rootDir, agRelativePath);
+        return path.join(currentDir, rootDir, options.currentPath);
       }
     }
 
@@ -449,9 +458,29 @@ class ExportCollection {
     if( graph.last.statusCode !== 200 ) return '';
     graph = JSON.parse(graph.last.body);
 
+    let cleanup = graph['@graph'] || graph;
+    if( cleanup['@context'] ) {
+      for( let key in cleanup['@context'] ) {
+        if( !key.match(/\//) ) continue;
+        let newKey = key.replace(/\//g, '-');
+        cleanup['@context'][newKey] = {
+          '@id' : cleanup['@context'][key]['@id'].replace(new RegExp(key+'^'), newKey)
+        }
+        delete cleanup['@context'][key];
+        
+        if( cleanup[key] ) {
+          cleanup[newKey] = cleanup[key];
+          delete cleanup[key];
+        }
+      }
+    }
+
     // expand graph so clean up bad context
-    graph = await jsonld.expand(graph);
-    graph = await jsonld.compact(graph, METADATA_CONTEXT);
+    try {
+      graph = await jsonld.expand(graph);
+      graph = await jsonld.compact(graph, METADATA_CONTEXT);
+    } catch(e) {}
+
     graph = JSON.stringify(graph);
 
     graph = this.implBaseAndInfoFedoraPrefix(graph, fcrepoPath, true);
@@ -460,7 +489,19 @@ class ExportCollection {
       this.applyV1Rules(graph, isArchivalGroup, graph['@context']);
     }
 
-    // let metadata = utils.getGraphNode(graph, '');
+    if( isArchivalGroup ) {
+      let metadata = utils.getGraphNode(graph, '');
+      if( metadata ) {
+        if( !metadata['@type'] ) metadata['@type'] = [];
+        if( !Array.isArray(metadata['@type']) ) {
+          metadata['@type'] = [metadata['@type']];
+        }
+        if( !metadata['@type'].includes(ARCHIVAL_GROUP) ) {
+          metadata['@type'].push(ARCHIVAL_GROUP);
+        }
+      }
+    }
+
     // metadata = metadata.find(item => item['@id'] = fcrepoPath);
 
     // if( !metadata ) return null;

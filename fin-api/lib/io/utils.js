@@ -11,7 +11,7 @@ class IoUtils {
     this.CONTAINER_FILE_EXTS = ['.ttl', '.jsonld.json'];
     this.CONTAINER_FILE_EXTS_REGEX = /(\.ttl|\.jsonld\.json)$/;
 
-    this.GIT_SOURCE_PROPERTY_BASE = 'http://digital.ucdavis.edu/schema#git/';
+    this.GIT_SOURCE_PROPERTY_BASE = 'http://digital.ucdavis.edu/schema#git-';
     this.LDP_SCHEMA = ['http://www.w3.org/ns/ldp#', 'ldp:'];
     this.FEDORA_SCHEMA = ['http://fedora.info/definitions/v4/repository#', 'fedora:'];
     this.KNOWN_PREFIX = {

@@ -117,8 +117,16 @@ The validate method should take the response of the `get()` method and return a 
   - `warnings` - `Array` of warnings.  Contents can be anything.  Simple strings recommened.
   - `comments` - `Array` of comments.  Contents can be anything.  Simple strings recommened.
 
+ex: 
 
 ```javascript
+{
+  id : "/item/foo",
+  errors : ["This is an error"],
+  warnings : [],
+  comments : ["This is a demo comment"]
+}
+```
 
 ## Transforms
 

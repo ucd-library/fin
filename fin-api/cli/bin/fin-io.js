@@ -27,6 +27,7 @@ program
   .option('-f, --use-fcpaths', 'Ignore all ArchivalGroups gitsource and export to fs using fcrepo path')
   .option('--f4', 'Use fcrepo4 omit headers')
   .option('--from-v1', 'add v1 to v2 export rules')
+  .option('--ignore-type-mappers', 'Ignore type mappers when crawling for containers')
   .option('--config-host <host>', 'Override config host.  Default is server you are accessing')
   .description('Export collection to Fin filesystem representation')
   .action((rootFcrepoPath, fsPath, options) => {

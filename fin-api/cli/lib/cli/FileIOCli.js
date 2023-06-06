@@ -39,6 +39,7 @@ class FileIOCli {
     let f4 = args.options.f4 ? true : false;
     let fromV1 = args.options.fromV1 ? true : false;
     let configHost = args.options.configHost;
+    let ignoreTypeMappers = args.options.ignoreTypeMappers ? true : false;
 
     await api.io.export.run({
       fcrepoPath: args.rootFcrepoPath, 
@@ -48,7 +49,8 @@ class FileIOCli {
       exportCollectionParts,
       useFcExportPath,
       f4,
-      fromV1, configHost
+      fromV1, configHost,
+      ignoreTypeMappers
     });
   }
 

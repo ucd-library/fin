@@ -36,6 +36,7 @@ CREATE INDEX IF NOT EXISTS event_queue_status_idx ON event_queue (status);
 
 CREATE TABLE IF NOT EXISTS update_status (
   update_status_id SERIAL PRIMARY KEY,
+  created timestamp DEFAULT NOW(),
   updated timestamp NOT NULL DEFAULT NOW(),
   path TEXT NOT NULL,
   update_types fcrepo_update_type[] NOT NULL,

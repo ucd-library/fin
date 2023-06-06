@@ -119,7 +119,7 @@ class IoDir {
               fsroot : this.fsroot,
               localpath : p,
               subPath : this.subPath,
-              fcrepoPath : utils.ROOT_FCREPO_PATHS.ITEM+'/'+id,
+              fcrepoPath : this.subPath+'/'+id,
               gitInfo,
               containerGraph: graph,
               mainGraphNode : containerFile.mainNode,
@@ -267,7 +267,7 @@ class IoDir {
         container.gitInfo.file = binaryGraph.filePath.replace(this.gitInfo.rootDir, '');
         container.gitInfo.rootDir = path.parse(container.gitInfo.file).dir;
         if( !this.config.importFromRoot ) {
-          container.fcrepoPath = pathutils.joinUrlPath(utils.ROOT_FCREPO_PATHS.ITEM, container.fcrepoPath);
+          container.fcrepoPath = pathutils.joinUrlPath(container.fcrepoPath);
         }
       }
 
@@ -469,15 +469,6 @@ class IoDir {
       if( fileObject.typeConfig ) {
         fileObject.fcrepoPath = fileObject.typeConfig.basePath;
       }
-
-      // if( fileObject.mainGraphNode['@type'].includes(utils.TYPES.COLLECTION) ) {
-      //   fileObject.isCollection = true;
-      //   fileObject.localpath = fileObject.containerFile;
-      //   fileObject.fcrepoPath = utils.ROOT_FCREPO_PATHS.COLLECTION;
-      // } else {
-      //   fileObject.fcrepoPath = utils.ROOT_FCREPO_PATHS.ITEM;
-      // }
-
       fileObject.id = this.getIdentifier(fileObject.mainGraphNode) || fileObject.id;
       fileObject.fcrepoPath = this.getFcrepoPath(fileObject.subPath, fileObject.id, fileObject);
     }

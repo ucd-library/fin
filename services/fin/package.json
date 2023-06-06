@@ -40,7 +40,7 @@
     "fs-extra": "^10.1.0",
     "http-proxy": "^1.18.1",
     "init": "^0.1.2",
-    "jsonld": "^0.4.12",
+    "jsonld": "^8.2.0",
     "jsonwebtoken": "^8.1.0",
     "jwks-rsa": "^3.0.1",
     "mqtt": "^4.3.7",
