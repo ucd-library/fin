@@ -268,6 +268,7 @@ class FinEsDataModel extends FinDataModel {
       index,
       id : jsonld['@id'],
       retry_on_conflict : this.UPDATE_RETRY_COUNT,
+      refresh : 'wait_for',
       script : {
         source : `
         for (def node : params.nodes) {
@@ -319,11 +320,11 @@ class FinEsDataModel extends FinDataModel {
       let r = await this.client.update({
         index,
         id : doc._id,
+        refresh : 'wait_for',
         script : {
           source : `ctx._source['@graph'].removeIf((Map item) -> { item['@id'] == params['id'] });`,
           params : {id}
-        },
-        fields : '_source'
+        }
       });
       result.push(r);
 
@@ -344,7 +345,7 @@ class FinEsDataModel extends FinDataModel {
       }
     }
 
-    return {deletes: result};
+    return {deletes: result, ids: hits.map(hit => hit._id)};
   }
 
   /**
@@ -432,11 +433,6 @@ class FinEsDataModel extends FinDataModel {
     
     // set new index as new write source
     await this.setAlias(indexDest, this.writeIndexAlias);
-
-    console.log({ 
-      source: { index: indexSource }, 
-      dest: { index: indexDest }
-    })
 
     // now copy over source indexes data
     let response = await this.client.reindex({ 

@@ -40,7 +40,7 @@ CREATE OR REPLACE VIEW dbsync_model_item_stats AS
   errors AS (
     SELECT 
       model, 
-      count(*) AS count 
+      sum(error_count) AS count 
     FROM 
       dbsync.validate_response_view 
     WHERE error_count > 0
@@ -49,7 +49,7 @@ CREATE OR REPLACE VIEW dbsync_model_item_stats AS
   warnings AS (
     SELECT 
       model, 
-      count(*) AS count 
+      sum(warning_count) AS count 
     FROM 
       dbsync.validate_response_view 
     WHERE warning_count > 0
@@ -58,7 +58,7 @@ CREATE OR REPLACE VIEW dbsync_model_item_stats AS
   comments AS (
     SELECT 
       model, 
-      count(*) AS count 
+      sum(comment_count) AS count 
     FROM 
       dbsync.validate_response_view 
     WHERE comment_count > 0

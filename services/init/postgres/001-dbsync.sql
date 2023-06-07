@@ -34,6 +34,20 @@ CREATE INDEX IF NOT EXISTS event_queue_path_idx ON event_queue (path);
 CREATE INDEX IF NOT EXISTS event_queue_updated_idx ON event_queue (updated);
 CREATE INDEX IF NOT EXISTS event_queue_status_idx ON event_queue (status);
 
+CREATE TABLE IF NOT EXISTS validate_response (
+  validate_response_id SERIAL PRIMARY KEY,
+  updated timestamp NOT NULL DEFAULT NOW(),
+  db_id TEXT NOT NULL,
+  model TEXT NOT NULL,
+  response JSONB NOT NULL,
+  UNIQUE(db_id, model)
+);
+CREATE INDEX IF NOT EXISTS validate_response_model_idx ON validate_response (model);
+CREATE INDEX IF NOT EXISTS validate_response_db_id_idx ON validate_response (db_id);
+CREATE INDEX IF NOT EXISTS  validate_response_errors_idx ON validate_response (jsonb_array_length(response->'errors'));
+CREATE INDEX IF NOT EXISTS  validate_response_warnings_idx ON validate_response (jsonb_array_length(response->'warnings'));
+CREATE INDEX IF NOT EXISTS  validate_response_comments_idx ON validate_response (jsonb_array_length(response->'comments'));
+
 CREATE TABLE IF NOT EXISTS update_status (
   update_status_id SERIAL PRIMARY KEY,
   created timestamp DEFAULT NOW(),
@@ -57,20 +71,6 @@ CREATE TABLE IF NOT EXISTS update_status (
 CREATE INDEX IF NOT EXISTS update_status_path_idx ON update_status (path);
 CREATE INDEX IF NOT EXISTS update_status_action_idx ON update_status (action);
 CREATE INDEX IF NOT EXISTS update_status_model_idx ON update_status (model);
-
-CREATE TABLE IF NOT EXISTS validate_response (
-  validate_response_id SERIAL PRIMARY KEY,
-  updated timestamp NOT NULL DEFAULT NOW(),
-  db_id TEXT NOT NULL,
-  model TEXT NOT NULL,
-  response JSONB NOT NULL,
-  UNIQUE(db_id, model)
-);
-CREATE INDEX IF NOT EXISTS validate_response_model_idx ON validate_response (model);
-CREATE INDEX IF NOT EXISTS validate_response_db_id_idx ON validate_response (db_id);
-CREATE INDEX IF NOT EXISTS  validate_response_errors_idx ON validate_response (jsonb_array_length(response->'errors'));
-CREATE INDEX IF NOT EXISTS  validate_response_warnings_idx ON validate_response (jsonb_array_length(response->'warnings'));
-CREATE INDEX IF NOT EXISTS  validate_response_comments_idx ON validate_response (jsonb_array_length(response->'comments'));
 
 CREATE OR REPLACE VIEW validate_response_view AS
   SELECT 
@@ -179,6 +179,32 @@ BEGIN
   RETURN vrid;
 END;
 $$ LANGUAGE plpgsql;
+
+-- remove validation status from update_status then delete validate_response
+CREATE OR REPLACE FUNCTION delete_validate_response (
+  model_in TEXT,
+  db_id_in TEXT
+) RETURNS void AS $$
+DECLARE
+  vrid INTEGER;
+BEGIN
+  SELECT 
+    validate_response_id INTO vrid
+  FROM
+    validate_response 
+  WHERE 
+    model = model_in AND db_id = db_id_in;
+
+  UPDATE update_status SET
+    validate_response_id = NULL,
+    updated = NOW()
+  WHERE 
+    validate_response_id = vrid;
+
+  DELETE FROM validate_response WHERE model = model_in AND db_id = db_id_in;
+END;
+$$ LANGUAGE plpgsql;
+
 
 CREATE TABLE IF NOT EXISTS reindex_crawl_status (
   reindex_crawl_status_id SERIAL PRIMARY KEY,

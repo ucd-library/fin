@@ -21,8 +21,10 @@ class FinApiService extends BaseService {
 
     return this.request({
       url : '/fcrepo/rest' + path + '/svc:reindex',
-      method : 'POST',
-      qs : args
+      qs : args,
+      fetchOptions : {
+        method: 'POST'
+      }
     });
   }
 

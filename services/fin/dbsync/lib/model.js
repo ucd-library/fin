@@ -404,7 +404,8 @@ class DbSync {
     var response = await api.get({
       host : config.gateway.host,
       path : servicePath || path, 
-      headers
+      headers,
+      jwt : ''
     });
 
     response.service = config.server.url+config.fcrepo.root+(servicePath || path);
@@ -421,6 +422,7 @@ class DbSync {
    */
   async remove(event, model) {
     event.dbResponse = await model.remove(event.path);
+    await this.runDataValidation(event, model, true);
     await postgres.updateStatus(event);
   }
 
@@ -450,11 +452,36 @@ class DbSync {
     await postgres.updateStatus(event);
   }
 
-  async runDataValidation(event, model) {
+  async runDataValidation(event, model, isDelete=false) {
     if( !model.validate ) return;
     if( !model.get ) return;
 
     let graph = await model.get(event.path.replace(/\/fcr:metadata$/, ''));
+
+    if( !graph ) {
+      if( isDelete === false ) return;
+
+      // we are deleting, check the dbResponse for ids
+      if( !event?.dbResponse?.ids ) {
+        return;
+      }
+
+      for( let id of event.dbResponse.ids ) {
+        graph = await model.get(id);
+        if( graph ) break;
+      }
+
+      // remove all ids from validate table as this item is gone
+      // from the database as far as we can tell
+      if( !graph ) {
+        for( let id of event.dbResponse.ids ) {
+          logger.info('Removing validation for db_id no graph found: '+id)
+          await postgres.removeValidation(model.id || model.name, id);
+        }
+        return;
+      }
+    }
+
     let validateResponse = await model.validate(graph);
 
     if( !validateResponse.id ) {

@@ -153,9 +153,7 @@ class KeycloakUtils {
       if (e.name === 'AbortError' || e.name === 'FetchError') {
         logger.warn('Failed to verify jwt from keycloak, attempting pub key decryption', e)
         let user = await jwt.validate(token);
-        console.log(2)
         if( user ) {
-          console.log(3)
           return {
             active : true,
             status : 200,
@@ -165,7 +163,6 @@ class KeycloakUtils {
         }
       }
 
-      console.log(2);
       return {
         active : resp.status === 200,
         status : resp.status,

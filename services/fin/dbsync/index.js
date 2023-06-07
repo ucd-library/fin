@@ -16,9 +16,12 @@ api.setConfig({
 const app = express();
 
 
-app.get(/^\/reindex\/.*/, keycloak.protect(['admin']), async (req, res) => {
+app.get(/^\/reindex\/.*/, keycloak.protect(['admin']), renderIndex);
+app.post(/^\/reindex\/.*/, keycloak.protect(['admin']), renderIndex);
+
+async function renderIndex(req, res) {
   let path = req.path.replace( /^\/reindex\//, '/')
-               .replace(/^\/fcrepo\/rest\//, '/');
+    .replace(/^\/fcrepo\/rest\//, '/');
 
   let status = await postgres.getReindexCrawlStatus(path);
   let force = (req.query.force || '').toLowerCase() === 'true';
@@ -57,7 +60,7 @@ app.get(/^\/reindex\/.*/, keycloak.protect(['admin']), async (req, res) => {
   } catch(e) {
     onError(res, e);
   }
-});
+}
 
 app.listen(3000, () => {
   logger.info('dbsync ready on port 3000');

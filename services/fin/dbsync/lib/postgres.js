@@ -182,6 +182,13 @@ class DbSyncPostgresUtils {
     return result.rows[0];
   }
 
+  async removeValidation(model, db_id) {
+    return this.pg.query(`SELECT * from ${this.schema}.delete_validate_response(
+      $1::TEXT,
+      $2::TEXT
+    )`, [model, db_id]);
+  }
+
   async getStatusByModel(path, model=null) {
     let response = await this.pg.query(`select * from ${this.schema}.update_status where path = $1 and model = $2`, [path, model]);
     if( !response.rows.length ) return null;

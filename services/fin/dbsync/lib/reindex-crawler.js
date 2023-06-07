@@ -102,6 +102,10 @@ class ReindexCrawler {
 
     // no metadata associated
     if( !graph.data.body ) {
+      // this was a reindex of a delete path
+      if( path === this.rootPath ) {
+        this.sendReindexEvent({'@id' : path}, writeIndex);
+      }
       return;
     }
 
