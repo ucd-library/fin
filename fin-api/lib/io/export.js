@@ -456,6 +456,9 @@ class ExportCollection {
 
     if( graph.error ) return '';
     if( graph.last.statusCode !== 200 ) return '';
+
+    let links = api.parseLinkHeader(graph.last.headers.link || '') || {};
+
     graph = JSON.parse(graph.last.body);
 
     let cleanup = graph['@graph'] || graph;
@@ -489,15 +492,18 @@ class ExportCollection {
       this.applyV1Rules(graph, isArchivalGroup, graph['@context']);
     }
 
-    if( isArchivalGroup ) {
-      let metadata = utils.getGraphNode(graph, '');
-      if( metadata ) {
-        if( !metadata['@type'] ) metadata['@type'] = [];
-        if( !Array.isArray(metadata['@type']) ) {
-          metadata['@type'] = [metadata['@type']];
-        }
-        if( !metadata['@type'].includes(ARCHIVAL_GROUP) ) {
-          metadata['@type'].push(ARCHIVAL_GROUP);
+    let metadata = utils.getGraphNode(graph, '');
+    if( metadata && links.type ) {
+      if( !metadata['@type'] ) metadata['@type'] = [];
+      if( !Array.isArray(metadata['@type']) ) {
+        metadata['@type'] = [metadata['@type']];
+      }
+
+      for( let type of utils.TO_HEADER_TYPES ) {
+        if( links.type.find(item => item.url === type) ) {
+          if( !metadata['@type'].includes(type) ) {
+            metadata['@type'].push(type);
+          }
         }
       }
     }
