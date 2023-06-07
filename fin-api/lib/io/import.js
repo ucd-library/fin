@@ -412,7 +412,6 @@ class FinIoImport {
     this.addNodeToGraph(container.containerGraph, finIoNode);
 
     if( this.options.dryRun !== true ) {
-      let t = Date.now();
       let response = await this.write('put', {
         path : containerPath,
         content : this.replaceBaseContext(container.containerGraph, containerPath),
@@ -420,12 +419,10 @@ class FinIoImport {
         headers
       }, localpath);
 
-      console.log(` -> ${response.last.statusCode} (${Date.now() - t}ms)`);
       if( response.error ) {
         throw new Error(response.error);
       }
       
-      console.log(response.last.statusCode, response.last.body);
     }
   }
 
@@ -499,7 +496,6 @@ class FinIoImport {
           path: fullfcpath, 
           permanent: true
         }, binary.localpath);
-        console.log(' -> tombstone request: '+response.last.statusCode);
 
         response = await this.write('put', {
           path : fullfcpath,
@@ -511,8 +507,6 @@ class FinIoImport {
 
       if( response.error ) {
         throw new Error(response.error);
-      } else {
-        console.log(response.last.statusCode, response.last.body);
       }
     }
 
@@ -588,7 +582,6 @@ class FinIoImport {
       if( response.error ) {
         throw new Error(response.error);
       }
-      console.log(response.last.statusCode, response.last.body);
     }
 
     return true;
@@ -936,12 +929,19 @@ class FinIoImport {
       content = JSON.stringify(content);
     }
 
+    finPath = finPath.replace(/\/fcr:metadata$/, '');
+
     let matches = Array.from(content.match(/"@base:.*?"/g) || []);
     for( let match of matches ) {
       let resolveTo = match.replace(/"@base:\/?/, '').replace(/"$/, '');
       let resolvedPath = path.resolve(finPath, resolveTo);
+
+      // clean up path with hashs
+      if( resolveTo.match(/^#/) ) {
+        resolvedPath = resolvedPath.replace(new RegExp('/'+resolveTo+'$'), resolveTo);
+      }
+
       let url = 'info:fedora'+resolvedPath;
-      console.log(' -> Resolving '+match+' to '+url);
       content = content.replace(match, `"${url}"`);
     }
 
@@ -950,6 +950,8 @@ class FinIoImport {
 
   async write(verb, opts, file) {
     if( !opts.timeout ) opts.timeout = this.DEFAULT_TIMEOUT; 
+
+    let startTime = Date.now();
 
     try {
       if( verb === 'put' ) {
@@ -970,8 +972,14 @@ class FinIoImport {
         statusCode : response.last.statusCode
       });
 
+      console.log(' -> '+verb+' status: '+response.last.statusCode+' ('+(Date.now() - startTime)+'ms)')
+      if( response.last.body ) {
+        console.log(' -> '+verb+' body: '+response.last.body);
+      }
+
       return response;
     } catch(e) {
+      console.log(' -> '+verb+' error: '+e.message)
       this.diskLog({
         verb,
         path: opts.path,

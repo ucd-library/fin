@@ -74,7 +74,7 @@ return html`
 
 <div>
   <h2 id="fcrepo-open-tx" class="heading--weighted-underline">Fcrepo - Open Transactions</h2>
-  <div ?hidden="${this.openTransactions > 0}">None</div>
+  <div ?hidden="${this.openTransactions.length}">None</div>
   <fin-admin-data-table 
     name="open-transactions"
     hide-total

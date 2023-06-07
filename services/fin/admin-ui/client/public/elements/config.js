@@ -169,9 +169,13 @@ const viewConfig = {
   },
 
   'open-transactions' : {
+    columnLabels : {
+      session_id : 'Open OCFL Session ID',
+    },
     actions : [{
       type : 'delete-tx',
-      label : 'Delete Transaction'
+      label : 'Delete Transaction',
+      filter : row => row.transaction_id !== ''
     }]
   }
 

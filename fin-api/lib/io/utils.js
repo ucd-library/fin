@@ -99,17 +99,17 @@ class IoUtils {
     // strip @types that must be provided as a Link headers
     if( node['@type'] ) {
       if( !Array.isArray(node['@type']) ) node['@type'] = [node['@type']];
-      console.log(`  - @type: ${node['@type'].join(', ')}`);
+      console.log(` -> @type: ${node['@type'].join(', ')}`);
       this.TO_HEADER_TYPES.forEach(type => {
         let typeName = this.isNodeOfType(node, type, node['@context'], {returnExpanded: true});
         if( !typeName ) return;
 
         node['@type'] = node['@type'].filter(item => item !== typeName);
-        console.log(`  - current container status: ${current ? current.last.statusCode : 'unknown'}`);
+        console.log(` -> current container status: ${current ? current.last.statusCode : 'unknown'}`);
         if( current && current.last.statusCode !== 200 ) {
           if( !headers.link ) headers.link = [];
           headers.link.push(`<${type}>;rel="type"`)
-          console.log(`  - creating ${type.replace(/.*#/, '')}`);
+          console.log(` -> creating ${type.replace(/.*#/, '')}`);
         }
       })
 

@@ -172,17 +172,18 @@ class ServiceProxy {
       directAccess : false,
       host : config.gateway.host,
       path : req.finServiceInfo.fcPath.replace(api.getConfig().fcBasePath, ''),
+      jwt : jwt.getJwtFromRequest(req)
     }
 
 
-    let token = jwt.getJwtFromRequest(req);
+    // let token = jwt.getJwtFromRequest(req);
 
-    try {
-      if( token && jwt.validate(token) ) {
-        req.token = token;
-        headOpts.jwt = token;
-      }
-    } catch(e) {}
+    // try {
+    //   if( token && jwt.validate(token) ) {
+    //     req.token = token;
+    //     headOpts.jwt = token;
+    //   }
+    // } catch(e) {}
 
 
     // allow admins to put/post to any container, even if it doesn't exist

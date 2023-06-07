@@ -24,6 +24,7 @@ class FcrepoTransactionWrapper {
       limit 1
     `, [path]);
 
+
     if( resp.rows && resp.rows.length ) {
       let row = resp.rows[0];
       if( row.txid_1 ) return row.txid_1;
@@ -33,14 +34,58 @@ class FcrepoTransactionWrapper {
   }
 
   async getTransactionStats() {
-    let resp = await pg.query(`select 
-      transaction_id, count(*) as count 
+    let txs = new Set();
+
+    let resp = await pg.query(`select distinct
+      transaction_id 
     from 
       containment_transactions 
-    group by 
-      transaction_id
     `);
-    return resp.rows;
+    resp.rows.forEach(row => txs.add(row.transaction_id));
+
+    resp = await pg.query(`select distinct
+      tx_id as transaction_id 
+    from 
+      membership_tx_operations 
+    `);
+    resp.rows.forEach(row => txs.add(row.transaction_id));
+
+    resp = await pg.query(`select distinct
+      transaction_id 
+    from 
+      search_resource_rdf_type_transactions 
+    `);
+    resp.rows.forEach(row => txs.add(row.transaction_id));
+
+    resp = await pg.query(`select distinct
+      transaction_id 
+    from 
+      reference_transaction_operations 
+    `);
+    resp.rows.forEach(row => txs.add(row.transaction_id));
+
+    resp = await pg.query(`select distinct
+      session_id 
+    from 
+      ocfl_id_map_session_operations 
+    `);
+    let ocfl = resp.rows;
+
+
+    return [
+      ...ocfl.map(row => {
+        return {
+          transaction_id : '',
+          session_id : row.session_id
+        }
+      }),
+      ...Array.from(txs).map(txid => {
+        return {
+          transaction_id : txid,
+          session_id : ''
+        }
+      })
+    ];
   }
 
   async getTransactionInfo(txid) {
