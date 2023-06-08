@@ -695,7 +695,7 @@ class GcsWrapper {
     });
 
     if( resp.last.statusCode !== 200 ) {
-      throw new Error('Unable to get fcrepo container: '+finPath);
+      return {};
     }
 
     if( !resp.last.headers[config.finTag.header] ) return {};
