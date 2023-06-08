@@ -194,6 +194,10 @@ const viewConfig = {
   },
 
   'gcs-gcssync' : {
+    query : {
+      limit : 10,
+      order : 'path.asc'
+    },
     table : 'gcssync_update_state',
     ignoreKeys : ['update_status_id', 'gcs_path', 'gcs_bucket'],
     renderCellValue : (row, key) => {
