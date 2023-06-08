@@ -6,6 +6,7 @@ const {Storage} = require('@google-cloud/storage');
 const crypto = require('crypto');
 const path = require('path');
 const pg = require('./gcs-postgres.js');
+const keycloak = require('../keycloak.js');
 
 // For more information on ways to initialize Storage, please see
 // https://googleapis.dev/nodejs/storage/latest/Storage.html
@@ -18,6 +19,7 @@ class GcsWrapper {
 
   constructor() {
     this.JSON_LD_EXTENTION = '.jsonld.json';
+    this.JSON_LD_CONTENT_TYPE = 'application/ld+json';
 
     this.storage = storage;
 
@@ -28,6 +30,11 @@ class GcsWrapper {
       'http://fedora.info/definitions/fcrepo#PreferInboundReferences',
       'http://fedora.info/definitions/fcrepo#ServerManaged'
     ]
+
+    this.TAGS = {
+      GCS_METADATA_MD5 : 'gcs-metadata-md5',
+      GCS_BINARY_MD5 : 'gcs-binary-md5'
+    }
 
     this.resetStats();
     pg.connect();
@@ -91,7 +98,6 @@ class GcsWrapper {
       // look up root binary or container
       if( queryPath ) {
         file = await this.getGcsFile('gs://'+gcsBucket+queryPath);
-
         if( file ) {
           if( file.metadata.contentType !== 'application/ld+json' ) {
             metadata = await this.getGcsFile('gs://'+gcsBucket+queryPath+this.JSON_LD_EXTENTION);
@@ -158,17 +164,19 @@ class GcsWrapper {
       if( file.name.endsWith(this.JSON_LD_EXTENTION) ) continue;
       let name = file.name.split('/').pop();
 
-      if( grouping[name] ) {
+      if( grouping[name] && this.isJsonLdFile(file) ) {
         grouping[name].metadata = file;
       } else {
         // check to see if there is a jsonld file for this file
         let metadataFilename = name+this.JSON_LD_EXTENTION;
         let metadataFile = files.find(file => file.name.endsWith('/'+metadataFilename));
 
-        grouping[name] = {
-          path : '/'+file.name,
-          file : file,
-          metadata : metadataFile
+        if( metadataFile) {
+          grouping[name] = {
+            path : '/'+file.name,
+            file : file,
+            metadata : metadataFile
+          }
         }
       }
     }
@@ -203,6 +211,7 @@ class GcsWrapper {
    */
   async syncContainerToGcs(finPath, gcsFile, opts={}) {
     // fetch the fcrepo container
+    // TODO: switch to api.head and fin tags
     let {container} = await this.getFcrepoContainer(finPath);
     let fcrepoContainer = container;
     
@@ -292,16 +301,18 @@ class GcsWrapper {
     let gcsFile = 'gs://'+item.file.metadata.bucket+'/'+item.file.name;
 
     // check md5 hash
-    let fcrepoContainer;
-    let binaryNode;
-    try {
-      let {isArchivalGroup, container} = await this.getFcrepoContainer(item.path+'/fcr:metadata');
-      fcrepoContainer = container;
-      binaryNode = fcrepoContainer.find(node => node['@type'].includes(RDF_URIS.TYPES.BINARY));
-    } catch(e) {}
+    // let fcrepoContainer;
+    // let binaryNode;
+    // try {
+      // let {isArchivalGroup, container} = await this.getFcrepoContainer(item.path+'/fcr:metadata');
+      // fcrepoContainer = container;
+      // binaryNode = fcrepoContainer.find(node => node['@type'].includes(RDF_URIS.TYPES.BINARY));
+    // } catch(e) {}
+    let finTags = await this.getFcrepoFinTags(item.path);
     
 
-    if( !this.isBinaryMd5Match(binaryNode, item.file.metadata) ) {
+    // if( !this.isBinaryMd5Match(binaryNode, item.file.metadata) ) {
+    if( !this.isBinaryTagMatch(finTags, item.file.metadata) ) {
       logger.info('syncing binary from gcs to fcrepo'+(opts.proxyBinary === true ? ' as proxy' : ''), gcsFile, item.path);
       let result;
 
@@ -311,7 +322,7 @@ class GcsWrapper {
           url = config.server.url+'/fcrepo/rest/'+item.path+'/svc:gcs/'+opts.basePath;
         }
 
-        result = await api.put({
+        result = await this.fcrepoPut({
           path : item.path,
           body : '',
           headers : {
@@ -320,24 +331,21 @@ class GcsWrapper {
             'Content-Disposition' : item.file.metadata.contentDisposition,
             digest : 'md5='+Buffer.from(item.file.metadata.md5Hash, 'base64').toString('hex')
           },
-          host : config.fcrepo.host,
-          partial : true,
-          superuser : true,
-          directAccess : true
+          partial : true
         });
       } else {
-        result = await api.put({
+        result = await this.fcrepoPut({
           path : item.path,
           body : item.file.createReadStream(),
           headers : {
             'Content-Type' : item.file.metadata.contentType,
             'Content-Disposition' : item.file.metadata.contentDisposition,
-            digest : 'md5='+Buffer.from(item.file.metadata.md5Hash, 'base64').toString('hex')
+            digest : 'md5='+Buffer.from(item.file.metadata.md5Hash, 'base64').toString('hex'),
+            [config.finTag.header] : JSON.stringify({
+              [this.TAGS.GCS_BINARY_MD5] : item.file.metadata.md5Hash
+            })
           },
-          host : config.fcrepo.host,
-          partial : true,
-          superuser : true,
-          directAccess : true
+          partial : true
         });
       }
 
@@ -377,14 +385,15 @@ class GcsWrapper {
     if( !item.metadata ) return;
 
     gcsFile = 'gs://'+item.metadata.metadata.bucket+'/'+item.metadata.name;
-    fcrepoContainer = null;
+    // fcrepoContainer = null;
 
-    try {
-      let {container} = await this.getFcrepoContainer(item.path+'/fcr:metadata', true);
-      fcrepoContainer = JSON.stringify(container);
-    } catch(e) {}
+    finTags = await this.getFcrepoFinTags(item.path);
+    // try {
+    //   let {container} = await this.getFcrepoContainer(item.path+'/fcr:metadata', true);
+    //   fcrepoContainer = JSON.stringify(container);
+    // } catch(e) {}
 
-    if( !this.isMetadataMd5Match(fcrepoContainer, item.metadata.metadata) ) {
+    if( !this.isMetadataTagMatch(finTags, item.metadata.metadata) ) {
       logger.info('syncing binary metadata from gcs to fcrepo', gcsFile, item.path+'/fcr:metadata');
 
       let jsonld = JSON.parse(await this.loadFileIntoMemory(gcsFile));
@@ -393,16 +402,16 @@ class GcsWrapper {
         gcsFile : gcsFile
       });
 
-      let result = await api.put({
+      let result = await this.fcrepoPut({
         path : item.path+'/fcr:metadata',
         body : JSON.stringify(jsonld),
         partial : true,
         headers : {
-          'Content-Type' : api.RDF_FORMATS.JSON_LD
-        },
-        host : config.fcrepo.host,
-        superuser : true,
-        directAccess : true
+          'Content-Type' : api.RDF_FORMATS.JSON_LD,
+          [config.finTag.header] : JSON.stringify({
+            [this.TAGS.GCS_METADATA_MD5] : item.metadata.metadata.md5Hash
+          })
+        }
       });
 
       if( result.last.statusCode >= 400 ) {
@@ -433,14 +442,9 @@ class GcsWrapper {
 
   async syncContainerToFcrepo(item, opts={}) {
     let gcsFile = 'gs://'+item.metadata.metadata.bucket+'/'+item.metadata.name;
-    let fcrepoContainer = null;
+    let finTags = await this.getFcrepoFinTags(item.path);
 
-    try {
-      let {container} = await this.getFcrepoContainer(item.path, true);
-      fcrepoContainer = JSON.stringify(container);
-    } catch(e) {}
-
-    if( !this.isMetadataMd5Match(fcrepoContainer, item.metadata.metadata, true) ) {
+    if( !this.isMetadataTagMatch(finTags, item.metadata.metadata) ) {
       logger.info('syncing container from gcs to fcrepo', gcsFile, item.path);
 
       let jsonld = JSON.parse(await this.loadFileIntoMemory(gcsFile));
@@ -450,7 +454,10 @@ class GcsWrapper {
       });
 
       let headers = {
-        'Content-Type' : api.RDF_FORMATS.JSON_LD
+        'Content-Type' : api.RDF_FORMATS.JSON_LD,
+        [config.finTag.header] : JSON.stringify({
+          [this.TAGS.GCS_METADATA_MD5] : item.metadata.metadata.md5Hash
+        })
       };
 
       if( item.metadata.metadata.metadata.isArchivalGroup === 'true' ) {
@@ -458,13 +465,10 @@ class GcsWrapper {
         this.stats.toFcrepo.archivalGroups++;
       }
 
-      let result = await api.put({
+      let result = await this.fcrepoPut({
         path : item.path,
         body : JSON.stringify(jsonld),
-        host : config.fcrepo.host,
-        headers,
-        superuser : true,
-        directAccess : true
+        headers
       });
 
       if( result.last.statusCode >= 400 ) {
@@ -638,6 +642,7 @@ class GcsWrapper {
    */
   async getFcrepoContainer(finPath, storageFormat=false) {
     let headers = {};
+    finPath = finPath.replace(/\/fcr:metadata$/, '');
 
     if( storageFormat ) {
       headers = {
@@ -672,6 +677,37 @@ class GcsWrapper {
     let isArchivalGroup = links.type.find(item => item.url === RDF_URIS.TYPES.ARCHIVAL_GROUP) ? true : false;
 
     return {isArchivalGroup, container};
+  }
+
+  /**
+   * @method getFcrepoFinTags
+   * @description get fin tags from fcrepo container
+   * 
+   * @param {String} finPath 
+   * 
+   * @returns {Promise} resolves to fin tags object
+   */
+  async getFcrepoFinTags(finPath) {
+    let resp = await api.head({
+      path : finPath,
+      host : config.gateway.host,
+      jwt : await keycloak.getServiceAccountToken()
+    });
+
+    if( resp.last.statusCode !== 200 ) {
+      throw new Error('Unable to get fcrepo container: '+finPath);
+    }
+
+    if( !resp.last.headers[config.finTag.header] ) return {};
+    return JSON.parse(resp.last.headers[config.finTag.header]);
+  }
+
+  isBinaryTagMatch(tags, gcsFile) {
+    return (tags[this.TAGS.GCS_BINARY_MD5] === gcsFile.md5Hash);
+  }
+
+  isMetadataTagMatch(tags, gcsFile) {
+    return (tags[this.TAGS.GCS_METADATA_MD5] === gcsFile.md5Hash);
   }
 
   isBinaryMd5Match(fcrepoContainer, gcsFile) {
@@ -743,6 +779,20 @@ class GcsWrapper {
     });
   }
 
+  /**
+   * @method isJsonLdFile
+   * @description check if gcs file is jsonld via contentType or file extention
+   * 
+   * @param {Object} gcsFile
+   * 
+   * @returns {Boolean}
+   */
+  isJsonLdFile(gcsFile) {
+    if( gcsFile.metadata?.contentType === this.JSON_LD_CONTENT_TYPE ) return true;
+    if( gcsFile.name.endsWith(this.JSON_LD_EXTENTION) ) return true;
+    return false;
+  }
+
 
 
   /**
@@ -759,6 +809,21 @@ class GcsWrapper {
       force: true,
       prefix: folder
     });
+  }
+
+  /**
+   * @method fcrepoPut
+   * @description wrapper around fcrepo put request ensuring correct
+   * host and jwt is set
+   * 
+   * @param {Object} opts
+   *  
+   * @returns {Promise}
+   */
+  async fcrepoPut(opts) {
+    opts.jwt = await keycloak.getServiceAccountToken();
+    opts.host = config.gateway.host;
+    return api.put(opts);
   }
 
 }

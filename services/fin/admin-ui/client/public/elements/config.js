@@ -92,6 +92,20 @@ const viewConfig = {
     }]
   },
 
+  'path-info-gcssync' : {
+    table : 'gcssync_update_state',
+    ignoreKeys : ['update_status_id', 'gcs_path', 'gcs_bucket'],
+    columnLabels : {
+      path : 'GCS Path'
+    },
+    renderCellValue : (row, key) => {
+      if( key === 'path' ) {
+        return html`gs://${row.gcs_bucket}/${row.gcs_path}`;
+      }
+      return standardRender(row, key);
+    }
+  },
+
   'workflows-main' : {
     table : 'workflow_lastest',
     query : {
@@ -177,6 +191,17 @@ const viewConfig = {
       label : 'Delete Transaction',
       filter : row => row.transaction_id !== ''
     }]
+  },
+
+  'gcs-gcssync' : {
+    table : 'gcssync_update_state',
+    ignoreKeys : ['update_status_id', 'gcs_path', 'gcs_bucket'],
+    renderCellValue : (row, key) => {
+      if( key === 'path' ) {
+        return html`<a href="#path-info${row.path}">${row.path}</a><br />gs://${row.gcs_bucket}/${row.gcs_path}`;
+      }
+      return standardRender(row, key);
+    }
   }
 
 }

@@ -89,6 +89,13 @@ return html`
   .query="${this.workflowQuery}">
 </fin-admin-data-table>
 
+<h1 class="heading--weighted-underline">GCS Sync</h1>
+<fin-admin-data-table 
+  name="path-info-gcssync"
+  ?auto-refresh="${this.autoRefresh}"
+  .query="${this.gcsQuery}">
+</fin-admin-data-table>
+
 <div class="note">
   This page is auto-refreshing every 10 seconds.
 </div>

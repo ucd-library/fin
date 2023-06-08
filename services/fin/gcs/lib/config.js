@@ -36,6 +36,14 @@ class GcsConfig {
       directAccess : true
     });
 
+    if( res.last.statusCode === 404 ) {
+      logger.info('GCS Config not found');
+      this.config = {message: 'not found'};
+      this.requestLoopPromise = null;
+      this.requestLoopPromiseResolve(this.config);
+      return;
+    }
+
     if( res.last.statusCode === 200 ) {
       let body = res.last.body.replace(/\{\{(\w+)\}\}/g, (match, p1) => {
         return process.env[p1] || '';

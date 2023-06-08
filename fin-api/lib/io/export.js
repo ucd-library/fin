@@ -44,12 +44,18 @@ const V1_REMOVE_PROPS = [
   'ucdlib:clientMediaDownload', 'ucdlib:clientMedia', 'acl:accessControl'
 ]
 
+const CONTEXT_HEADER_TYPES = {
+  'http://www.w3.org/ns/ldp#DirectContainer' : 'ldp:DirectContainer',
+  'http://www.w3.org/ns/ldp#IndirectContainer' : 'ldp:IndirectContainer',
+  'http://fedora.info/definitions/v4/repository#ArchivalGroup' : 'fedora:ArchivalGroup',
+}
+
 const METADATA_CONTEXT = {
   ldp : 'http://www.w3.org/ns/ldp#',
   schema : 'http://schema.org/',
   fedora: 'http://fedora.info/definitions/v4/repository#',
   webac : 'http://fedora.info/definitions/v4/webac#',
-  acl : 'http://www.w3.org/ns/auth/acl',
+  acl : 'http://www.w3.org/ns/auth/acl#',
   ucdlib : 'http://digital.ucdavis.edu/schema#',
   ebucore : 'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#',
 }
@@ -501,7 +507,8 @@ class ExportCollection {
 
       for( let type of utils.TO_HEADER_TYPES ) {
         if( links.type.find(item => item.url === type) ) {
-          if( !metadata['@type'].includes(type) ) {
+          let compactName = CONTEXT_HEADER_TYPES[type];
+          if( !metadata['@type'].includes(type) && !metadata['@type'].includes(compactName) ) {
             metadata['@type'].push(type);
           }
         }

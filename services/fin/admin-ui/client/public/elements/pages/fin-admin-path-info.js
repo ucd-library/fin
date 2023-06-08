@@ -13,6 +13,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
       dbsyncTable : {type: String},
       dbsyncQuery : {type: Object},
       workflowQuery : {type: Object},
+      gcsQuery : {type: Object},
       children : {type: Array},
       properties : {type: Array}
     }
@@ -39,6 +40,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     this.dbsyncTable = 'dbsync_update_status';
     this.dbsyncQuery = {limit: 0, order: 'path.asc'};
     this.workflowQuery = {limit: 0};
+    this.gcsQuery = {limit: 0};
     this.children = [];
     this.properties = [];
 
@@ -64,6 +66,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
 
     this.queryDbSync();
     this.queryWorkflows();
+    this.queryGcs();
 
     try {
       this.children = [];
@@ -156,6 +159,21 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     };
 
     this.workflowQuery = query;
+  }
+
+  async queryGcs() {
+    if( !this.path ) return;
+
+    let path = this.path.replace('/fcr:metadata', '');
+
+    let query = {
+      limit : 1000,
+      offset : 0,
+      order : 'path.asc',
+      or : `(path.eq.${path},path.eq.${path}/fcr:metadata)`
+    };
+
+    this.gcsQuery = query;
   }
 
   _onRunWorkflowClick(e) {

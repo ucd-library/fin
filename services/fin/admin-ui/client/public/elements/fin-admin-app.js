@@ -19,6 +19,7 @@ import "./pages/fin-admin-dbsync.js"
 import "./pages/fin-admin-workflows.js"
 import "./pages/fin-admin-path-info.js"
 import "./pages/fin-admin-es-management.js"
+import "./pages/fin-admin-gcs.js"
 import "./pages/fin-admin-services.js"
 import "./pages/fin-admin-config.js"
 

@@ -6,6 +6,7 @@ const fetch = require('node-fetch');
 const clone = require('clone');
 const archive = require('../lib/archive.js');
 const transactionHelper = require('../lib/transactions.js');
+const gcsConfig = require('../../gcs/lib/config.js');
 
 let proxy = httpProxy.createProxyServer({
   ignorePath : true
@@ -76,10 +77,13 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
     cleanConfig.server.cookieSecret = '********';
     cleanConfig.oidc.secret = '********';
 
+    await gcsConfig.loaded;
+
     res.json({
       registeredModels,
       services : serviceModel.services,
       config : cleanConfig,
+      gcs : gcsConfig.config,
       workflows,
       finServiceAccount,
       openTransactions,

@@ -168,7 +168,9 @@ class FinTag {
     subject = subject.replace(/^\/fcrepo/, '')
       .replace(/^\/rest/, '')
       .replace(/^info:fedora/, '')
-      .replace(/^\/fcr:metadata$/, '');
+      .replace(/\/fcr:metadata$/, '')
+      .replace(/\/$/, '')
+      .replace(/#$/, '');
     if( !subject.startsWith('/') ) subject = '/' + subject;
     return subject;
   }

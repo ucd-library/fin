@@ -44,6 +44,7 @@ return html`
     <a href="#dbsync">DBSync</a>
     <a href="#workflows">Workflows</a>
     <a href="#es-management">ES Management</a>
+    <a href="#gcs">GCS</a>
     <a href="#path-info">Path Info</a>
     <a href="#services">Services</a>
     <a href="#config">Config</a>
@@ -57,6 +58,7 @@ return html`
   <fin-admin-workflows id="workflows"></fin-admin-workflows>
   <fin-admin-path-info id="path-info"></fin-admin-path-info>
   <fin-admin-services id="services"></fin-admin-services>
+  <fin-admin-gcs id="gcs"></fin-admin-gcs>
   <fin-admin-config id="config"></fin-admin-config>
   <fin-admin-es-management id="es-management"></fin-admin-es-management>
 </ucdlib-pages>
