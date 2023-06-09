@@ -23,15 +23,18 @@ class GcsSync {
     this.config = (gcsConfig.config || {}).sync || {};
 
     pubsub.on('message', message => this.onGcMessage(message));
-    this.config.containers.forEach(container => {
-      container.bucket = container.bucket.replace(/\{\{(\w+)\}\}/g, (match, p1) => {
-        return process.env[p1] || '';
-      });
 
-      if( container.direction === 'gcs-to-fcrepo') {
-        pubsub.listen(container.bucket);
-      }
-    });
+    if( this.config?.containers ) {
+      this.config.containers.forEach(container => {
+        container.bucket = container.bucket.replace(/\{\{(\w+)\}\}/g, (match, p1) => {
+          return process.env[p1] || '';
+        });
+
+        if( container.direction === 'gcs-to-fcrepo') {
+          pubsub.listen(container.bucket);
+        }
+      });
+    }
 
     this.activemq = new ActiveMqStompClient('gcssync');
     this.activemq.onMessage(e => this.onFcMessage(e));

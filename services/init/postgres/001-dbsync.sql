@@ -34,6 +34,17 @@ CREATE INDEX IF NOT EXISTS event_queue_path_idx ON event_queue (path);
 CREATE INDEX IF NOT EXISTS event_queue_updated_idx ON event_queue (updated);
 CREATE INDEX IF NOT EXISTS event_queue_status_idx ON event_queue (status);
 
+CREATE TABLE IF NOT EXISTS validate_queue (
+  validate_queue_id SERIAL PRIMARY KEY,
+  created timestamp NOT NULL DEFAULT NOW(),
+  updated timestamp NOT NULL DEFAULT NOW(),
+  model TEXT NOT NULL,
+  db_id TEXT NOT NULL,
+  UNIQUE(model, db_id)
+);
+CREATE INDEX IF NOT EXISTS validate_queue_db_id_idx ON validate_queue (db_id);
+CREATE INDEX IF NOT EXISTS validate_queue_updated_idx ON validate_queue (updated);
+
 CREATE TABLE IF NOT EXISTS validate_response (
   validate_response_id SERIAL PRIMARY KEY,
   updated timestamp NOT NULL DEFAULT NOW(),
@@ -63,6 +74,7 @@ CREATE TABLE IF NOT EXISTS update_status (
   model TEXT DEFAULT '',
   message TEXT,
   db_response JSONB,
+  db_id TEXT,
   validate_response_id INTEGER REFERENCES validate_response(validate_response_id),
   source JSONB,
   update_count INTEGER DEFAULT 1,
@@ -71,6 +83,7 @@ CREATE TABLE IF NOT EXISTS update_status (
 CREATE INDEX IF NOT EXISTS update_status_path_idx ON update_status (path);
 CREATE INDEX IF NOT EXISTS update_status_action_idx ON update_status (action);
 CREATE INDEX IF NOT EXISTS update_status_model_idx ON update_status (model);
+CREATE INDEX IF NOT EXISTS update_status_db_id_idx ON update_status (db_id);
 
 CREATE OR REPLACE VIEW validate_response_view AS
   SELECT 
@@ -97,9 +110,9 @@ CREATE OR REPLACE FUNCTION upsert_update_status (
   action_in TEXT, 
   message_in TEXT, 
   db_response_in JSONB, 
+  db_id_in TEXT,
   transform_service_in TEXT, 
-  source_in JSONB,
-  validate_response_id_in INTEGER
+  source_in JSONB
 ) RETURNS void AS $$
 DECLARE
   usid INTEGER;
@@ -116,12 +129,12 @@ BEGIN
   IF usid IS NULL THEN
     INSERT INTO 
       update_status (path, event_id, event_timestamp, container_types, 
-        update_types, workflow_types, action, message, db_response, 
-        transform_service, model, source, validate_response_id)
+        update_types, workflow_types, action, message, db_response, db_id, 
+        transform_service, model, source)
     VALUES 
       (path_in, event_id_in, event_timestamp_in, container_types_in, 
-      update_types_in, workflow_types_in, action_in, message_in, db_response_in, 
-      transform_service_in, model_in, source_in, validate_response_id_in);
+      update_types_in, workflow_types_in, action_in, message_in, db_response_in, db_id_in,
+      transform_service_in, model_in, source_in);
   ELSE
     UPDATE update_status SET
       event_id = event_id_in,
@@ -132,9 +145,9 @@ BEGIN
       action = action_in,
       message = message_in,
       db_response = db_response_in,
+      db_id = db_id_in,
       transform_service = transform_service_in,
       source = source_in,
-      validate_response_id = validate_response_id_in,
       updated = NOW(),
       update_count = count + 1
     WHERE 
@@ -177,6 +190,36 @@ BEGIN
   END IF;
 
   RETURN vrid;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION upsert_validate_queue (
+  model_in TEXT,
+  db_id_in TEXT
+) RETURNS void AS $$
+DECLARE
+  vqid INTEGER;
+BEGIN
+
+  SELECT
+    validate_queue_id INTO vqid
+  FROM
+    validate_queue 
+  WHERE 
+    model = model_in AND db_id = db_id_in;
+
+  IF vqid IS NULL THEN
+    INSERT INTO 
+      validate_queue (model, db_id)
+    VALUES 
+      (model_in, db_id_in);
+  ELSE
+    UPDATE validate_queue SET
+      updated = NOW()
+    WHERE 
+      validate_queue_id = vqid;
+  END IF;
+
 END;
 $$ LANGUAGE plpgsql;
 

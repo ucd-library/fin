@@ -33,6 +33,7 @@ class DbSync {
     this.activemq.connect({queue: config.activeMq.queues.dbsync});
 
     this.readLoop();
+    this.validateLoop();
     this.processCheckQueueLoop();
   }
 
@@ -52,6 +53,24 @@ class DbSync {
     } catch(e) {
       logger.error('DbSync readLoop error', e);
       setTimeout(() => this.readLoop(), this.READ_LOOP_WAIT); 
+    }
+  }
+
+  async validateLoop() {
+    try {
+      let item = await postgres.nextDataModelValidation();
+      
+      if( !item ) {
+        setTimeout(() => this.validateLoop(), this.READ_LOOP_WAIT);
+        return;
+      }
+
+      await this.runDataValidation(item.model, item.db_id);
+
+      this.validateLoop();
+    } catch(e) {
+      logger.error('DbSync nextDataModelValidation error', e);
+      setTimeout(() => this.validateLoop(), this.READ_LOOP_WAIT); 
     }
   }
 
@@ -421,8 +440,10 @@ class DbSync {
    * @description trigger data model(s) removal method.  Log the event and result
    */
   async remove(event, model) {
+    let json = await model.get(event.path);
+    event.dbId = await this.queueDataValidation(model, event.path, json);
     event.dbResponse = await model.remove(event.path);
-    await this.runDataValidation(event, model, true);
+
     await postgres.updateStatus(event);
   }
 
@@ -447,50 +468,64 @@ class DbSync {
 
     event.dbResponse = await model.update(json);
 
-    await this.runDataValidation(event, model);
+    event.dbId = await this.queueDataValidation(model, event.path, json);
 
     await postgres.updateStatus(event);
   }
 
-  async runDataValidation(event, model, isDelete=false) {
+  /**
+   * @method queueDataValidation
+   * @description queue data validation for a model.  Only used if data model
+   * has all required methods
+   * 
+   * @param {FinDataModel} model 
+   * @param {String} finPath 
+   * @param {Object} json
+   *  
+   * @returns {Promise}
+   */
+  async queueDataValidation(model, finPath, json) {
     if( !model.validate ) return;
     if( !model.get ) return;
+    if( !model.getPrimaryKey ) return;
 
-    let graph = await model.get(event.path.replace(/\/fcr:metadata$/, ''));
-
-    if( !graph ) {
-      if( isDelete === false ) return;
-
-      // we are deleting, check the dbResponse for ids
-      if( !event?.dbResponse?.ids ) {
-        return;
-      }
-
-      for( let id of event.dbResponse.ids ) {
-        graph = await model.get(id);
-        if( graph ) break;
-      }
-
-      // remove all ids from validate table as this item is gone
-      // from the database as far as we can tell
-      if( !graph ) {
-        for( let id of event.dbResponse.ids ) {
-          logger.info('Removing validation for db_id no graph found: '+id)
-          await postgres.removeValidation(model.id || model.name, id);
-        }
-        return;
-      }
+    let dbId = await model.getPrimaryKey(finPath, json);
+    
+    if( !dbId ) {
+      logger.warn('Could not get db_id for '+finPath+', model '+model.id);
+      return;
     }
 
-    let validateResponse = await model.validate(graph);
+    await postgres.queueValidation(model.id || model.name, dbId);
 
-    if( !validateResponse.id ) {
-      throw new Error('Validation response did not have an id property');
+    return dbId;
+  }
+
+  async runDataValidation(modelId, dbId) {
+    logger.info('Running data validation for '+modelId+' '+dbId);
+    let validateResponse;
+
+    try {
+      let {model} = await models.get(modelId);
+      let graph = await model.get(dbId);
+
+      if( !graph ) {
+        validateResponse = {
+          comments : ['No data found for '+modelId+' '+dbId]
+        }
+      } else {
+        validateResponse = await model.validate(graph);
+      }
+    } catch(e) {
+      logger.error('Error running data validation for '+modelId+' '+dbId, e);
+      validateResponse = {
+        errors : ['Error running data validation for '+modelId+' '+dbId+'. '+e.message+' '+e.stack]
+      }
     }
 
     let pgParams = {
-      db_id : validateResponse.id,
-      model : model.id || model.name,
+      db_id : dbId,
+      model : modelId,
       response : {
         errors : validateResponse.errors || [],
         warnings : validateResponse.warnings || [],
@@ -498,9 +533,7 @@ class DbSync {
       }
     };
 
-    let response = await postgres.updateValidation(pgParams);
-    // TODO: can we name this in the postgres function?
-    event.validateResponseId = response.upsert_validate_response;
+    await postgres.updateValidation(pgParams);
   }
 
   async getModelsForEvent(event) {

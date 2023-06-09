@@ -17,10 +17,12 @@ CREATE OR REPLACE VIEW dbsync_event_queue AS
 CREATE OR REPLACE VIEW dbsync_event_queue_size AS
   SELECT count(*) FROM dbsync.event_queue;
 
+CREATE OR REPLACE VIEW dbsync_validate_queue_size AS
+  SELECT count(*) FROM dbsync.validate_queue;
+
 CREATE OR REPLACE VIEW dbsync_update_status AS
   SELECT 
     us.*, 
-    vr.db_id,
     vr.response as validation_response,
     vr.error_count as validation_error_count,
     vr.warning_count as validation_warning_count,

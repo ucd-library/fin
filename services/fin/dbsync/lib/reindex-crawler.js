@@ -165,7 +165,10 @@ class ReindexCrawler {
    * @param {String} writeIndex Optional.  Index to write to. mostly used for reindex
    */
   sendReindexEvent(node, writeIndex) {
-    logger.info('Sending reindex event for: '+node['@id']);
+    logger.info('Sending reindex event for: ', {
+      '@id' : this.cleanPath(node['@id']),
+      '@type' : node['@type'] || []
+    });
     
     let headers = {
       'edu.ucdavis.library.eventType' : 'Reindex'

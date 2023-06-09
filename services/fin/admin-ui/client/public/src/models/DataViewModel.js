@@ -30,6 +30,10 @@ class DataViewModel extends BaseModel {
     return this.pgQuery('dbsync_event_queue_size', {}, opts, 'dbsync_event_queue_size');
   }
 
+  dbSyncValidateQueueSize(opts = {}) {
+    return this.pgQuery('dbsync_validate_queue_size', {}, opts, 'dbsync_validate_queue_size');
+  }
+
   dbSyncStats(opts = {}) {
     return this.pgQuery('dbsync_stats', {}, opts);
   }

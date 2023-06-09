@@ -30,6 +30,7 @@ return html`
 
 <div>
   <h2 id="data-models" class="heading--weighted-underline">Data Models</h2>
+  <div>Validate Queue Length: ${this.dbSyncValidateQueueLength}<div>
   <fin-admin-data-table 
     name="dashboard-data-models"
     hide-total

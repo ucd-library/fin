@@ -15,6 +15,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       dataModels : [],
       openTransactions : {type: Array},
       dbSyncQueueLength : {type: String},
+      dbSyncValidateQueueLength : {type: String},
       dataModelsDtData : {type: Array},
       reindexing : {type: Boolean},
       reindexPath : {type: String},
@@ -52,6 +53,13 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         if( e.payload.length < 1 ) return;
         this.dbSyncQueueLength = e.payload[0].count;
       });
+
+    this.dbSyncValidateQueueLength = '...';
+    this.DataViewModel.dbSyncValidateQueueSize()
+      .then(e => {
+        if( e.payload.length < 1 ) return;
+        this.dbSyncValidateQueueLength = e.payload[0].count;
+      });
   }
 
   firstUpdated() {
@@ -74,6 +82,12 @@ export default class FinAdminDashboard extends Mixin(LitElement)
 
   _onAutoRefresh() {
     this.DataViewModel.dbSyncEventQueueSize({refresh: true})
+      .then(e => {
+        if( e.payload.length < 1 ) return;
+        this.dbSyncQueueLength = e.payload[0].count;
+      });
+
+    this.DataViewModel.dbSyncValidateQueueSize({refresh: true})
       .then(e => {
         if( e.payload.length < 1 ) return;
         this.dbSyncQueueLength = e.payload[0].count;

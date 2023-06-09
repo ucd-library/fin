@@ -85,7 +85,8 @@ class FinEsDataModel extends FinDataModel {
           bool : {
             should : [
               {term : {'@graph.identifier.raw' : identifier}},
-              {term: {'@graph.@id': id}}
+              {term: {'@graph.@id': id}},
+              {term: {'@id': id}}
             ]
           }
         }
@@ -268,7 +269,7 @@ class FinEsDataModel extends FinDataModel {
       index,
       id : jsonld['@id'],
       retry_on_conflict : this.UPDATE_RETRY_COUNT,
-      refresh : 'wait_for',
+      // refresh : 'wait_for',
       script : {
         source : `
         for (def node : params.nodes) {
@@ -320,7 +321,7 @@ class FinEsDataModel extends FinDataModel {
       let r = await this.client.update({
         index,
         id : doc._id,
-        refresh : 'wait_for',
+        // refresh : 'wait_for',
         script : {
           source : `ctx._source['@graph'].removeIf((Map item) -> { item['@id'] == params['id'] });`,
           params : {id}
@@ -489,6 +490,26 @@ class FinEsDataModel extends FinDataModel {
     }
 
     return roles;
+  }
+
+  /**
+   * @method getPrimaryKey
+   * @description given a fin path and graph, return the primary key
+   * for elastic serach
+   * 
+   * TODO: Perhaps move this as the default for a FinDataModel?
+   * 
+   * @param {String} finPath not used, just part of fin api call 
+   * @param {Object} graph object returned from transform service 
+   * 
+   * @returns {string}
+   */
+  async getPrimaryKey(finPath='', graph) {
+    if( graph && graph['@id'] ) {
+      return graph['@id'];
+    }
+    graph = (await this.get(finPath)) || {};
+    return graph['@id'];
   }
 
   getDefaultIndexConfig(schema) {

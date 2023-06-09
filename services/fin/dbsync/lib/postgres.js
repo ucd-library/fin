@@ -134,8 +134,8 @@ class DbSyncPostgresUtils {
         $9::TEXT, 
         $10::JSONB, 
         $11::TEXT,
-        $12::JSONB,
-        $13::INTEGER
+        $12::TEXT,
+        $13::JSONB
       );`, 
       [
         args.path, 
@@ -148,9 +148,9 @@ class DbSyncPostgresUtils {
         args.action, 
         args.message, 
         args.dbResponse, 
+        args.dbId,
         args.tranformService, 
-        args.source,
-        args.validateResponseId || null
+        args.source
       ]
     );
   }
@@ -179,14 +179,49 @@ class DbSyncPostgresUtils {
         args.response
       ]
     );
-    return result.rows[0];
+    let validate_response_id = result.rows[0].upsert_validate_response;
+
+    await this.pg.query(`
+      UPDATE ${this.schema}.update_status
+        SET validate_response_id = $1
+      WHERE
+        db_id = $2 AND
+        model = $3
+    `, [validate_response_id, args.db_id, args.model]);
+    
+    return validate_response_id
   }
 
-  async removeValidation(model, db_id) {
+  removeValidation(model, db_id) {
     return this.pg.query(`SELECT * from ${this.schema}.delete_validate_response(
       $1::TEXT,
       $2::TEXT
     )`, [model, db_id]);
+  }
+
+  queueValidation(model, db_id) {
+    return this.pg.query(`SELECT * from ${this.schema}.upsert_validate_queue(
+      $1::TEXT,
+      $2::TEXT
+    )`, [model, db_id]);
+  }
+
+  async nextDataModelValidation() {
+    let resp = await this.pg.query(`
+      DELETE FROM 
+        ${this.schema}.validate_queue 
+      WHERE validate_queue_id IN ( 
+        SELECT validate_queue_id
+        FROM ${this.schema}.validate_queue 
+        WHERE
+          updated < now() - interval '10 seconds'
+        ORDER BY updated ASC
+        LIMIT 1
+      )
+      RETURNING *;
+    `);
+    if( !resp.rows.length ) return null;
+    return resp.rows[0];
   }
 
   async getStatusByModel(path, model=null) {
