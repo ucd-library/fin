@@ -23,7 +23,7 @@ async function renderIndex(req, res) {
   let path = req.path.replace( /^\/reindex\//, '/')
     .replace(/^\/fcrepo\/rest\//, '/');
 
-  let status = await postgres.getReindexCrawlStatus(path);
+  // let status = await postgres.getReindexCrawlStatus(path);
   let force = (req.query.force || '').toLowerCase() === 'true';
   let follow = (req.query.follow || '')
     .split(',')
@@ -33,16 +33,16 @@ async function renderIndex(req, res) {
   let noRedirect = (req.query['no-redirect'] || '').toLowerCase() === 'true';
   let writeIndex = req.query['write-index'] || null;
 
-  if( req.query.status === 'true' ) {
-    if( !status ) status = {status : 'none'};
-    res.json(status);
-    return;
-  }
+  // if( req.query.status === 'true' ) {
+  //   if( !status ) status = {status : 'none'};
+  //   res.json(status);
+  //   return;
+  // }
 
-  if( force === false && status && status.state === 'crawling' ) {
-    res.status(400).json({error: true, message: 'Crawl already in progress for: '+path});
-    return;
-  }
+  // if( force === false && status && status.state === 'crawling' ) {
+  //   res.status(400).json({error: true, message: 'Crawl already in progress for: '+path});
+  //   return;
+  // }
 
   try {
     let crawler = new ReindexCrawler(path, {

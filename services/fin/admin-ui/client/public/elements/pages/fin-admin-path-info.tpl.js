@@ -30,6 +30,18 @@ return html`
     margin-left: 10px;
     align-self: flex-start;
   }
+  .path-info-links {
+    display: flex;
+  }
+  .path-info-links > div {
+    flex: 1;
+  }
+
+  @media (max-width: 900px) {
+    .path-info-links {
+      display: block;
+    }
+  }
 </style>
 
 <fieldset>
@@ -60,14 +72,28 @@ return html`
   </button>
 </div>
 
-<div ?hidden="${this.children.length === 0}">
-  <h1 class="heading--weighted-underline">Contains (${this.children.length})</h1>
-  <div class="contains-list">
-    ${this.children.map(child => html`
-      <div class="child">
-        <a href="#path-info${child}">${child}</a>
-      </div>
-    `)}
+<div class="path-info-links">
+  <div ?hidden="${this.children.length === 0}">
+    <h1 class="heading--weighted-underline">Contains (${this.children.length})</h1>
+    <div class="contains-list">
+      ${this.children.map(child => html`
+        <div class="child">
+          <a href="#path-info${child}">${child}</a>
+        </div>
+      `)}
+    </div>
+  </div>
+
+  <div ?hidden="${this.ldpLinks.length === 0}">
+    <h1 class="heading--weighted-underline">LDP Links (${this.ldpLinks.length})</h1>
+    <div class="contains-list">
+      ${this.ldpLinks.map(link => html`
+        <div class="child">
+          ${link.prop}:
+          <a href="#path-info${link.finPath}">${link.finPath}</a>
+        </div>
+      `)}
+    </div>
   </div>
 </div>
 

@@ -197,7 +197,11 @@ export default class FinAdminDashboard extends Mixin(LitElement)
 
     for( let row of results.payload ) {
       this.reindexPath = row.path;
-      await this.FinApiModel.reindex(row.path);
+      try {
+        await this.FinApiModel.reindex(row.path);
+      } catch(e) {
+        console.error('failed to start reindex: '+row.path, e);
+      }
     }
 
     let rs = results.resultSet;

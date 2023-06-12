@@ -59,8 +59,10 @@ class FinGcWorkflowModel {
   load() {
     if( !this.activemq ) {
       this.activemq = new ActiveMqStompClient('workflow');
-      this.activemq.onMessage(e => this._onFcrepoEvent(e));
-      this.activemq.connect();
+      this.activemq.subscribe(
+        config.activeMq.fcrepoTopic,
+        e => this._onFcrepoEvent(e)
+      );
     }
 
     this.getConfig();

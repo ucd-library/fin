@@ -19,26 +19,45 @@ var connectOptions = {
   ...config.activeMq.stomp
 };
 
-var subscribeHeaders = {
-  destination: config.activeMq.fcrepoTopic,
-  ack: 'client-individual',
-  'activemq.prefetchSize' : 1
-};
-
 /**
  * @class ActiveMqStompClient
  * @description connects to activemq via STOMP protocol and emits
  * messages via nodejs events
  */
-class ActiveMqStompClient extends ActiveMqClient {
+class ActiveMqStompConnection extends ActiveMqClient {
 
-  constructor(name) {
+  constructor() {
     super();
 
-    this.name = name;
-    this.clientName = name+'-'+uuid.v4().split('-').shift();
+    this.connected = false;
+    this.connectingProm = null;
+    this.client = null;
+    this.subscriptions = {};
+
+    this.clientName = 'stomp-'+uuid.v4().split('-').shift();
     this.wait = 0;
     this.counter = 0;
+  }
+
+  async sendMessage(msg, additionalHeaders={}, destination) {
+    if( this.connectingProm ) {
+      await this.connectingProm;
+    }
+
+    if( !destination ) {
+      destination = config.activeMq.fcrepoTopic;
+    }
+
+    if( typeof message !== 'string' ) {
+      msg = JSON.stringify(msg);
+    }
+    const frame = this.client.send(Object.assign({
+      'destination': destination,
+      'content-type': 'application/json'
+    }, additionalHeaders));
+
+    frame.write(msg);
+    frame.end();
   }
 
   async onDisconnect(event, error) {
@@ -48,86 +67,101 @@ class ActiveMqStompClient extends ActiveMqClient {
     this.wait = 0;
 
     logger.warn('STOMP client '+this.clientName+' disconnected');
+    
+    this.connecting = false;
     this.client = null;
-    this.connect();
-  }
 
-  async sendMessage(msg, additionalHeaders={}) {
-    if( this.connecting ) {
-      await this.connecting;
+    if( this.connectingProm ) {
+      this.connectingReject();
+      this.connectingResolve = null;
+      this.connectingProm = null;
     }
 
-    if( typeof message !== 'string' ) {
-      msg = JSON.stringify(msg);
-    }
-    const frame = this.client.send(Object.assign({
-      'destination': subscribeHeaders.destination,
-      'content-type': 'application/json'
-    }, additionalHeaders));
-    frame.write(msg);
-    frame.end();
+    this._connect({fromRetry: true});
   }
 
-  async connect(opts={queue: null, listen: true}) {
-    if( opts.listen === undefined ) opts.listen = true;
+  async connect(opts={}) {
+    if( this.client ) {
+      return;
+    }
 
-    if( !this.connecting ) {
-      this.connecting = new Promise((resolve, reject) => {
+    if( this.connectingProm && opts.fromRetry !== true ) {
+      return this.connectingProm;
+    } else if( !this.connectingProm ) {
+      this.connectingProm = new Promise((resolve, reject) => {
         this.connectingResolve = resolve;
+        this.connectingReject = reject;
       });
     }
 
-    // create a new client name on reconnect
-    this.clientName = this.name+'-'+uuid.v4().split('-').shift();
+    this._connect();
+    return this.connectingProm;
+  }
+
+  async _connect() {
+    this.connecting = true;
     connectOptions.connectHeaders['client-id'] = this.clientName;
-    if( opts.queue ) {
-      subscribeHeaders.destination = opts.queue;
-    }
 
     await waitUtil(config.activeMq.hostname, config.activeMq.stomp.port);
 
     // sensure this client/ip has been disconnected
     // let client = new stompit.Client(connectOptions);
     // client.disconnect(() => {
-      setTimeout(() => {
-        let logOpts = Object.assign({}, connectOptions);
-        logOpts.connectHeaders.passcode = '******';
-        logger.info('STOMP client '+this.clientName+' attempting connection', logOpts);
+    setTimeout(() => {
+      let logOpts = Object.assign({}, connectOptions);
+      logOpts.connectHeaders.passcode = '******';
+      logger.info('STOMP client '+this.clientName+' attempting connection', logOpts);
 
-        stompit.connect(connectOptions, async (error, client) => {
-          if( error ) {
-            await this.logDebug('connection-error', error);
+      stompit.connect(connectOptions, async (error, client) => {
+        if( error ) {
+          await this.logDebug('connection-error', error);
 
-            this.wait += 1000;
-            logger.warn('STOMP client '+this.clientName+' connection attempt failed, retry in: '+this.wait+'ms', error);
-            this.connect();
-            return
-          }
+          this.wait += 1000;
+          logger.warn('STOMP client '+this.clientName+' connection attempt failed, retry in: '+this.wait+'ms', error);
+          this._connect({fromRetry: true});
+          return
+        }
 
-          logger.info('STOMP client '+this.clientName+' connected to server',subscribeHeaders);
+        logger.info('STOMP client '+this.clientName+' connected to server');
 
+        client.on('error', e => this.onDisconnect('error', e));
 
-          client.on('error', e => this.onDisconnect('error', e));
+        this.connecting = false;
+        this.connectingResolve();
+        this.connectingResolve = null;
+        this.connectingReject = null;
 
-          this.connecting = false;
-          this.connectingResolve();
-          this.connectingResolve = null;
+        this.wait = 0;
+        this.client = client;
+      });
+    }, this.wait);
+  }
 
-          this.wait = 0;
-          this.client = client;
+  async subscribe(clientId, topic, callback) {
+    await this.connect();
 
-          if( opts.listen === true ) this.subscribe();
-        });
-      }, this.wait);
-    // });
+    this._subscribe(topic);
+    this.subscriptions[topic][clientId] = callback;
   }
 
   /**
    * @method subscribe
    * @description connect to activemq via STOMP
    */
-  subscribe() {
-    logger.info('STOMP client '+this.clientName+' subscribing to: ', subscribeHeaders.destination);
+  _subscribe(topic) {
+    logger.info('STOMP client '+this.clientName+' subscribing to: ', topic);
+
+    if( this.subscriptions[topic] ) {
+      return;
+    }
+
+    this.subscriptions[topic] = [];
+
+    var subscribeHeaders = {
+      destination: topic,
+      ack: 'client-individual',
+      'activemq.prefetchSize' : 1
+    };
 
     this.client.subscribe(subscribeHeaders, async (error, message) => {
       if( error ) {
@@ -146,17 +180,18 @@ class ActiveMqStompClient extends ActiveMqClient {
         } catch(e) {}
       }
 
-      try {
-        if( this.callback ) {
-          await this.callback({headers, body})
+      for( let clientId of this.subscriptions[topic] ) {
+        let callback = this.subscriptions[topic][clientId];
+        try {
+          await callback({headers, body})
+        } catch(e) {
+          await this.logDebug('processing-error', e);
+          logger.error('STOMP client '+clientId+' processing error', e);
         }
-      } catch(e) {
-        await this.logDebug('processing-error', e);
-        logger.error('STOMP client '+this.clientName+' processing error', e);
       }
 
       this.client.ack(message);
-    });
+    });   
   }
 
   /**
@@ -189,6 +224,27 @@ class ActiveMqStompClient extends ActiveMqClient {
       `,
       [this.name, this.clientName, event, error.message, error.stack, JSON.stringify(data)]
     );
+  }
+}
+const stompConnection = new ActiveMqStompConnection();
+
+class ActiveMqStompClient {
+
+  constructor(name) {
+    this.name = name;
+    this.clientName = name+'-'+uuid.v4().split('-').shift();
+  }
+
+  connect() {
+    return stompConnection.connect();
+  }
+
+  async sendMessage(msg, additionalHeaders={}, destination) {
+    return stompConnection.sendMessage(msg, additionalHeaders, destination);
+  }
+
+  subscribe(topic, callback) {
+    return stompConnection.subscribe(this.clientName, topic, callback);
   }
 
 }

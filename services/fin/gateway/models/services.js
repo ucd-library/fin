@@ -62,8 +62,10 @@ class ServiceModel {
 
     // listen for service definition updates
     this.activemq = new ActiveMqStompClient('gateway');
-    this.activemq.onMessage(e => this._onFcrepoEvent(e));
-    this.activemq.connect();
+    this.activemq.subscribe(
+      config.activeMq.fcrepoTopic,
+      e => this._onFcrepoEvent(e)
+    );
 
     // load model services
     let modelNames = await models.names();

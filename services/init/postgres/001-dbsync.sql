@@ -23,7 +23,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS event_queue (
   event_queue_id SERIAL PRIMARY KEY,
   updated timestamp NOT NULL DEFAULT NOW(),
-  path TEXT NOT NULL UNIQUE,
+  path TEXT NOT NULL,
   update_types fcrepo_update_type[] NOT NULL,
   container_types text[] NOT NULL,
   status dbsync_message_status NOT NULL DEFAULT 'pending',
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS event_queue (
   event_timestamp timestamp NOT NULL
 );
 CREATE INDEX IF NOT EXISTS event_queue_path_idx ON event_queue (path);
-CREATE INDEX IF NOT EXISTS event_queue_updated_idx ON event_queue (updated);
+CREATE INDEX IF NOT EXISTS event_queue_created_idx ON event_queue (updated);
 CREATE INDEX IF NOT EXISTS event_queue_status_idx ON event_queue (status);
 
 CREATE TABLE IF NOT EXISTS validate_queue (

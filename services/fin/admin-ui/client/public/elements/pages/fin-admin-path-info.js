@@ -15,6 +15,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
       workflowQuery : {type: Object},
       gcsQuery : {type: Object},
       children : {type: Array},
+      ldpLinks : {type: Array},
       properties : {type: Array}
     }
   }
@@ -43,6 +44,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     this.gcsQuery = {limit: 0};
     this.children = [];
     this.properties = [];
+    this.ldpLinks = [];
 
     this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
   }
@@ -95,7 +97,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
 
     let containsUri = 'http://www.w3.org/ns/ldp#contains';
     this.children = [];
-    
+    this.ldpLinks = [];
 
     let mainNode = graph.find(node => {
       return (node['@id'] || '').split('/fcrepo/rest').pop() === this.path
@@ -110,6 +112,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     }
 
     if( !mainNode ) return;
+
     for( let dp of this.displayProperties ) {
       if( !mainNode[dp] ) continue;
       let value = mainNode[dp];
@@ -129,6 +132,33 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
         value
       });
     }
+
+    let ldpLinks = [];
+    let ldpBase = mainNode['@id'].split('/fcrepo/rest').shift();
+
+    for( let prop in mainNode ) {
+      if( prop.startsWith('@') ) continue;
+      if( prop === containsUri ) continue; 
+
+      let values = this._getValuesAsString(mainNode, prop);
+      values.forEach(value => {
+        if( !value.startsWith(ldpBase) ) return;
+        ldpLinks.push({
+          prop,
+          finPath : value.split('/fcrepo/rest').pop()
+        });
+      });
+    }
+    this.ldpLinks = ldpLinks;
+  }
+
+  _getValuesAsString(node, prop) {
+    let values = node[prop];
+    if( !values ) return [];
+    if( !Array.isArray(values) ) {
+      values = [values];
+    }
+    return values.map(v => v['@id'] || v['@value'] || v);
   }
 
   async queryDbSync() {

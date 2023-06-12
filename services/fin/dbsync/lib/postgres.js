@@ -79,22 +79,13 @@ class DbSyncPostgresUtils {
    * @return {Promise}
    */
   async queue(args) {
-    let resp = await this.pg.query(`SELECT path FROM ${this.schema}.event_queue where path = $1;`, [args.path]);
+    // let resp = await this.pg.query(`SELECT path FROM ${this.schema}.event_queue where path = $1;`, [args.path]);
     if( !args.container_types ) args.container_types = [];
 
-    if( resp.rows.length ) {
-      await this.pg.query(`
-      UPDATE ${this.schema}.event_queue 
-        SET (event_id, event_timestamp, container_types, update_types, updated, status) = ($2, $3, $4, $5, $6, 'pending')
-      WHERE 
-        PATH = $1
-    ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types, new Date().toISOString()]);
-    } else {
-      await this.pg.query(`
-        INSERT INTO ${this.schema}.event_queue (path, event_id, event_timestamp, container_types, update_types, status) 
-        VALUES ($1, $2, $3, $4, $5, 'pending')
-      ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types]);
-    }
+    await this.pg.query(`
+    INSERT INTO ${this.schema}.event_queue (path, event_id, event_timestamp, container_types, update_types, status) 
+    VALUES ($1, $2, $3, $4, $5, 'pending')
+    ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types]);
   }
 
   getQueueProcessingMessages() {

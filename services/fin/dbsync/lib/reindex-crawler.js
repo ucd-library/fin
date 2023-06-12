@@ -2,11 +2,14 @@ const {ActiveMqClient, logger, config, RDF_URIS} = require('@ucd-lib/fin-service
 const api = require('@ucd-lib/fin-api');
 const postgres = require('./postgres.js');
 const clone = require('clone');
+const uuid = require('uuid');
 
 const {ActiveMqStompClient} = ActiveMqClient;
 
 const FC_BASE_RE = new RegExp('^'+api.getConfig().fcBasePath);
 const FC_HOST_RE = new RegExp('^'+config.fcrepo.host+api.getConfig().fcBasePath);
+
+// const activemq = new ActiveMqStompClient('reindex-crawler');
 
 /**
  * @class ReindexCrawler
@@ -24,8 +27,7 @@ class ReindexCrawler {
 
     this.options = options;
 
-    this.activemq = new ActiveMqStompClient('reindex-crawler');
-    this.activemq.connect({listen: false});
+
   }
 
   getCrawlData(startTime) {
@@ -48,30 +50,26 @@ class ReindexCrawler {
     this.crawled = crawled;
 
     logger.info('Starting reindex of: '+this.rootPath+(writeIndex ? ' into index'+writeIndex : ''));
-    
-    if( this.activemq.connecting ) {
-      await this.activemq.connecting;
-    }
 
     // set the initial crawl status
     let startTime = new Date().toISOString();
-    await postgres.updateReindexCrawlStatus(this.rootPath, 'crawling', this.getCrawlData(startTime));
+    // TODO: redo tracking
+    // await postgres.updateReindexCrawlStatus(this.rootPath, 'crawling', this.getCrawlData(startTime));
 
     // update crawl status every 5 seconds
-    let iid = setInterval(async () => {
-      postgres.updateReindexCrawlStatus(this.rootPath, 'crawling', this.getCrawlData(startTime));
-    }, this.dbUpdateInterval);
+    // let iid = setInterval(async () => {
+    //   postgres.updateReindexCrawlStatus(this.rootPath, 'crawling', this.getCrawlData(startTime));
+    // }, this.dbUpdateInterval);
 
     // run reindex crawl
     await this.crawl(this.rootPath, crawled, writeIndex);
 
     // stop update interval and set crawl status to complete
-    clearInterval(iid);
+    // clearInterval(iid);
 
     // set the crawl status to complete
-    let resp = await postgres.updateReindexCrawlStatus(this.rootPath, 'stopped', this.getCrawlData(startTime));
+    // let resp = await postgres.updateReindexCrawlStatus(this.rootPath, 'stopped', this.getCrawlData(startTime));
 
-    this.activemq.client.disconnect();
     return Array.from(crawled);
   }
 
@@ -104,7 +102,7 @@ class ReindexCrawler {
     if( !graph.data.body ) {
       // this was a reindex of a delete path
       if( path === this.rootPath ) {
-        this.sendReindexEvent({'@id' : path}, writeIndex);
+        await this.sendReindexEvent({'@id' : path}, writeIndex);
       }
       return;
     }
@@ -123,7 +121,7 @@ class ReindexCrawler {
     mainNode['@type'] = Array.from(types);
 
     // send reindex event
-    this.sendReindexEvent(mainNode, writeIndex);
+    await this.sendReindexEvent(mainNode, writeIndex);
 
     // hack events for binary metadata containers.
     if( mainNode['@type'] && mainNode['@type'].includes(RDF_URIS.TYPES.BINARY) ) {
@@ -134,7 +132,7 @@ class ReindexCrawler {
       binaryMetadataNode['@type'].splice(binaryMetadataNode['@type'].indexOf(RDF_URIS.TYPES.BINARY), 1);
       binaryMetadataNode['@type'].splice(binaryMetadataNode['@type'].indexOf(RDF_URIS.TYPES.NON_RDF_SOURCE), 1);
 
-      this.sendReindexEvent(binaryMetadataNode, writeIndex);
+      await this.sendReindexEvent(binaryMetadataNode, writeIndex);
     }
 
 
@@ -165,25 +163,33 @@ class ReindexCrawler {
    * @param {String} writeIndex Optional.  Index to write to. mostly used for reindex
    */
   sendReindexEvent(node, writeIndex) {
-    logger.info('Sending reindex event for: ', {
-      '@id' : this.cleanPath(node['@id']),
-      '@type' : node['@type'] || []
+    return postgres.queue({
+      event_id : 'reindex:'+uuid.v4(),
+      event_timestamp : new Date().toISOString(),
+      path : this.cleanPath(node['@id']),
+      container_types : node['@type'] || [],
+      update_types : ['Reindex']
     });
-    
-    let headers = {
-      'edu.ucdavis.library.eventType' : 'Reindex'
-    };
-    if( writeIndex ) {
-      headers['edu.ucdavis.library.writeIndex'] = writeIndex;
-    }
 
-    this.activemq.sendMessage(
-      {
-        '@id' : this.cleanPath(node['@id']),
-        '@type' : node['@type'] || []
-      },
-      headers
-    );
+    // logger.info('Sending reindex event for: ', {
+    //   '@id' : this.cleanPath(node['@id']),
+    //   '@type' : node['@type'] || []
+    // });
+    
+    // let headers = {
+    //   'edu.ucdavis.library.eventType' : 'Reindex'
+    // };
+    // if( writeIndex ) {
+    //   headers['edu.ucdavis.library.writeIndex'] = writeIndex;
+    // }
+
+    // activemq.sendMessage(
+    //   {
+    //     '@id' : this.cleanPath(node['@id']),
+    //     '@type' : node['@type'] || []
+    //   },
+    //   headers
+    // );
   }
 }
 

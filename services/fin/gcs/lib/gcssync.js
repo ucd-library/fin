@@ -37,8 +37,10 @@ class GcsSync {
     }
 
     this.activemq = new ActiveMqStompClient('gcssync');
-    this.activemq.onMessage(e => this.onFcMessage(e));
-    this.activemq.connect({queue: config.activeMq.queues.gcssync});
+    this.activemq.subscribe(
+      config.activeMq.queues.gcssync,
+      e => this.onFcMessage(e)
+    );
 
     this.runDataHydration();
     

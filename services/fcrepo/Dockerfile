@@ -4,7 +4,7 @@ FROM fcrepo/fcrepo:6.5.0-SNAPSHOT
 RUN mkdir -p /etc/fin
 COPY fcrepo.properties /etc/fin/fcrepo.properties
 COPY root-authorization.ttl /etc/fin/root-authorization.ttl
-COPY external-allowed.txt /etc/fin/external-allowed.txt
+# COPY external-allowed.txt /etc/fin/external-allowed.txt
 
 # TODO: this example completely disables authn and authz.
 # We just want to display authz.

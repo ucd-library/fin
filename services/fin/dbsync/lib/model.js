@@ -29,8 +29,10 @@ class DbSync {
     await models.load();
 
     this.activemq = new ActiveMqStompClient('dbsync');
-    this.activemq.onMessage(e => this.handleMessage(e));
-    this.activemq.connect({queue: config.activeMq.queues.dbsync});
+    this.activemq.subscribe(
+      config.activeMq.queues.dbsync,
+      e => this.handleMessage(e)
+    );
 
     this.readLoop();
     this.validateLoop();
@@ -158,6 +160,7 @@ class DbSync {
           {'edu.ucdavis.library.eventType' : 'Reindex'}
         );
       }
+
 
       e.container_types = await this.getContainerTypes(e);
 
@@ -465,7 +468,7 @@ class DbSync {
       if( !json._ ) json._ = {};
       json._.updated = new Date();
     }
-
+    
     event.dbResponse = await model.update(json);
 
     event.dbId = await this.queueDataValidation(model, event.path, json);
