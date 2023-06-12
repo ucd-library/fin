@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const client = require('../../..');
+const client = require('../../../lib/api.js');
 
 const DOT_FILE = '.fccli';
 

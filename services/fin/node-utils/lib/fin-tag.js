@@ -161,7 +161,8 @@ class FinTag {
       params.push(predicate);
     }
 
-    return pg.query(query, params);
+    let resp = await pg.query(query, params);
+    return resp;
   }
 
   _formatSubject(subject) {

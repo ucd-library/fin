@@ -180,7 +180,7 @@ class ActiveMqStompConnection extends ActiveMqClient {
         } catch(e) {}
       }
 
-      for( let clientId of this.subscriptions[topic] ) {
+      for( let clientId in this.subscriptions[topic] ) {
         let callback = this.subscriptions[topic][clientId];
         try {
           await callback({headers, body})
@@ -212,18 +212,18 @@ class ActiveMqStompConnection extends ActiveMqClient {
   }
 
   logDebug(event, error) {
-    let data = {
-      connectOptions, subscribeHeaders
-    }
+    // let data = {
+    //   connectOptions, subscribeHeaders
+    // }
 
-    return pg.query(`
-        INSERT INTO activemq.debug_log
-          (client_name, client_id, event, message, stack_trace, connection_data)
-        VALUES
-          ($1, $2, $3, $4, $5, $6)
-      `,
-      [this.name, this.clientName, event, error.message, error.stack, JSON.stringify(data)]
-    );
+    // return pg.query(`
+    //     INSERT INTO activemq.debug_log
+    //       (client_name, client_id, event, message, stack_trace, connection_data)
+    //     VALUES
+    //       ($1, $2, $3, $4, $5, $6)
+    //   `,
+    //   [this.name, this.clientName, event, error.message, error.stack, JSON.stringify(data)]
+    // );
   }
 }
 const stompConnection = new ActiveMqStompConnection();
