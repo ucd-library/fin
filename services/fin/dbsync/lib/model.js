@@ -1,9 +1,11 @@
-const {config, logger, waitUntil, ActiveMqClient, models, RDF_URIS, workflow} = require('@ucd-lib/fin-service-utils');
+const {config, logger, tests, waitUntil, ActiveMqClient, models, RDF_URIS, workflow} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const postgres = require('./postgres');
 const clone = require('clone');
 
 const {ActiveMqStompClient} = ActiveMqClient;
+const {ActiveMqTests} = tests;
+const activeMqTest = new ActiveMqTests();
 
 class DbSync {
 
@@ -104,6 +106,11 @@ class DbSync {
   async handleMessage(msg) {
     if( msg.headers['edu.ucdavis.library.eventType'] ) {
       let eventType = msg.headers['edu.ucdavis.library.eventType'];
+
+      if( eventType === activeMqTest.PING_EVENT_TYPE ) {
+        return;
+      }
+
       await postgres.queue({
         event_id : msg.headers['message-id'],
         event_timestamp : new Date(parseInt(msg.headers.timestamp)).toISOString(),
@@ -143,6 +150,21 @@ class DbSync {
   async updateContainer(e) {
     // update elasticsearch
     try {
+      // check for integration test
+      if( e.container_types.includes(activeMqTest.TYPES.TEST_CONTAINER) || 
+          e.path.startsWith(config.activeMq.fcrepoTestPath) ) {
+        await this.activemq.sendMessage(
+          {
+            '@id' : e.path,
+            '@type' : e.container_types,
+            'http://schema.org/author' : 'dbsync',
+            'http://digital.ucdavis.edu/schema#timing' : Date.now() - new Date(e.event_timestamp).getTime(),
+            'https://www.w3.org/ns/activitystreams': e.update_types 
+          },
+          {'edu.ucdavis.library.eventType' : activeMqTest.PING_EVENT_TYPE}
+        );
+        return;
+      }
 
       // hack.  on delete fedora doesn't send the types.  so we have to sniff from path
       if( e.container_types.includes(this.WEBAC_CONTAINER) || e.path.match(/\/fcr:acl$/) ) {

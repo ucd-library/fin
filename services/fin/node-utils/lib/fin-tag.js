@@ -26,10 +26,10 @@ class FinTag {
    * @param {*} event 
    */
   async onFcrepoEvent(event) {
-    let id = event.headers[ACTIVE_MQ_HEADER_ID];
+    let id = event.headers[ACTIVE_MQ_HEADER_ID] || '';
     let finPath = this._formatSubject(id);
 
-    let updateType = event.body.type;
+    let updateType = event.body.type || '';
     if( Array.isArray(updateType) ) {
       updateType = updateType[0];
     }

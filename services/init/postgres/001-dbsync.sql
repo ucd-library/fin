@@ -2,7 +2,7 @@ create schema if not exists dbsync;
 set search_path=dbsync,public;
 
 DO $$ BEGIN
-  CREATE TYPE fcrepo_update_type as enum ('Create', 'Update', 'Delete', 'Follow', 'Purge', 'Reindex');
+  CREATE TYPE fcrepo_update_type as enum ('Create', 'Update', 'Delete', 'Follow', 'Purge', 'Reindex', 'integration-test-ping');
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;

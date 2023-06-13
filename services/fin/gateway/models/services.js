@@ -380,7 +380,7 @@ class ServiceModel {
    */
   async _onFcrepoEvent(event) {
     let id = event.headers[ACTIVE_MQ_HEADER_ID];
-    let types = event.headers[ACTIVE_MQ_HEADER_TYPES]
+    let types = (event.headers[ACTIVE_MQ_HEADER_TYPES] || '')
       .split(',')
       .map(item => item.trim())
       .filter(item => item)

@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const {keycloak, models, config, logger, jwt} = require('@ucd-lib/fin-service-utils');
+const {keycloak, models, config, logger, jwt, tests} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('../models/services.js');
 const httpProxy = require('http-proxy');
 const fetch = require('node-fetch');
@@ -7,6 +7,9 @@ const clone = require('clone');
 const archive = require('../lib/archive.js');
 const transactionHelper = require('../lib/transactions.js');
 const gcsConfig = require('../../gcs/lib/config.js');
+const {ActiveMqTests} = tests;
+
+let activeMqTest = new ActiveMqTests({active: true});
 
 let proxy = httpProxy.createProxyServer({
   ignorePath : true
@@ -109,6 +112,33 @@ router.all(/^\/pg(\/.*)$/, keycloak.protect(['admin']), async (req, res) => {
   proxy.web(req, res, {
     target : url
   });
+});
+
+router.post('/test/activemq', keycloak.protect(['admin']), async (req, res) => {
+  try {
+    let id = await activeMqTest.start();
+
+    res.json({
+      status : 'started',
+      id
+    });
+  } catch(e) {
+    res.status(500).json({
+      error : true,
+      message : e.message
+    });
+  }
+});
+router.get('/test/activemq/:id', keycloak.protect(['admin']), async (req, res) => {
+  try {
+    let result = await activeMqTest.get(req.params.id);
+    res.json(result);
+  } catch(e) {
+    res.status(500).json({
+      error : true,
+      message : e.message
+    });
+  }
 });
 
 router.get('/archive', async (req, res) => {

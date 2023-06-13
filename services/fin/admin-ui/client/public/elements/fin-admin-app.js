@@ -21,6 +21,7 @@ import "./pages/fin-admin-path-info.js"
 import "./pages/fin-admin-es-management.js"
 import "./pages/fin-admin-gcs.js"
 import "./pages/fin-admin-services.js"
+import "./pages/fin-admin-integration-tests.js"
 import "./pages/fin-admin-config.js"
 
 export default class FinAdminApp extends Mixin(LitElement)

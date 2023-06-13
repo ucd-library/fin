@@ -45,6 +45,7 @@ return html`
     <a href="#workflows">Workflows</a>
     <a href="#es-management">ES Management</a>
     <a href="#gcs">GCS</a>
+    <a href="#health">Health</a>
     <a href="#path-info">Path Info</a>
     <a href="#services">Services</a>
     <a href="#config">Config</a>
@@ -59,6 +60,7 @@ return html`
   <fin-admin-path-info id="path-info"></fin-admin-path-info>
   <fin-admin-services id="services"></fin-admin-services>
   <fin-admin-gcs id="gcs"></fin-admin-gcs>
+  <fin-admin-integration-tests id="health"></fin-admin-integration-tests>
   <fin-admin-config id="config"></fin-admin-config>
   <fin-admin-es-management id="es-management"></fin-admin-es-management>
 </ucdlib-pages>

@@ -78,6 +78,9 @@ module.exports = {
   activeMq : {
     hostname : fcrepoHostname,
     fcrepoTopic : '/topic/fedora',
+    // set to -1 to disable
+    testInterval : env.ACTIVEMQ_TEST_INTERVAL ? parseInt(env.ACTIVEMQ_TEST_INTERVAL) : 1000 * 60 * 5,
+    fcrepoTestPath : '/activemq',
     queues : {
       dbsync : '/queue/dbsync',
       gcssync : '/queue/gcssync',

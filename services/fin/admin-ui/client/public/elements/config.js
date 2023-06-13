@@ -206,6 +206,10 @@ const viewConfig = {
       }
       return standardRender(row, key);
     }
+  },
+
+  'health-last-events' : {
+    // ignoreKeys : ['id']
   }
 
 }

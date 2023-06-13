@@ -7,6 +7,9 @@ module.exports = {
     ActiveMqStompClient : require('./lib/activemq/stomp.js'),
     ActiveMqMqttClient : require('./lib/activemq/mqtt.js')
   },
+  tests : {
+    ActiveMqTests : require('./lib/activemq/integration-test.js')
+  },
   pg : require('./lib/pg'),
   utils : require('./lib/utils'),
   waitUntil : require('./lib/wait-until'),

@@ -11,6 +11,28 @@ END$$;
 CREATE OR REPLACE VIEW activemq_debug_log AS
   SELECT * FROM activemq.debug_log;
 
+CREATE OR REPLACE VIEW activemq_integration_test AS
+  SELECT * FROM activemq.integration_test;
+
+CREATE OR REPLACE VIEW activemq_integration_test_state AS
+  SELECT * FROM activemq.integration_test_state;
+
+CREATE OR REPLACE VIEW activemq_integration_test_stats AS
+  SELECT * FROM activemq.integration_test_stats
+  ORDER BY date_hour DESC;
+
+CREATE OR REPLACE FUNCTION activemq_integration_test_stats_window(days integer)
+  RETURNS TABLE(
+    date_hour timestamp,
+    action text,
+    min_timing integer,
+    max_timing integer,
+    average_timing float,
+    count integer
+  ) AS $$
+      SELECT * FROM activemq_integration_test_stats WHERE date_hour > NOW() - INTERVAL '1 days' * days;
+  $$ LANGUAGE SQL;
+
 CREATE OR REPLACE VIEW dbsync_event_queue AS
   SELECT * FROM dbsync.event_queue;
 
@@ -124,3 +146,4 @@ GRANT SELECT, INSERT, UPDATE, DELETE
 ON ALL TABLES IN SCHEMA restapi 
 TO admin_rest_api;
 GRANT USAGE ON SCHEMA restapi TO admin_rest_api;
+grant execute on all functions in schema restapi to admin_rest_api;
