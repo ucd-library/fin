@@ -4,6 +4,7 @@ const api = require('@ucd-lib/fin-api');
 const keycloak = require('../keycloak.js');
 const ActiveMqStompClient = require('./stomp.js');
 const pg = require('../pg.js');
+const {getContainerHostname} = require('../utils.js');
 const uuid = require('uuid').v4;
 
 class ActiveMqTests {
@@ -35,7 +36,20 @@ class ActiveMqTests {
       }
     }
 
+    this.wireAutomaticChecks(opts);
+  }
+
+  async wireAutomaticChecks(opts={}) {
     if( !opts.active ) return;
+
+    // check for docker compose scaling
+    // TODO improve this :/
+    let hostname = await getContainerHostname();
+    if( hostname.match(/-\d$/) && !hostname.match(/-1$/) ) {
+      logger.info('Not running ActiveMq integration tests on non-primary container: '+hostname);
+      return;
+    }
+    logger.info(hostname+' running automatic ActiveMq integration');
 
     this.client = new ActiveMqStompClient('integration-test');
     this.client.subscribe(config.activeMq.fcrepoTopic, this.handleMessage.bind(this));
@@ -99,7 +113,16 @@ class ActiveMqTests {
     
     let timing = Date.now() - new Date(parseInt(msg.headers.timestamp)).getTime();
     for( let updateType of updateTypes ) {
-      await this.updateAction(id, 'fcrepo-event-'+updateType, false, timing);
+      let action = 'fcrepo-event-'+updateType;
+
+      // check for duplicate events.  ActiveMQ can have a message read twice
+      let exists = await this.actionExists(id, action);
+
+      // still log even if exists
+      await this.updateAction(id, action, false, timing);
+
+      // but don't run next step if exists
+      if( exists ) continue;
 
       if( updateType === 'update' ) {
         await this.delete(id);
@@ -368,6 +391,14 @@ class ActiveMqTests {
       VALUES 
         ($1, $2, $3, $4, $5)
     `, [id, action, error, timing, message]);
+  }
+
+  async actionExists(id, action) {
+    let resp = await pg.query(`
+      SELECT * FROM ${this.schema}.integration_test_action
+      WHERE integration_test_id = $1 AND action = $2
+    `, [id, action]);
+    return (resp.rows.length > 0);
   }
 
   async get(id) {
