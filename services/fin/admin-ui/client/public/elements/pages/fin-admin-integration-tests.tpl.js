@@ -15,7 +15,13 @@ return html`
 
   <div>
   <h2 class="heading--weighted-underline">Latest Tests</h2>
-    <div>All times in milliseconds<div>
+    <div style="display:flex">
+      <div>All times in milliseconds</div>
+      <div style="flex:1"></div>
+      <div>
+      <button @click="${this.runTest}" class="btn btn--primary btn--round">Run Now</button>
+      </div>
+    </div>
     <fin-admin-data-table 
       name="health-last-events"
       hide-total

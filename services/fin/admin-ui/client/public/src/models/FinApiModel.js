@@ -13,6 +13,10 @@ class FinApiModel extends BaseModel {
     this.register('FinApiModel');
   }
 
+  runIntegrationTest() {
+    return this.service.runIntegrationTest();
+  }
+
   reindex(path, args) {
     return this.service.reindex(path, args);
   }

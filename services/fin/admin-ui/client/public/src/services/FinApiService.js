@@ -11,6 +11,15 @@ class FinApiService extends BaseService {
     this.store = FinApiStore;
   }
 
+  runIntegrationTest() {
+    return this.request({
+      url : '/fin/test/activemq',
+      fetchOptions : {
+        method: 'POST'
+      }
+    });
+  }
+
   reindex(path, args) {
     if( !args ) {
       args = {

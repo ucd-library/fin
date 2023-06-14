@@ -26,13 +26,21 @@ export default class FinAdminIntegrationTests extends Mixin(LitElement)
     this.statsData = [];
     this.lastEvents = [];
 
-    this._injectModel('AppStateModel', 'DataViewModel');
+    this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
   }
 
   _onAppStateUpdate(e) {
     if( e.page !== 'health' && this.page !== e.page ) return;
     this.page = e.page;
     this.refresh();
+  }
+
+  async runTest() {
+    let id = await this.FinApiModel.runIntegrationTest();
+    alert('Test started');
+    setTimeout(() => {
+      this.refresh();
+    }, 2000);
   }
 
   async refresh() {
