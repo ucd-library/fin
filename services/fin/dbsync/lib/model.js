@@ -1,22 +1,22 @@
-const {config, logger, tests, waitUntil, ActiveMqClient, models, RDF_URIS, workflow} = require('@ucd-lib/fin-service-utils');
+const { config, logger, tests, waitUntil, ActiveMqClient, models, RDF_URIS, workflow } = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const postgres = require('./postgres');
 const clone = require('clone');
 
-const {ActiveMqStompClient} = ActiveMqClient;
-const {ActiveMqTests} = tests;
+const { ActiveMqStompClient } = ActiveMqClient;
+const { ActiveMqTests } = tests;
 const activeMqTest = new ActiveMqTests();
 
 class DbSync {
 
   constructor() {
     this.READ_LOOP_WAIT = 2000;
-    this.PROCESS_QUEUE_CHECK_WAIT = 1000*60*5;
-    this.PROCESS_QUEUE_EXPIRE_TIME = 1000*60*10;
+    this.PROCESS_QUEUE_CHECK_WAIT = 1000 * 60 * 5;
+    this.PROCESS_QUEUE_EXPIRE_TIME = 1000 * 60 * 10;
 
     this.UPDATE_TYPES = {
-      UPDATE : ['Create', 'Update'],
-      DELETE : ['Delete', 'Purge']
+      UPDATE: ['Create', 'Update'],
+      DELETE: ['Delete', 'Purge']
     }
 
     this.init();
@@ -44,8 +44,8 @@ class DbSync {
   async readLoop() {
     try {
       let item = await postgres.nextMessage();
-      
-      if( !item ) {
+
+      if (!item) {
         setTimeout(() => this.readLoop(), this.READ_LOOP_WAIT);
         return;
       }
@@ -54,17 +54,17 @@ class DbSync {
       await postgres.clearMessage(item.event_id);
 
       this.readLoop();
-    } catch(e) {
+    } catch (e) {
       logger.error('DbSync readLoop error', e);
-      setTimeout(() => this.readLoop(), this.READ_LOOP_WAIT); 
+      setTimeout(() => this.readLoop(), this.READ_LOOP_WAIT);
     }
   }
 
   async validateLoop() {
     try {
       let item = await postgres.nextDataModelValidation();
-      
-      if( !item ) {
+
+      if (!item) {
         setTimeout(() => this.validateLoop(), this.READ_LOOP_WAIT);
         return;
       }
@@ -72,9 +72,9 @@ class DbSync {
       await this.runDataValidation(item.model, item.db_id);
 
       this.validateLoop();
-    } catch(e) {
+    } catch (e) {
       logger.error('DbSync nextDataModelValidation error', e);
-      setTimeout(() => this.validateLoop(), this.READ_LOOP_WAIT); 
+      setTimeout(() => this.validateLoop(), this.READ_LOOP_WAIT);
     }
   }
 
@@ -82,17 +82,17 @@ class DbSync {
     try {
       let messages = await postgres.getQueueProcessingMessages();
       let now = Date.now();
-      for( let msg of messages.rows ) {
+      for (let msg of messages.rows) {
         let diffms = now - new Date(msg.updated).getTime();
-        if( diffms < this.PROCESS_QUEUE_EXPIRE_TIME ) continue;
+        if (diffms < this.PROCESS_QUEUE_EXPIRE_TIME) continue;
 
-        logger.error('Failed to update, queue processing timeout: '+msg.path);
+        logger.error('Failed to update, queue processing timeout: ' + msg.path);
         msg.action = 'error';
-        msg.message = 'Failed to update, event was in queue with state of "processing" for more than '+(this.PROCESS_QUEUE_EXPIRE_TIME/(1000*60))+' minutes';
+        msg.message = 'Failed to update, event was in queue with state of "processing" for more than ' + (this.PROCESS_QUEUE_EXPIRE_TIME / (1000 * 60)) + ' minutes';
         await postgres.updateStatus(msg);
         await postgres.clearMessage(msg.event_id);
       }
-    } catch(e) {
+    } catch (e) {
       logger.error('DbSync processCheckQueueLoop error', e);
     }
 
@@ -104,47 +104,47 @@ class DbSync {
    * 
    */
   async handleMessage(msg) {
-    if( msg.headers['edu.ucdavis.library.eventType'] ) {
+    if (msg.headers['edu.ucdavis.library.eventType']) {
       let eventType = msg.headers['edu.ucdavis.library.eventType'];
 
-      if( eventType === activeMqTest.PING_EVENT_TYPE ) {
+      if (eventType === activeMqTest.PING_EVENT_TYPE) {
         return;
       }
 
       await postgres.queue({
-        event_id : msg.headers['message-id'],
-        event_timestamp : new Date(parseInt(msg.headers.timestamp)).toISOString(),
-        path : msg.body['@id'],
-        container_types : msg.body['@type'],
-        update_types : [eventType]
+        event_id: msg.headers['message-id'],
+        event_timestamp: new Date(parseInt(msg.headers.timestamp)).toISOString(),
+        path: msg.body['@id'],
+        container_types: msg.body['@type'],
+        update_types: [eventType]
       });
       return;
     }
 
     let e = {
-      event_id : msg.headers['org.fcrepo.jms.eventID'],
-      event_timestamp : new Date(parseInt(msg.headers['org.fcrepo.jms.timestamp'])).toISOString(),
-      path : msg.headers['org.fcrepo.jms.identifier'],
-      container_types : msg.headers['org.fcrepo.jms.resourceType']
+      event_id: msg.headers['org.fcrepo.jms.eventID'],
+      event_timestamp: new Date(parseInt(msg.headers['org.fcrepo.jms.timestamp'])).toISOString(),
+      path: msg.headers['org.fcrepo.jms.identifier'],
+      container_types: msg.headers['org.fcrepo.jms.resourceType']
         .split(',')
         .map(item => item.trim())
         .filter(item => item),
-      update_types : msg.body.type
+      update_types: msg.body.type
     };
 
     // for integration health tests, send ack message
-    if( e.container_types.includes(activeMqTest.TYPES.TEST_CONTAINER) || 
-        e.path.startsWith(config.activeMq.fcrepoTestPath) ) {
+    if (e.container_types.includes(activeMqTest.TYPES.TEST_CONTAINER) ||
+      e.path.startsWith(config.activeMq.fcrepoTestPath)) {
       await this.activemq.sendMessage(
         {
-          '@id' : e.path,
-          '@type' : e.container_types,
-          'http://schema.org/agent' : 'dbsync',
-          'http://schema.org/startTime' : e.event_timestamp,
-          'http://schema.org/endTime' : new Date().toISOString(),
-          'https://www.w3.org/ns/activitystreams': e.update_types.map(t => 'fcrepo-event-'+t)
+          '@id': e.path,
+          '@type': e.container_types,
+          'http://schema.org/agent': 'dbsync',
+          'http://schema.org/startTime': e.event_timestamp,
+          'http://schema.org/endTime': new Date().toISOString(),
+          'https://www.w3.org/ns/activitystreams': e.update_types.map(t => 'fcrepo-event-' + t)
         },
-        {'edu.ucdavis.library.eventType' : activeMqTest.PING_EVENT_TYPE}
+        { 'edu.ucdavis.library.eventType': activeMqTest.PING_EVENT_TYPE }
       );
     }
 
@@ -169,36 +169,36 @@ class DbSync {
     // update elasticsearch
     try {
       // check for integration test
-      if( e.container_types.includes(activeMqTest.TYPES.TEST_CONTAINER) || 
-          e.path.startsWith(config.activeMq.fcrepoTestPath) ) {
+      if (e.container_types.includes(activeMqTest.TYPES.TEST_CONTAINER) ||
+        e.path.startsWith(config.activeMq.fcrepoTestPath)) {
         await this.activemq.sendMessage(
           {
-            '@id' : e.path,
-            '@type' : e.container_types,
-            'http://schema.org/agent' : 'dbsync',
-            'http://schema.org/startTime' : e.event_timestamp,
-            'http://schema.org/endTime' : new Date().toISOString(),
+            '@id': e.path,
+            '@type': e.container_types,
+            'http://schema.org/agent': 'dbsync',
+            'http://schema.org/startTime': e.event_timestamp,
+            'http://schema.org/endTime': new Date().toISOString(),
             'https://www.w3.org/ns/activitystreams': 'data-model-update'
           },
-          {'edu.ucdavis.library.eventType' : activeMqTest.PING_EVENT_TYPE}
+          { 'edu.ucdavis.library.eventType': activeMqTest.PING_EVENT_TYPE }
         );
         return;
       }
 
       // hack.  on delete fedora doesn't send the types.  so we have to sniff from path
-      if( e.container_types.includes(this.WEBAC_CONTAINER) || e.path.match(/\/fcr:acl$/) ) {
+      if (e.container_types.includes(this.WEBAC_CONTAINER) || e.path.match(/\/fcr:acl$/)) {
         let rootPath = e.path.replace(/\/fcr:acl$/, '');
         let containerTypes = await this.getContainerTypes(rootPath);
-        
-        logger.info('ACL '+e.path+' updated, sending rendex event for: '+rootPath);
+
+        logger.info('ACL ' + e.path + ' updated, sending rendex event for: ' + rootPath);
 
         // send a reindex event for root container
         await this.activemq.sendMessage(
           {
-            '@id' : rootPath,
-            '@type' : containerTypes
+            '@id': rootPath,
+            '@type': containerTypes
           },
-          {'edu.ucdavis.library.eventType' : 'Reindex'}
+          { 'edu.ucdavis.library.eventType': 'Reindex' }
         );
       }
 
@@ -209,8 +209,8 @@ class DbSync {
 
       let boundedModels = await this.getModelsForEvent(e);
 
-      if( !boundedModels.length ) {
-        logger.info('Container '+e.path+' did not have a registered model, ignoring');
+      if (!boundedModels.length) {
+        logger.info('Container ' + e.path + ' did not have a registered model, ignoring');
 
         e.action = 'ignored';
         e.message = 'no model for container';
@@ -222,14 +222,14 @@ class DbSync {
       }
 
       let transformCache = new Map();
-      for( let model of boundedModels ) {
+      for (let model of boundedModels) {
         await this.updateModelContainer(e, model, transformCache);
       }
 
-    } catch(error) {
-      logger.error('Failed to update: '+e.path, error);
+    } catch (error) {
+      logger.error('Failed to update: ' + e.path, error);
       e.action = 'error';
-      e.message = error.message+'\n'+error.stack;
+      e.message = error.message + '\n' + error.stack;
       await postgres.updateStatus(e);
     }
   }
@@ -240,8 +240,8 @@ class DbSync {
       event.model = model.id;
 
       // check update_type is delete.
-      if( this.isDelete(event) ) {
-        logger.info('Container '+event.path+' was removed from LDP, removing from index');
+      if (this.isDelete(event)) {
+        logger.info('Container ' + event.path + ' was removed from LDP, removing from index');
 
         event.message = 'Container was removed from LDP';
         event.action = 'delete';
@@ -250,8 +250,8 @@ class DbSync {
       }
 
       // check for binary
-      if( event.container_types.includes(RDF_URIS.TYPES.BINARY) && !event.path.match(/\/fcr:metadata$/) ) {
-        logger.info('Ignoring container '+event.path+'. Is a raw binary');
+      if (event.container_types.includes(RDF_URIS.TYPES.BINARY) && !event.path.match(/\/fcr:metadata$/)) {
+        logger.info('Ignoring container ' + event.path + '. Is a raw binary');
 
         event.action = 'ignored';
         event.message = 'raw binary'
@@ -260,16 +260,16 @@ class DbSync {
       }
 
       // check for ignore types
-      for( let type of config.dbsync.ignoreTypes ) {
+      for (let type of config.dbsync.ignoreTypes) {
         // check for binary
-        if( event.container_types.includes(type) ) {
-          logger.info('Ignoring container '+event.path+'. Is of ignored type: '+type);
+        if (event.container_types.includes(type)) {
+          logger.info('Ignoring container ' + event.path + '. Is of ignored type: ' + type);
 
           event.action = 'ignored';
-          event.message = type+' container';
+          event.message = type + ' container';
           await postgres.updateStatus(event);
 
-          if( !event.path.match(/\/fcr:[a-z]+/) ) {
+          if (!event.path.match(/\/fcr:[a-z]+/)) {
             await this.remove(event, model);
           }
 
@@ -287,8 +287,8 @@ class DbSync {
       // under this condition, the acl may have been updated.  Remove item and any 
       // child items in elastic search.  We need to do it here so we can mark PG why we
       // did it.
-      if( response.last.statusCode !== 200 ) {
-        logger.info('Container '+event.path+' was publicly inaccessible ('+response.last.statusCode+') from LDP, removing from index. url='+response.last.request.url);
+      if (response.last.statusCode !== 200) {
+        logger.info('Container ' + event.path + ' was publicly inaccessible (' + response.last.statusCode + ') from LDP, removing from index. url=' + response.last.request.url);
 
         event.action = 'ignored';
         event.message = 'inaccessible';
@@ -299,12 +299,12 @@ class DbSync {
       }
 
       let jsonld = JSON.parse(response.last.body);
-      
+
 
       // if no esId, we don't add to elastic search
-      if( model.expectGraph === true ) {
-        if( !jsonld['@graph'] || !jsonld['@id']) {
-          logger.info('Container '+event.path+' ignored, no jsonld["@graph"] or jsonld["@id"] provided');
+      if (model.expectGraph === true) {
+        if (!jsonld['@graph'] || !jsonld['@id']) {
+          logger.info('Container ' + event.path + ' ignored, no jsonld["@graph"] or jsonld["@id"] provided');
 
           event.action = 'ignored';
           event.message = 'no jsonld["@graph"] or jsonld["@id"] provided';
@@ -312,8 +312,8 @@ class DbSync {
           return;
         }
 
-        if( !Array.isArray(jsonld['@graph']) || !jsonld['@graph'].length ) {
-          logger.info('Container '+event.path+' ignored, jsonld["@graph"] contains no nodes');
+        if (!Array.isArray(jsonld['@graph']) || !jsonld['@graph'].length) {
+          logger.info('Container ' + event.path + ' ignored, jsonld["@graph"] contains no nodes');
 
           event.action = 'ignored';
           event.message = 'jsonld["@graph"] contains no nodes';
@@ -323,11 +323,11 @@ class DbSync {
       }
 
       // store source if we have it
-      if( jsonld.source ) {
+      if (jsonld.source) {
         event.source = jsonld.source;
-      } else if( jsonld['@graph'] ) {
-        for( let node of jsonld['@graph'] ) {
-          if( node._ && node._.source ) {
+      } else if (jsonld['@graph']) {
+        for (let node of jsonld['@graph']) {
+          if (node._ && node._.source) {
             event.source = node._.source;
             break;
           }
@@ -335,32 +335,32 @@ class DbSync {
       }
 
       // set some of the fcrepo event information
-      if( jsonld['@graph'] ) {
-        for( let node of jsonld['@graph'] ) {
-          if( !node._ ) node._ = {};
+      if (jsonld['@graph']) {
+        for (let node of jsonld['@graph']) {
+          if (!node._) node._ = {};
 
           node._.event = {
-            id : event.event_id,
-            timestamp : event.event_timestamp,
-            updateType : event.update_types
+            id: event.event_id,
+            timestamp: event.event_timestamp,
+            updateType: event.update_types
           }
         }
       } else {
-        if( !jsonld._ ) jsonld._ = {};
+        if (!jsonld._) jsonld._ = {};
         jsonld._.event = {
-          id : event.event_id,
-          timestamp : event.event_timestamp,
-          updateType : event.update_types
+          id: event.event_id,
+          timestamp: event.event_timestamp,
+          updateType: event.update_types
         }
       }
 
       event.action = 'updated';
 
       await this.update(event, model, jsonld);
-    } catch(error) {
-      logger.error('Failed to update: '+event.path, error);
+    } catch (error) {
+      logger.error('Failed to update: ' + event.path, error);
       event.action = 'error';
-      event.message = error.message+'\n'+error.stack;
+      event.message = error.message + '\n' + error.stack;
       await postgres.updateStatus(event);
     }
   }
@@ -375,22 +375,22 @@ class DbSync {
    * @returns 
    */
   async getContainerTypes(event) {
-    if( event.container_types && event.container_types.length ) {
+    if (event.container_types && event.container_types.length) {
       return event.container_types;
     }
 
-    if( !this.isDelete(event) ) {
+    if (!this.isDelete(event)) {
 
       let response = await api.head({
-        path : event.path,
-        directAccess : true,
-        superuser : true,
+        path: event.path,
+        directAccess: true,
+        superuser: true,
         host: config.fcrepo.host
       });
 
-      if( response.last.statusCode === 200 ) {
+      if (response.last.statusCode === 200) {
         var link = response.last.headers['link'];
-        if( link ) {
+        if (link) {
           link = api.parseLinkHeader(link);
           return link.type || [];
         }
@@ -399,10 +399,10 @@ class DbSync {
 
     // fallback, check if there is a last now container type in postgres
     let status = await postgres.getStatus(event.path);
-    if( !status ) return [];
+    if (!status) return [];
 
-    for( let item of status ) {
-      if( item.container_types ) {
+    for (let item of status) {
+      if (item.container_types) {
         return item.container_types;
       }
     }
@@ -424,7 +424,7 @@ class DbSync {
   //     let urlInfo = new URL(path);
   //     path = urlInfo.pathname;
   //   }
-    
+
   //   path = path.split('/');
   //   for( var i = 0; i < path.length; i++ ) {
   //     if( path[i].match(/^\./) ) {
@@ -451,27 +451,27 @@ class DbSync {
     let headers = {};
 
     let servicePath = '';
-    if( model.transformService ) {
+    if (model.transformService) {
       path = path.replace(/\/fcr:(metadata|acl)$/, '');
-      servicePath = path+`/svc:${model.transformService}`;
+      servicePath = path + `/svc:${model.transformService}`;
     } else {
       headers = {
-        accept : api.GET_JSON_ACCEPT.COMPACTED
+        accept: api.GET_JSON_ACCEPT.COMPACTED
       }
     }
 
-    if( transformCache.has(servicePath || path) ) {
+    if (transformCache.has(servicePath || path)) {
       return transformCache.get(servicePath || path);
     }
 
     var response = await api.get({
-      host : config.gateway.host,
-      path : servicePath || path, 
+      host: config.gateway.host,
+      path: servicePath || path,
       headers,
-      jwt : ''
+      jwt: ''
     });
 
-    response.service = config.server.url+config.fcrepo.root+(servicePath || path);
+    response.service = config.server.url + config.fcrepo.root + (servicePath || path);
 
     // set cache for any other models that use this path/transform service combo
     transformCache.set(servicePath || path, response);
@@ -496,20 +496,20 @@ class DbSync {
    * @description trigger data model(s) update method.  Log the event and result
    */
   async update(event, model, json) {
-    if( !json ) throw new Error('update data is null');
+    if (!json) throw new Error('update data is null');
 
-    logger.info('Updating '+event.path+' with '+model.id+' model');
+    logger.info('Updating ' + event.path + ' with ' + model.id + ' model');
 
-    if( json['@graph'] ) {
-      for( let node of json['@graph'] ) {
-        if( !node._ ) node._ = {};
+    if (json['@graph']) {
+      for (let node of json['@graph']) {
+        if (!node._) node._ = {};
         node._.updated = new Date();
       }
     } else {
-      if( !json._ ) json._ = {};
+      if (!json._) json._ = {};
       json._.updated = new Date();
     }
-    
+
     event.dbResponse = await model.update(json);
 
     event.dbId = await this.queueDataValidation(model, event.path, json);
@@ -529,14 +529,14 @@ class DbSync {
    * @returns {Promise}
    */
   async queueDataValidation(model, finPath, json) {
-    if( !model.validate ) return;
-    if( !model.get ) return;
-    if( !model.getPrimaryKey ) return;
+    if (!model.validate) return;
+    if (!model.get) return;
+    if (!model.getPrimaryKey) return;
 
     let dbId = await model.getPrimaryKey(finPath, json);
-    
-    if( !dbId ) {
-      logger.warn('Could not get db_id for '+finPath+', model '+model.id);
+
+    if (!dbId) {
+      logger.warn('Could not get db_id for ' + finPath + ', model ' + model.id);
       return;
     }
 
@@ -546,34 +546,34 @@ class DbSync {
   }
 
   async runDataValidation(modelId, dbId) {
-    logger.info('Running data validation for '+modelId+' '+dbId);
+    logger.info('Running data validation for ' + modelId + ' ' + dbId);
     let validateResponse;
 
     try {
-      let {model} = await models.get(modelId);
+      let { model } = await models.get(modelId);
       let graph = await model.get(dbId);
 
-      if( !graph ) {
+      if (!graph) {
         validateResponse = {
-          comments : ['No data found for '+modelId+' '+dbId]
+          comments: ['No data found for ' + modelId + ' ' + dbId]
         }
       } else {
         validateResponse = await model.validate(graph);
       }
-    } catch(e) {
-      logger.error('Error running data validation for '+modelId+' '+dbId, e);
+    } catch (e) {
+      logger.error('Error running data validation for ' + modelId + ' ' + dbId, e);
       validateResponse = {
-        errors : ['Error running data validation for '+modelId+' '+dbId+'. '+e.message+' '+e.stack]
+        errors: ['Error running data validation for ' + modelId + ' ' + dbId + '. ' + e.message + ' ' + e.stack]
       }
     }
 
     let pgParams = {
-      db_id : dbId,
-      model : modelId,
-      response : {
-        errors : validateResponse.errors || [],
-        warnings : validateResponse.warnings || [],
-        comments : validateResponse.comments || []
+      db_id: dbId,
+      model: modelId,
+      response: {
+        errors: validateResponse.errors || [],
+        warnings: validateResponse.warnings || [],
+        comments: validateResponse.comments || []
       }
     };
 
@@ -584,12 +584,12 @@ class DbSync {
     let result = [];
 
     let modelNames = await models.names();
-    for( let name of modelNames ) {
-      let {model} = await models.get(name);
-      if( model ) {
+    for (let name of modelNames) {
+      let { model } = await models.get(name);
+      if (model) {
         let isModel = model.is(event.path, event.container_types, event.workflow_types);
-        if( !isModel ) continue;
-        result.push(model);  
+        if (!isModel) continue;
+        result.push(model);
       }
     }
 
@@ -605,17 +605,17 @@ class DbSync {
    */
   async removeInaccessableChildren(e, model) {
     let path = e.path;
-    if( path.match(/\/fcr:.+$/) ) {
+    if (path.match(/\/fcr:.+$/)) {
       path = path.replace(/\/fcr:.+$/, '');
     }
 
     // if something like /fcr:acl was updated, make sure the container is updated
-    if( path !== e.path ) {
-      logger.info('Container '+e.path+' was publicly inaccessible from LDP, removing '+path+' from index.');
+    if (path !== e.path) {
+      logger.info('Container ' + e.path + ' was publicly inaccessible from LDP, removing ' + path + ' from index.');
 
       let fakeEvent = Object.assign({}, e);
       fakeEvent.action = 'ignored';
-      fakeEvent.message = e.path+' inaccessible'
+      fakeEvent.message = e.path + ' inaccessible'
       fakeEvent.path = path;
 
       await this.remove(fakeEvent, model);
@@ -624,12 +624,12 @@ class DbSync {
     // ask postgres for all children of this path
     let children = (await postgres.getChildren(path)) || [];
 
-    for( let childPath of children ) {
-      logger.info('Container '+path+' was publicly inaccessible from LDP, removing child '+childPath+' from index.');
+    for (let childPath of children) {
+      logger.info('Container ' + path + ' was publicly inaccessible from LDP, removing child ' + childPath + ' from index.');
       let fakeEvent = Object.assign({}, e);
 
       fakeEvent.action = 'ignored';
-      fakeEvent.message = 'parent '+path+' inaccessible'
+      fakeEvent.message = 'parent ' + path + ' inaccessible'
       fakeEvent.path = childPath;
 
       await this.remove(fakeEvent, model);

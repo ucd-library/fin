@@ -73,6 +73,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     try {
       this.children = [];
       this.properties = [];
+      this.ldpLinks = [];
       let resp = await this.FinApiModel.getContainer(this.path);
       let container = JSON.parse(resp.body);
       this.setChildren(container);
@@ -220,12 +221,22 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     });
   }
 
-  _onReindexClick() { 
-    console.log(this.path);
+  _onReindexClick() {
     let path = this.path.replace('/fcr:metadata', '');
+    let isBinary = this.currentPaths.includes(path+'/fcr:metadata');
+
     document
       .querySelector('fin-admin-reindex-path')
-      .open({path});
+      .open({path, isBinary});
+  }
+
+  _onPgQueryUpdate(e) {
+    if( e.name !== 'path-info-dbsync' ) return;
+    if( e.state !== 'loaded' ) return;
+
+    this.currentPaths = new Set();
+    e.payload.forEach(row => this.currentPaths.add(row.path));
+    this.currentPaths = Array.from(this.currentPaths);
   }
 
   _onWorkflowDeleteClick(e) {

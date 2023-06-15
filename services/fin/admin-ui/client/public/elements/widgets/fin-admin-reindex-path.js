@@ -32,6 +32,7 @@ export default class FinAdminReindexPath extends Mixin(LitElement)
 
   open(e) {
     this.path = e.path;
+    this.isBinary = e.isBinary;
     document.body.style.overflow = 'hidden';
     this.style.display = 'flex';
     
@@ -59,10 +60,14 @@ export default class FinAdminReindexPath extends Mixin(LitElement)
       opts['no-crawl'] = true;
     }
 
+    if( this.isBinary ) {
+      opts['is-binary'] = true;
+    }
+
     let resp = await this.FinApiModel.reindex(this.path, opts);
     let httpResp = resp.response;
     if( httpResp.status !== 200 ) {
-      alert('Failed to reindex path: '+httpResp.status);
+      alert('Failed to reindex '+this.path+': '+httpResp.status);
       return;
     }
     this.close();

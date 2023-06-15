@@ -32,6 +32,7 @@ async function renderIndex(req, res) {
   let noCrawl = (req.query['no-crawl'] || '').toLowerCase() === 'true';
   let noRedirect = (req.query['no-redirect'] || '').toLowerCase() === 'true';
   let writeIndex = req.query['write-index'] || null;
+  let isBinary = (req.query['is-binary'] || '').toLowerCase() === 'true';
 
   // if( req.query.status === 'true' ) {
   //   if( !status ) status = {status : 'none'};
@@ -46,7 +47,7 @@ async function renderIndex(req, res) {
 
   try {
     let crawler = new ReindexCrawler(path, {
-      follow, noCrawl, writeIndex
+      follow, noCrawl, writeIndex, isBinary
     });
 
     crawler.reindex();

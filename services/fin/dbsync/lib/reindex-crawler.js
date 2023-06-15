@@ -103,6 +103,10 @@ class ReindexCrawler {
       // this was a reindex of a delete path
       if( path === this.rootPath ) {
         await this.sendReindexEvent({'@id' : path}, writeIndex);
+
+        if( this.options.isBinary ) {
+          await this.sendReindexEvent({'@id' : path+'/fcr:metadata'}, writeIndex);
+        }
       }
       return;
     }
