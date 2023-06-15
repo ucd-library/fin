@@ -68,41 +68,45 @@ export default class FinAdminIntegrationTests extends Mixin(LitElement)
       'activemq-integration-test-state'
     );
 
-    let actions = new Set();
-    let tests = {};
+    let allData = {};
 
     results.payload.forEach(result => {
-      actions.add(result.action);
-      if( !tests[result.id] ) {
-        tests[result.id] = {
-          id: result.id,
-          created: result.created
-        };
-      }
-      tests[result.id][result.action] = result.timing;
-    });
-    actions = Array.from(actions);
-
-    for( let id in tests ) {
-      for( let action of actions ) {
-        if( !tests[id][action] ) {
-          tests[id][action] = 'N/A';
+      if( !allData[result.id] ) {
+        allData[result.id] = {
+          timestamp : new Date(result.created).getTime(),
+          name: this._formatDate(result.created),
+          rows : []
         }
       }
-    }
+      let rows = allData[result.id].rows;
+    
+      rows.push([
+        result.agent, result.action, new Date(result.start), new Date(result.stop)
+      ]);
+    });
+    
+    let lastEvents = Object.values(allData);
+    lastEvents.sort((a, b) => b.timestamp - a.timestamp);
 
-    // now flip
-    let tmp = [];
-    for( let action of actions ) {
-      let row = {action};
-      for( let id in tests ) {
-        let niceDate = this._formatDate(tests[id].created);
-        row[niceDate] = tests[id][action];
-      }
-      tmp.push(row);
-    }
+    // console.log(this.lastEvents)
 
-    this.lastEvents = tmp;
+    this.lastEvents = lastEvents
+      .map(stat => {
+        let dt = new google.visualization.DataTable();
+        dt.addColumn({ type: 'string', id: 'Service' });
+        dt.addColumn({ type: 'string', id: 'Action' });
+        dt.addColumn({ type: 'date', id: 'Start' });
+        dt.addColumn({ type: 'date', id: 'End' });
+        dt.addRows(stat.rows);
+    
+        return {
+          name: stat.name,
+          data: dt,
+          options : {
+            height: 300
+          }
+        }
+      });
   }
 
   _formatDate(value) {
@@ -121,13 +125,13 @@ export default class FinAdminIntegrationTests extends Mixin(LitElement)
     );
 
     let stats = new Set();
-    results.payload.forEach(result => stats.add(result.action));
+    results.payload.forEach(result => stats.add(result.agent+': '+result.action));
     
     let statsData = {};
     Array.from(stats).forEach(stat => statsData[stat] = {name: stat, data: []});
 
     results.payload.forEach(result => {
-      statsData[result.action].data.push([
+      statsData[result.agent+': '+result.action].data.push([
         new Date(result.date_hour+'.000Z'),
         result.min_timing,
         result.max_timing,

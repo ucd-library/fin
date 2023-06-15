@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS event_queue (
   status dbsync_message_status NOT NULL DEFAULT 'pending',
   event_id TEXT NOT NULL UNIQUE,
   event_timestamp timestamp NOT NULL
+  UNIQUE(path, status)
 );
 CREATE INDEX IF NOT EXISTS event_queue_path_idx ON event_queue (path);
 CREATE INDEX IF NOT EXISTS event_queue_created_idx ON event_queue (updated);

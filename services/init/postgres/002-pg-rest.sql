@@ -25,6 +25,7 @@ CREATE OR REPLACE FUNCTION activemq_integration_test_stats_window(days integer)
   RETURNS TABLE(
     date_hour timestamp,
     action text,
+    agent text,
     min_timing integer,
     max_timing integer,
     average_timing float,

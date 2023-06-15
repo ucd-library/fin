@@ -11,6 +11,10 @@ class ActiveMqTests {
 
   constructor(opts={}) {
     if( !opts.active ) opts.active = false;
+    if( opts.active && !opts.agent ) {
+      throw new Error('ActiveMqTests requires agent when active');
+    }
+    this.agent = opts.agent;
 
     this.schema = 'activemq';
 
@@ -95,12 +99,16 @@ class ActiveMqTests {
       if( !Array.isArray(updateTypes) ) updateTypes = [updateTypes];
       updateTypes = updateTypes.map(type => type.toLowerCase());
       
-      let author = msg.body['http://schema.org/author'];
-      let timing = msg.body['http://digital.ucdavis.edu/schema#timing'];
+      let agent = msg.body['http://schema.org/agent'];
+      let startTime = msg.body['http://schema.org/startTime'];
+      let endTime = msg.body['http://schema.org/endTime'];
 
       for( let updateType of updateTypes ) {
-        let action = [author, 'event', updateType]
-        await this.updateAction(id, action.join('-'), false, timing);
+        try {
+          await this.updateAction(id, agent, updateType, false, startTime, endTime);
+        } catch(e) {
+          logger.error('Failed to add integration test action: ', e);
+        }
       }
 
       return;
@@ -111,15 +119,16 @@ class ActiveMqTests {
     updateTypes = msg.body.type;
     updateTypes = updateTypes.map(type => type.toLowerCase());
     
-    let timing = Date.now() - new Date(parseInt(msg.headers.timestamp)).getTime();
+    let startTime = new Date(parseInt(msg.headers.timestamp));
+    let endTime = new Date();
     for( let updateType of updateTypes ) {
       let action = 'fcrepo-event-'+updateType;
 
       // check for duplicate events.  ActiveMQ can have a message read twice
-      let exists = await this.actionExists(id, action);
+      let exists = await this.actionExists(id, this.agent, action);
 
       // still log even if exists
-      await this.updateAction(id, action, false, timing);
+      await this.updateAction(id, this.agent, action, false, startTime, endTime);
 
       // but don't run next step if exists
       if( exists ) continue;
@@ -148,7 +157,7 @@ class ActiveMqTests {
     let jwt = await keycloak.getServiceAccountToken();
     let finPath = `${config.activeMq.fcrepoTestPath}/${id}`;
 
-    let timing = Date.now();
+    let startTime = new Date();
     let get = await api.get({
       path : finPath,
       host : config.gateway.host,
@@ -156,14 +165,14 @@ class ActiveMqTests {
       superuser : false,
       jwt
     });
-    timing = Date.now() - timing;
+    let endTime = new Date();
 
     if( get.last.statusCode !== 200 ) {
       let message = 'Failed to get test container: ' + get.last.statusCode + ' ' + get.last.body;
-      await this.updateAction(id, this.ACTIONS.HTTP.GET, true, timing, message);
+      await this.updateAction(id, this.agent, this.ACTIONS.HTTP.GET, true, startTime, endTime, message);
       logger.error(message);
     } else {
-      await this.updateAction(id, this.ACTIONS.HTTP.GET, false, timing);
+      await this.updateAction(id, this.agent, this.ACTIONS.HTTP.GET, false, startTime, endTime);
     }
 
     let jsonld = {
@@ -177,7 +186,7 @@ class ActiveMqTests {
       'schema:description' : 'updated'
     };
 
-    timing = Date.now();
+    startTime = new Date();
     let put = await api.put({
       path : finPath,
       host : config.gateway.host,
@@ -189,16 +198,16 @@ class ActiveMqTests {
       superuser : false,
       jwt
     });
-    timing = Date.now() - timing;
+    endTime = new Date();
 
     if( put.last.statusCode !== 204 ) {
       let message = 'Failed to update test container: ' + put.last.statusCode + ' ' + put.last.body;
-      await this.updateAction(id, this.ACTIONS.HTTP.PUT_UPDATE, true, timing, message);
+      await this.updateAction(id, this.agent, this.ACTIONS.HTTP.PUT_UPDATE, true, startTime, endTime, message);
       logger.error(message);
       return;
     }
 
-    await this.updateAction(id, this.ACTIONS.HTTP.PUT_UPDATE, false, timing);
+    await this.updateAction(id, this.agent, this.ACTIONS.HTTP.PUT_UPDATE, false, startTime, endTime);
   }
 
   /**
@@ -214,7 +223,7 @@ class ActiveMqTests {
     let jwt = await keycloak.getServiceAccountToken();
     let finPath = `${config.activeMq.fcrepoTestPath}/${id}`;
 
-    let timing = Date.now();
+    let startTime = new Date();
     let del = await api.delete({
       path : finPath,
       host : config.gateway.host,
@@ -222,22 +231,22 @@ class ActiveMqTests {
       superuser : false,
       jwt
     });
-    timing = Date.now() - timing;
+    let endTime = new Date();
 
     if( del.last.statusCode !== 204 ) {
       let message = 'Failed to delete test container: ' + del.last.statusCode + ' ' + del.last.body;
-      await this.updateAction(id, this.ACTIONS.HTTP.DELETE, true, timing, message);
+      await this.updateAction(id, this.agent, this.ACTIONS.HTTP.DELETE, true, startTime, endTime, message);
       logger.error(message);
       return;
     }
-    await this.updateAction(id, this.ACTIONS.HTTP.DELETE, false, timing);
+    await this.updateAction(id, this.agent, this.ACTIONS.HTTP.DELETE, false, startTime, endTime);
   }
 
   async purge(id) {
     let jwt = await keycloak.getServiceAccountToken();
     let finPath = `${config.activeMq.fcrepoTestPath}/${id}`;
 
-    let timing = Date.now();
+    let startTime = new Date();
     let del = await api.delete({
       path : finPath+'/fcr:tombstone',
       host : config.gateway.host,
@@ -245,16 +254,16 @@ class ActiveMqTests {
       superuser : false,
       jwt
     });
-    timing = Date.now() - timing;
+    let endTime = new Date();
 
     if( del.last.statusCode !== 204 ) {
       let message = 'Failed to delete test container tombstone: ' + del.last.statusCode + ' ' + del.last.body;
-      await this.updateAction(id, this.ACTIONS.HTTP.DELETE_TOMBSTONE, true, timing, message);
+      await this.updateAction(id, this.agent, this.ACTIONS.HTTP.DELETE_TOMBSTONE, true, startTime, endTime, message);
       logger.error(message);
       return;
     }
 
-    await this.updateAction(id, this.ACTIONS.HTTP.DELETE_TOMBSTONE, false, timing);
+    await this.updateAction(id, this.agent, this.ACTIONS.HTTP.DELETE_TOMBSTONE, false, startTime, endTime);
   }
 
   /**
@@ -287,7 +296,7 @@ class ActiveMqTests {
       'schema:description' : 'created'
     };
 
-    let timing = Date.now();
+    let startTime = new Date();
     let put = await api.put({
       path : finPath,
       host : config.gateway.host,
@@ -299,15 +308,15 @@ class ActiveMqTests {
       superuser : false,
       jwt
     });
-    timing = Date.now() - timing;
+    let endTime = new Date();
 
     if( put.last.statusCode !== 201 ) {
       let message = 'Failed to create test container: ' + put.last.statusCode + ' ' + put.last.body;
-      await this.updateAction(id, this.ACTIONS.HTTP.PUT_CREATE, true, timing, message);
+      await this.updateAction(id, this.agent, this.ACTIONS.HTTP.PUT_CREATE, true, startTime, endTime, message);
       throw new Error(message);
     }
 
-    await this.updateAction(id, this.ACTIONS.HTTP.PUT_CREATE, false, timing);
+    await this.updateAction(id, this.agent, this.ACTIONS.HTTP.PUT_CREATE, false, startTime, endTime);
 
     return id;
   }
@@ -378,26 +387,31 @@ class ActiveMqTests {
    * @description Update the status of a test action in the database
    * 
    * @param {String} id test id
+   * @param {String} agent agent that performed the action
    * @param {String} action test action (see this.ACTIONS) 
    * @param {Boolean} error did an error orccur, for http requests 
-   * @param {Number} timing time event or request took in ms
+   * @param {Date} startTime start time of action
+   * @param {Date} endTime end time of action
    * @param {String} message Optional message 
    * @returns 
    */
-  updateAction(id, action, error=false, timing, message) {
+  updateAction(id, agent, action, error=false, startTime, endTime, message) {
+    if( typeof startTime === 'object' ) startTime = startTime.toISOString();
+    if( typeof endTime === 'object' ) endTime = endTime.toISOString();
+
     return pg.query(`
       INSERT INTO ${this.schema}.integration_test_action 
-        (integration_test_id, action, error, timing, message)
+        (integration_test_id, action, agent, error, start, stop, message)
       VALUES 
-        ($1, $2, $3, $4, $5)
-    `, [id, action, error, timing, message]);
+        ($1, $2, $3, $4, $5, $6, $7)
+    `, [id, action, agent, error, startTime, endTime, message]);
   }
 
-  async actionExists(id, action) {
+  async actionExists(id, agent, action) {
     let resp = await pg.query(`
       SELECT * FROM ${this.schema}.integration_test_action
-      WHERE integration_test_id = $1 AND action = $2
-    `, [id, action]);
+      WHERE integration_test_id = $1 AND action = $3 AND agent = $2
+    `, [id, agent, action]);
     return (resp.rows.length > 0);
   }
 

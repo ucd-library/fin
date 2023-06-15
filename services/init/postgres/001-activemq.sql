@@ -28,8 +28,10 @@ CREATE TABLE IF NOT EXISTS integration_test_action (
   integration_test_id TEXT NOT NULL REFERENCES integration_test(id),
   error BOOLEAN NOT NULL DEFAULT FALSE,
   action TEXT NOT NULL,
-  timing INTEGER,
+  agent TEXT NOT NULL,
   message TEXT,
+  start timestamp NOT NULL,
+  stop timestamp NOT NULL,
   timestamp timestamp NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS integration_test_action_integration_test_id_idx ON integration_test_action(integration_test_id);
@@ -45,7 +47,10 @@ CREATE OR REPLACE VIEW integration_test_state AS
     it.created AS created,
     ita.action AS action,
     ita.error AS error,
-    ita.timing as timing,
+    ita.start as start,
+    ita.stop as stop,
+    ita.agent AS agent,
+    EXTRACT(milliseconds FROM ita.stop - ita.start) AS timing,
     ita.message AS message,
     ita.timestamp AS timestamp
   FROM integration_test it
@@ -54,17 +59,14 @@ CREATE OR REPLACE VIEW integration_test_state AS
 
 CREATE OR REPLACE VIEW integration_test_stats AS
   SELECT
-    DATE_TRUNC('hour', it.created) AS date_hour,
-    ita.action AS action,
-    MIN(ita.timing) as min_timing,
-    MAX(ita.timing) as max_timing,
-    AVG(ita.timing) as average_timing,
-    COUNT(ita.timing) as count
-  FROM 
-    integration_test it
-  LEFT JOIN 
-    integration_test_action ita 
-  ON 
-    ita.integration_test_id = it.id AND ita.error = false
-  GROUP BY action, date_hour
+    DATE_TRUNC('hour', its.created) AS date_hour,
+    its.action AS action,
+    its.agent AS agent,
+    MIN(its.timing) as min_timing,
+    MAX(its.timing) as max_timing,
+    AVG(its.timing) as average_timing,
+    COUNT(its.timing) as count
+  FROM
+    integration_test_state its
+  GROUP BY action, date_hour, agent
   ORDER BY date_hour DESC;

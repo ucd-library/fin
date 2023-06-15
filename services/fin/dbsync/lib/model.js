@@ -121,7 +121,7 @@ class DbSync {
       return;
     }
 
-    await postgres.queue({
+    let e = {
       event_id : msg.headers['org.fcrepo.jms.eventID'],
       event_timestamp : new Date(parseInt(msg.headers['org.fcrepo.jms.timestamp'])).toISOString(),
       path : msg.headers['org.fcrepo.jms.identifier'],
@@ -130,7 +130,25 @@ class DbSync {
         .map(item => item.trim())
         .filter(item => item),
       update_types : msg.body.type
-    });
+    };
+
+    // for integration health tests, send ack message
+    if( e.container_types.includes(activeMqTest.TYPES.TEST_CONTAINER) || 
+        e.path.startsWith(config.activeMq.fcrepoTestPath) ) {
+      await this.activemq.sendMessage(
+        {
+          '@id' : e.path,
+          '@type' : e.container_types,
+          'http://schema.org/agent' : 'dbsync',
+          'http://schema.org/startTime' : e.event_timestamp,
+          'http://schema.org/endTime' : new Date().toISOString(),
+          'https://www.w3.org/ns/activitystreams': e.update_types.map(t => 'fcrepo-event-'+t)
+        },
+        {'edu.ucdavis.library.eventType' : activeMqTest.PING_EVENT_TYPE}
+      );
+    }
+
+    await postgres.queue(e);
   }
 
   // isUpdate(e) {
@@ -157,9 +175,10 @@ class DbSync {
           {
             '@id' : e.path,
             '@type' : e.container_types,
-            'http://schema.org/author' : 'dbsync',
-            'http://digital.ucdavis.edu/schema#timing' : Date.now() - new Date(e.event_timestamp).getTime(),
-            'https://www.w3.org/ns/activitystreams': e.update_types 
+            'http://schema.org/agent' : 'dbsync',
+            'http://schema.org/startTime' : e.event_timestamp,
+            'http://schema.org/endTime' : new Date().toISOString(),
+            'https://www.w3.org/ns/activitystreams': 'data-model-update'
           },
           {'edu.ucdavis.library.eventType' : activeMqTest.PING_EVENT_TYPE}
         );

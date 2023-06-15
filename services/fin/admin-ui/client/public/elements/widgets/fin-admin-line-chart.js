@@ -10,6 +10,10 @@ export default class FinAdminLineChart extends Mixin(LitElement)
   static get properties() {
     return {
       data : {type: Object},
+      chartType : {
+        type: String,
+        attribute: 'chart-type'
+      },
     }
   }
 
@@ -21,6 +25,7 @@ export default class FinAdminLineChart extends Mixin(LitElement)
     super();
     this.render = render.bind(this);
     this.data = {};
+    this.chartType = 'AnnotationChart';
   }
 
   firstUpdated() {
@@ -37,7 +42,7 @@ export default class FinAdminLineChart extends Mixin(LitElement)
     await chartLoader.load();
 
     if( !this.chart ) {
-      this.chart = new google.visualization.AnnotationChart(this.chartEle);
+      this.chart = new google.visualization[this.chartType](this.chartEle);
     }
 
     let options = this.options;

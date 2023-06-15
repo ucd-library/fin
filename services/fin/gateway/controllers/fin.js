@@ -9,7 +9,10 @@ const transactionHelper = require('../lib/transactions.js');
 const gcsConfig = require('../../gcs/lib/config.js');
 const {ActiveMqTests} = tests;
 
-let activeMqTest = new ActiveMqTests({active: true});
+let activeMqTest = new ActiveMqTests({
+  active: true,
+  agent : 'gateway'
+});
 
 let proxy = httpProxy.createProxyServer({
   ignorePath : true

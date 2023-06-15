@@ -22,11 +22,16 @@ return html`
       <button @click="${this.runTest}" class="btn btn--primary btn--round">Run Now</button>
       </div>
     </div>
-    <fin-admin-data-table 
-      name="health-last-events"
-      hide-total
-      .rawData="${this.lastEvents}">
-    </fin-admin-data-table>
+    ${this.lastEvents.map((stat) => html`
+      <div style="margin-bottom: 40px">
+        <h3>${stat.name}</h3>
+        <fin-admin-line-chart 
+          chart-type="Timeline"
+          .data="${stat.data}" 
+          .options="${stat.options}">
+        </fin-admin-line-chart>
+      </div>
+    `)}
   </div>
 
   <h2 class="heading--weighted-underline">Test Stats</h2>
@@ -36,5 +41,4 @@ return html`
       <fin-admin-line-chart .data="${stat.data}" .options="${stat.options}"></fin-admin-line-chart>
     </div>
   `)}
-
 `;}

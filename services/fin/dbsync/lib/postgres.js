@@ -83,8 +83,17 @@ class DbSyncPostgresUtils {
     if( !args.container_types ) args.container_types = [];
 
     await this.pg.query(`
-    INSERT INTO ${this.schema}.event_queue (path, event_id, event_timestamp, container_types, update_types, status) 
-    VALUES ($1, $2, $3, $4, $5, 'pending')
+      INSERT INTO ${this.schema}.event_queue 
+        (path, event_id, event_timestamp, container_types, update_types, status) 
+      VALUES 
+        ($1, $2, $3, $4, $5, 'pending')
+      ON CONFLICT (path, status) DO UPDATE SET
+        event_id = $2,
+        event_timestamp = $3,
+        container_types = $4,
+        update_types = $5,
+        status = 'pending',
+        updated = now()
     ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types]);
   }
 

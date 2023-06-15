@@ -2,7 +2,7 @@
 class GoogleChartLoader {
 
   constructor() {
-    this.packages = ['annotationchart'];
+    this.packages = ['annotationchart', 'timeline'];
 
     this.loaded = false;
     this.loading = new Promise((resolve, reject) => {
