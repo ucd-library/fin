@@ -43,8 +43,15 @@ class DbSyncPostgresUtils {
   async nextMessage() {
     // let resp = await this.pg.query(`SELECT * FROM ${this.schema}.event_queue order by updated limit 1`);
     let resp = await this.pg.query(`
-      UPDATE ${this.schema}.event_queue SET status = 'processing' WHERE event_queue_id = (
-        SELECT event_queue_id FROM ${this.schema}.event_queue WHERE status = 'pending' ORDER BY updated ASC LIMIT 1 FOR UPDATE SKIP LOCKED
+      UPDATE ${this.schema}.event_queue SET status = 'processing', updated = NOW() WHERE event_queue_id = (
+        SELECT 
+          event_queue_id 
+        FROM 
+          ${this.schema}.event_queue 
+        WHERE 
+          status = 'pending' 
+        ORDER BY updated ASC 
+        LIMIT 1 FOR UPDATE SKIP LOCKED
       ) RETURNING *;
     `);
     if( !resp.rows.length ) return null;
