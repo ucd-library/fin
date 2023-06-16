@@ -125,7 +125,8 @@ BEGIN
   FROM 
     update_status 
   WHERE 
-    path = path_in AND model = model_in;
+    path = path_in AND model = model_in
+  FOR UPDATE;
 
   IF usid IS NULL THEN
     INSERT INTO 
@@ -174,7 +175,8 @@ BEGIN
   FROM
     validate_response 
   WHERE 
-    model = model_in AND db_id = db_id_in;
+    model = model_in AND db_id = db_id_in
+  FOR UPDATE;
 
   IF vrid IS NULL THEN
     INSERT INTO 
@@ -208,6 +210,7 @@ BEGIN
     validate_queue 
   WHERE 
     model = model_in AND db_id = db_id_in;
+  FOR UPDATE;
 
   IF vqid IS NULL THEN
     INSERT INTO 

@@ -53,7 +53,8 @@ BEGIN
   FROM 
     gcssync.disk_cache 
   WHERE 
-    path = path_in AND bucket = bucket_in;
+    path = path_in AND bucket = bucket_in
+  FOR UPDATE;
 
   IF dcid IS NULL THEN
     INSERT INTO gcssync.disk_cache 

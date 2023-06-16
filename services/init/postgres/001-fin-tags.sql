@@ -27,7 +27,8 @@ BEGIN
   FROM 
     fin_tags.tag 
   WHERE 
-    subject = subject_in AND predicate = predicate_in;
+    subject = subject_in AND predicate = predicate_in
+  FOR UPDATE;
 
   IF tid IS NULL THEN
     INSERT INTO fin_tags.tag 

@@ -205,8 +205,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     }
 
     let rs = results.resultSet;
-    if( rs.total > rs.stop+1 ) {
-      this.reindex(action, rs.start+limit, limit);
+    if( rs.total > 0 ) {
+      this.reindex(action, 0, limit);
     } else {
       this.reindexing = false;
     }
