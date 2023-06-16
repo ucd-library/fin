@@ -42,8 +42,9 @@ class DbSync {
   }
 
   async readLoop() {
+    let item = null;
     try {
-      let item = await postgres.nextMessage();
+      item = await postgres.nextMessage();
 
       if (!item) {
         setTimeout(() => this.readLoop(), this.READ_LOOP_WAIT);
@@ -56,6 +57,18 @@ class DbSync {
       this.readLoop();
     } catch (e) {
       logger.error('DbSync readLoop error', e);
+
+      if( item && item.event_id ) {
+        item.action = 'error';
+        item.message = e.message + '\n' + e.stack;
+        try {
+          await postgres.updateStatus(item);
+          await postgres.clearMessage(item.event_id);
+        } catch(e) {
+          logger.error('DbSync readLoop error recording error', e);
+        }
+      }
+      
       setTimeout(() => this.readLoop(), this.READ_LOOP_WAIT);
     }
   }
