@@ -414,6 +414,7 @@ class IoDir {
 
     let ids = utils.getPropAsString(graphNode, utils.PROPERTIES.SCHEMA.IDENTIFIER, graphNode['@context'] || context);
     if( !Array.isArray(ids) ) ids = [ids];
+    ids = ids.map(item => item['@id'] || item['@value'] || item);
 
     if( ids && ids.length ) {
         // attempt to find ark

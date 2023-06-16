@@ -281,8 +281,13 @@ class IoUtils {
 
     if( context ) {
       for( let key in context ) {
-        if( typeof context[key] !== 'object' ) continue;
-        if( context[key]['@id'] === prop ) {
+        let contextValue = context[key];
+        if( typeof contextValue === 'string' && metadata[key+':'+compacted] ) {
+          return metadata[key+':'+compacted];
+        }
+
+        if( typeof contextValue !== 'object' ) continue;
+        if( contextValue['@id'] === prop ) {
           return metadata[key];
         }
       }
