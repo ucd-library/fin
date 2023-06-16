@@ -90,7 +90,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.DataViewModel.dbSyncValidateQueueSize({refresh: true})
       .then(e => {
         if( e.payload.length < 1 ) return;
-        this.dbSyncQueueLength = e.payload[0].count;
+        this.dbSyncValidateQueueLength = e.payload[0].count;
       });
 
     this.DataViewModel.coreData({refresh: true})
