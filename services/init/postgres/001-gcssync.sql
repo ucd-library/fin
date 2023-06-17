@@ -48,29 +48,15 @@ DECLARE
   dcid INTEGER;
 BEGIN
 
-  SELECT 
-    disk_cache_id INTO dcid
-  FROM 
-    gcssync.disk_cache 
-  WHERE 
-    path = path_in AND bucket = bucket_in
-  FOR UPDATE;
-
-  IF dcid IS NULL THEN
-    INSERT INTO gcssync.disk_cache 
-      (bucket, path, size, file_md5, content_type, last_accessed)  
-    VALUES 
-      (bucket_in, path_in, size_in, file_md5_in, content_type_in, NOW());
-  ELSE
-    UPDATE gcssync.disk_cache SET
-      size = size_in,
-      file_md5 = file_md5_in,
-      content_type = content_type_in,
-      last_accessed = NOW()
-    WHERE 
-      disk_cache_id = dcid;
-  END IF;
-
+  INSERT INTO gcssync.disk_cache 
+    (bucket, path, size, file_md5, content_type, last_accessed)  
+  VALUES 
+    (bucket_in, path_in, size_in, file_md5_in, content_type_in, NOW())
+  ON CONFLICT (path, bucket) DO UPDATE SET
+    size = size_in,
+    file_md5 = file_md5_in,
+    content_type = content_type_in,
+    last_accessed = NOW();
 
 END;
 $$ LANGUAGE plpgsql;

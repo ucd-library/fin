@@ -22,26 +22,13 @@ DECLARE
   tid INTEGER;
 BEGIN
 
-  SELECT 
-    tag_id INTO tid
-  FROM 
-    fin_tags.tag 
-  WHERE 
-    subject = subject_in AND predicate = predicate_in
-  FOR UPDATE;
-
-  IF tid IS NULL THEN
-    INSERT INTO fin_tags.tag 
-      (subject, predicate, object)  
-    VALUES 
-      (subject_in, predicate_in, object_in);
-  ELSE
-    UPDATE fin_tags.tag  SET
-      object = object_in,
-      updated = NOW()
-    WHERE 
-      tag_id = tid;
-  END IF;
+  INSERT INTO fin_tags.tag 
+    (subject, predicate, object)  
+  VALUES 
+    (subject_in, predicate_in, object_in)
+  ON CONFLICT (subject, predicate) DO UPDATE SET
+    object = object_in,
+    updated = NOW();
 
 END;
 $$ LANGUAGE plpgsql;

@@ -120,42 +120,28 @@ DECLARE
   count INTEGER;
 BEGIN
 
-  SELECT 
-    update_status_id, update_count INTO usid, count
-  FROM 
-    update_status 
-  WHERE 
-    path = path_in AND model = model_in
-  FOR UPDATE;
-
-  IF usid IS NULL THEN
-    INSERT INTO 
-      update_status (path, event_id, event_timestamp, container_types, 
-        update_types, workflow_types, action, message, db_response, db_id, 
-        transform_service, model, source)
-    VALUES 
-      (path_in, event_id_in, event_timestamp_in, container_types_in, 
-      update_types_in, workflow_types_in, action_in, message_in, db_response_in, db_id_in,
-      transform_service_in, model_in, source_in);
-  ELSE
-    UPDATE update_status SET
-      event_id = event_id_in,
-      event_timestamp = event_timestamp_in,
-      container_types = container_types_in,
-      update_types = update_types_in,
-      workflow_types = workflow_types_in,
-      action = action_in,
-      message = message_in,
-      db_response = db_response_in,
-      db_id = db_id_in,
-      transform_service = transform_service_in,
-      source = source_in,
-      updated = NOW(),
-      update_count = count + 1
-    WHERE 
-      update_status_id = usid;
-  END IF;
-
+  INSERT INTO 
+    update_status (path, event_id, event_timestamp, container_types, 
+      update_types, workflow_types, action, message, db_response, db_id, 
+      transform_service, model, source)
+  VALUES 
+    (path_in, event_id_in, event_timestamp_in, container_types_in, 
+    update_types_in, workflow_types_in, action_in, message_in, db_response_in, db_id_in,
+    transform_service_in, model_in, source_in)
+  ON CONFLICT (path, model) DO UPDATE SET
+    event_id = event_id_in,
+    event_timestamp = event_timestamp_in,
+    container_types = container_types_in,
+    update_types = update_types_in,
+    workflow_types = workflow_types_in,
+    action = action_in,
+    message = message_in,
+    db_response = db_response_in,
+    db_id = db_id_in,
+    transform_service = transform_service_in,
+    source = source_in,
+    updated = NOW(),
+    update_count = update_status.update_count + 1;
 
 END;
 $$ LANGUAGE plpgsql;
@@ -170,27 +156,14 @@ DECLARE
   vrid INTEGER;
 BEGIN
 
-  SELECT 
-    validate_response_id INTO vrid
-  FROM
-    validate_response 
-  WHERE 
-    model = model_in AND db_id = db_id_in
-  FOR UPDATE;
-
-  IF vrid IS NULL THEN
-    INSERT INTO 
-      validate_response (model, db_id, response)
-    VALUES 
-      (model_in, db_id_in, response_in)
-    RETURNING validate_response_id INTO vrid;
-  ELSE
-    UPDATE validate_response SET
-      response = response_in,
-      updated = NOW()
-    WHERE 
-      validate_response_id = vrid;
-  END IF;
+  INSERT INTO 
+    validate_response (model, db_id, response)
+  VALUES 
+    (model_in, db_id_in, response_in)
+  ON CONFLICT (model, db_id) DO UPDATE SET
+    response = response_in,
+    updated = NOW()
+  RETURNING validate_response_id INTO vrid;
 
   RETURN vrid;
 END;
@@ -204,25 +177,12 @@ DECLARE
   vqid INTEGER;
 BEGIN
 
-  SELECT
-    validate_queue_id INTO vqid
-  FROM
-    validate_queue 
-  WHERE 
-    model = model_in AND db_id = db_id_in;
-  FOR UPDATE;
-
-  IF vqid IS NULL THEN
-    INSERT INTO 
-      validate_queue (model, db_id)
-    VALUES 
-      (model_in, db_id_in);
-  ELSE
-    UPDATE validate_queue SET
-      updated = NOW()
-    WHERE 
-      validate_queue_id = vqid;
-  END IF;
+  INSERT INTO 
+    validate_queue (model, db_id)
+  VALUES 
+    (model_in, db_id_in)
+  ON CONFLICT (model, db_id) DO UPDATE SET
+    updated = NOW();
 
 END;
 $$ LANGUAGE plpgsql;
@@ -242,11 +202,13 @@ BEGIN
   WHERE 
     model = model_in AND db_id = db_id_in;
 
-  UPDATE update_status SET
-    validate_response_id = NULL,
-    updated = NOW()
-  WHERE 
-    validate_response_id = vrid;
+  IF vrid IS NOT NULL THEN
+    UPDATE update_status SET
+      validate_response_id = NULL,
+      updated = NOW()
+    WHERE 
+      validate_response_id = vrid;
+  END IF;
 
   DELETE FROM validate_response WHERE model = model_in AND db_id = db_id_in;
 END;
