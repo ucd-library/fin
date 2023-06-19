@@ -21,6 +21,10 @@ class FinApiModel extends BaseModel {
     return this.service.reindex(path, args);
   }
 
+  reindexByAction(action) {
+    return this.service.reindexByAction(action);
+  }
+
   startWorkflow(path, name, args) {
     return this.service.startWorkflow(path, name, args);
   }

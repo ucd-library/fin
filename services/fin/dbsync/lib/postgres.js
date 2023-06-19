@@ -90,18 +90,15 @@ class DbSyncPostgresUtils {
     if( !args.container_types ) args.container_types = [];
 
     await this.pg.query(`
-      INSERT INTO ${this.schema}.event_queue 
-        (path, event_id, event_timestamp, container_types, update_types, status) 
-      VALUES 
-        ($1, $2, $3, $4, $5, 'pending')
-      ON CONFLICT (path, status) DO UPDATE SET
-        event_id = $2,
-        event_timestamp = $3,
-        container_types = $4,
-        update_types = $5,
-        status = 'pending',
-        updated = now()
-    ;`, [args.path, args.event_id, args.event_timestamp, args.container_types, args.update_types]);
+      SELECT * from ${this.schema}.upsert_event_queue(
+        $1::TEXT,
+        $2::fcrepo_update_type[],
+        $3::TEXT[],
+        $4::TEXT,
+        $5::TIMESTAMP
+      );`,
+      [args.path, args.update_types,  args.container_types, args.event_id, args.event_timestamp]
+    );
   }
 
   getQueueProcessingMessages() {
@@ -160,6 +157,33 @@ class DbSyncPostgresUtils {
         args.source
       ]
     );
+  }
+
+  /**
+   * @method reindexByAction
+   * @description get status entries for a given action.  This returns a cursor
+   * to be looped over.
+   * 
+   * @param {String} action 
+   * @returns {Promise}
+   */
+  reindexByAction(action) {
+    return this.pg.query(`
+      SELECT
+        count(*) as count
+      FROM
+        ${this.schema}.update_status us,
+        LATERAL
+        ${this.schema}.upsert_event_queue(
+            us.path,
+            ARRAY['Reindex']::fcrepo_update_type[],
+            us.container_types,
+            'reindex:' || uuid_generate_v4(),
+            NOW()
+          )
+      WHERE
+        us.action = $1
+      `, [action]);
   }
 
   /**

@@ -18,7 +18,6 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       dbSyncValidateQueueLength : {type: String},
       dataModelsDtData : {type: Array},
       reindexing : {type: Boolean},
-      reindexPath : {type: String},
       workflowName : {type: String},
       workflowPath : {type: String},
       deletingWorkflows : {type: Boolean}
@@ -173,43 +172,18 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     if( this.reindexing ) return alert('Already reindexing');
 
     if( !confirm('Are you sure you want to reindex all '+action+' containers?') ) return;
-
-    this.reindexing = true;
-    this.reindexPath = '';
-    this.reindex(action, 0, 100);
+    
+    this.reindexByAction(action);
   }
 
-  async reindex(action, offset, limit) {
-    let query = {
-      action: 'eq.'+action,
-      select: 'path',
-      limit,
-      offset,
-      order: 'path.asc'
+  async reindexByAction(action) {
+    this.reindexing = true;
+    try {
+      let results = await this.FinApiModel.reindexByAction(action);
+    } catch(e) {
+      console.log(e);
     }
-
-    let results = await this.DataViewModel.pgQuery(
-      'dbsync_update_status', 
-      query, 
-      {refresh: true}, 
-      'dashboard-reindex'
-    );
-
-    for( let row of results.payload ) {
-      this.reindexPath = row.path;
-      try {
-        await this.FinApiModel.reindex(row.path);
-      } catch(e) {
-        console.error('failed to start reindex: '+row.path, e);
-      }
-    }
-
-    let rs = results.resultSet;
-    if( rs.total > 0 ) {
-      this.reindex(action, 0, limit);
-    } else {
-      this.reindexing = false;
-    }
+    this.reindexing = false;
   }
 
   _onDeleteWorkflowsClicked(e) {

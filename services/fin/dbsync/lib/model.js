@@ -164,10 +164,6 @@ class DbSync {
     await postgres.queue(e);
   }
 
-  // isUpdate(e) {
-  //   return e.update_types.find(item => this.UPDATE_TYPES.UPDATE.includes(item)) ? true : false;
-  // }
-
   isDelete(e) {
     return (e.update_types || []).find(item => this.UPDATE_TYPES.DELETE.includes(item)) ? true : false;
   }
@@ -303,11 +299,16 @@ class DbSync {
       if (response.last.statusCode !== 200) {
         logger.info('Container ' + event.path + ' was publicly inaccessible (' + response.last.statusCode + ') from LDP, removing from index. url=' + response.last.request.url);
 
-        event.action = 'ignored';
-        event.message = 'inaccessible';
+        if( response.last.statusCode === 404 ) {
+          event.action = 'delete';
+          event.message = 'Not Found: '+response.last.statusCode;
+        } else {
+          event.action = 'ignored';
+          event.message = 'inaccessible: '+response.last.statusCode;
+        }
 
         await this.remove(event, model);
-        await this.removeInaccessableChildren(event, model);
+        await this.removeInaccessableChildren(event, model, response.last.statusCode);
         return;
       }
 
@@ -422,31 +423,6 @@ class DbSync {
 
     return [];
   }
-
-  /**
-   * @method isDotPath
-   * @description given a path string from getPath, does any section of the path start
-   * with a .
-   * 
-   * @param {String} path
-   * 
-   * @returns {Boolean}
-   */
-  // isDotPath(path) {
-  //   if( path.match(/^http/) ) {
-  //     let urlInfo = new URL(path);
-  //     path = urlInfo.pathname;
-  //   }
-
-  //   path = path.split('/');
-  //   for( var i = 0; i < path.length; i++ ) {
-  //     if( path[i].match(/^\./) ) {
-  //       return path[i];
-  //     }
-  //   }
-
-  //   return null;
-  // }
 
   /**
    * @method getTransformedContainer
@@ -616,7 +592,7 @@ class DbSync {
    * 
    * @param {Object} e fcrepo update event 
    */
-  async removeInaccessableChildren(e, model) {
+  async removeInaccessableChildren(e, model, parentStatusCode) {
     let path = e.path;
     if (path.match(/\/fcr:.+$/)) {
       path = path.replace(/\/fcr:.+$/, '');
@@ -627,8 +603,15 @@ class DbSync {
       logger.info('Container ' + e.path + ' was publicly inaccessible from LDP, removing ' + path + ' from index.');
 
       let fakeEvent = Object.assign({}, e);
-      fakeEvent.action = 'ignored';
-      fakeEvent.message = e.path + ' inaccessible'
+
+      if( parentStatusCode === 404 ) {
+        fakeEvent.action = 'delete';
+        fakeEvent.message = 'parent '+ e.path + ' not found: '+parentStatusCode;
+      } else {
+        fakeEvent.action = 'ignored';
+        fakeEvent.message = 'parent ' + e.path + ' inaccessible: '+parentStatusCode;
+      }
+
       fakeEvent.path = path;
 
       await this.remove(fakeEvent, model);
@@ -641,8 +624,14 @@ class DbSync {
       logger.info('Container ' + path + ' was publicly inaccessible from LDP, removing child ' + childPath + ' from index.');
       let fakeEvent = Object.assign({}, e);
 
-      fakeEvent.action = 'ignored';
-      fakeEvent.message = 'parent ' + path + ' inaccessible'
+      if( parentStatusCode === 404 ) {
+        fakeEvent.action = 'delete';
+        fakeEvent.message = 'parent ' + path + ' not found: '+parentStatusCode;
+      } else {      
+        fakeEvent.action = 'ignored';
+        fakeEvent.message = 'parent ' + path + ' inaccessible: '+parentStatusCode;
+      }  
+
       fakeEvent.path = childPath;
 
       await this.remove(fakeEvent, model);

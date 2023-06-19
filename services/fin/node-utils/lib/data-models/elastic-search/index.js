@@ -290,68 +290,54 @@ class FinEsDataModel extends FinDataModel {
     if( !index ) index = this.writeIndexAlias;
 
     // find container
-    let body = {
-      from: 0,
-      size: 100,
-      query: {
-        bool : {
-          filter : [
-            {term: {'@graph.@id': id}}
-          ]
-        }
-      }
-    };
+    let item = await this.get(id, {}, index);
 
-    let response = await this.client.search({
-      index,
-      body
-    });
-
-    let hits = [];
-    if( response.hits && response.hits.hits ) {
-      hits = response.hits.hits;
-    }
-
-    if( !hits.length ) return {message: 'no-op'};
+    if( !item ) return {message: 'no-op: item not found: '+id};
 
     let result = [];
-    for( let doc of hits ) {
-      logger.info(`ES Indexer removing ${this.modelName} container: ${id} from ${doc._id}`);
+    // for( let doc of hits ) {
+    let graphId = item['@id'];
+    let errors = [];
+      logger.info(`ES Indexer removing ${this.modelName} container: ${id} from ${graphId}`);
         
       // there is a chance the document is already deleted
       try {
         let r = await this.client.update({
           index,
-          id : doc._id,
-          // refresh : 'wait_for',
+          id : graphId,
+          refresh : 'wait_for',
           script : {
             source : `ctx._source['@graph'].removeIf((Map item) -> { item['@id'] == params['id'] });`,
             params : {id}
           }
         });
         result.push(r);
-      } catch(e) {}
+      } catch(e) {
+        errors.push(e.message+' '+e.stack);
+      }
 
       // now see if document is empty
       try {
-        response = await this.client.get({
+        let response = await this.client.get({
           index,
-          id : doc._id
+          id : graphId
         });
         
         // if the document is empty, remove
         if( response._source && response._source['@graph'] && response._source['@graph'].length === 0 ) {
-          logger.info(`ES Indexer removing ${this.modelName} document: ${doc._id}.  No nodes left in graph`);
-          r = await this.client.delete({
+          logger.info(`ES Indexer removing ${this.modelName} document: ${graphId}.  No nodes left in graph`);
+          let r = await this.client.delete({
             index,
-            id : doc._id
+            id : graphId
           });
           result.push(r);
         }
-      } catch(e) {}
-    }
+      } catch(e) {
+        errors.push(e.message+' '+e.stack);
+      }
+    // }
 
-    return {deletes: result, ids: hits.map(hit => hit._id)};
+    return {delete: result, errors, graphId, id};
   }
 
   /**

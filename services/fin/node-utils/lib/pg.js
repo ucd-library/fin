@@ -2,6 +2,7 @@ const pg = require('pg');
 const logger = require('./logger.js');
 const config = require('../config.js');
 const waitUntil = require('./wait-until.js');
+const Cursor = require('pg-cursor');
 
 const {Pool} = pg;
 
@@ -57,6 +58,11 @@ class PG {
   async query(query, params) {
     await this.connect();
     return this.client.query(query, params);
+  }
+
+  async cursorQuery(query, params) {
+    await this.connect();
+    return this._client.query(new Cursor(query, params));
   }
 
   async end() {

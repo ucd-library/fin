@@ -1,4 +1,6 @@
 create schema if not exists dbsync;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 set search_path=dbsync,public;
 
 DO $$ BEGIN
@@ -34,6 +36,31 @@ CREATE TABLE IF NOT EXISTS event_queue (
 CREATE INDEX IF NOT EXISTS event_queue_path_idx ON event_queue (path);
 CREATE INDEX IF NOT EXISTS event_queue_created_idx ON event_queue (updated);
 CREATE INDEX IF NOT EXISTS event_queue_status_idx ON event_queue (status);
+
+-- upsert event queue
+
+CREATE OR REPLACE FUNCTION upsert_event_queue (
+  path_in TEXT, 
+  update_types_in fcrepo_update_type[], 
+  container_types_in TEXT[], 
+  event_id_in TEXT, 
+  event_timestamp_in TIMESTAMP WITH TIME ZONE
+) RETURNS void AS $$
+
+  INSERT INTO event_queue 
+    (path, event_id, event_timestamp, container_types, update_types, status) 
+  VALUES 
+    (path_in, event_id_in, event_timestamp_in, container_types_in, update_types_in, 'pending')
+  ON CONFLICT (path, status) DO UPDATE SET
+    event_id = event_id_in,
+    event_timestamp = event_timestamp_in,
+    container_types = container_types_in,
+    update_types = update_types_in,
+    status = 'pending',
+    updated = now()
+
+$$ LANGUAGE SQL;
+
 
 CREATE TABLE IF NOT EXISTS validate_queue (
   validate_queue_id SERIAL PRIMARY KEY,

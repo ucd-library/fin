@@ -42,9 +42,6 @@ return html`
 <div>
   <h2 id="db-sync-stats" class="heading--weighted-underline">DB Sync Stats</h2>
   <div>Event Queue Length: ${this.dbSyncQueueLength}<div>
-  <div ?hidden="${!this.reindexing}">
-    <div>Queuing reindex: ${this.reindexPath}</div>
-  </div>
   <fin-admin-data-table 
     name="dashboard-dbsync-stats"
     @reindex="${this._onReindexClick}"

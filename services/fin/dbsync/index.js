@@ -15,6 +15,27 @@ api.setConfig({
 
 const app = express();
 
+// The fcrepo rest is because the crawl reindex is bound to path and
+// we are adding some 'root' api calls, but the proxy will still plugin
+// the fcrepo/rest path part
+app.post('/reindex/fcrepo/rest/by-action/:action', keycloak.protect(['admin']), async (req, res) => {
+  try {
+    let response = await postgres.reindexByAction(req.params.action);
+    
+    if( response.rows ) {
+      if( response.rows.length === 0 ) {
+        res.json({message: 'no-op', count: 0});
+      } else {
+        res.json({started: true, count: response.rows.length});
+      }
+      return;
+    }
+    
+    res.json({error: true, response});
+  } catch(e) {
+    onError(res, e);
+  }
+});
 
 app.get(/^\/reindex\/.*/, keycloak.protect(['admin']), renderIndex);
 app.post(/^\/reindex\/.*/, keycloak.protect(['admin']), renderIndex);
