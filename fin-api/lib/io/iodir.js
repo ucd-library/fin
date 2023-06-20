@@ -175,6 +175,7 @@ class IoDir {
     let isRelation = vIdCConfig.links[utils.PROPERTIES.LDP.IS_MEMBER_OF_RELATION];
 
     let mainNode = containerGraph.mainNode;
+    if( !mainNode ) return;
 
     let ref = mainNode[hasRelation];
     if( !ref ) ref = mainNode[isRelation];

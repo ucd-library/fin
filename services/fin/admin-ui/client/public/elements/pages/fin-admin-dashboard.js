@@ -15,6 +15,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       dataModels : [],
       openTransactions : {type: Array},
       dbSyncQueueLength : {type: String},
+      dbSyncSpeed : {type: Number},
       dbSyncValidateQueueLength : {type: String},
       dataModelsDtData : {type: Array},
       reindexing : {type: Boolean},
@@ -40,6 +41,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.workflowName = '';
     this.workflowPath = '';
     this.deletingWorkflows = false;
+    this.dbSyncSpeed = 0;
 
     this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
 
@@ -50,6 +52,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.DataViewModel.dbSyncEventQueueSize()
       .then(e => {
         if( e.payload.length < 1 ) return;
+        this.lastRefreshed = Date.now();
         this.dbSyncQueueLength = e.payload[0].count;
       });
 
@@ -80,9 +83,21 @@ export default class FinAdminDashboard extends Mixin(LitElement)
   }
 
   _onAutoRefresh() {
+    this.lastRefreshed = Date.now();
+
     this.DataViewModel.dbSyncEventQueueSize({refresh: true})
       .then(e => {
-        if( e.payload.length < 1 ) return;
+        if( e.payload.length < 1 ) {
+          return;
+        }
+        
+        if( this.dbSyncQueueLength && this.lastRefreshed ) {
+          let timeDiff = Date.now() - this.lastRefreshed;
+          this.dbSyncSpeed = Math.round(
+            (this.dbSyncQueueLength - e.payload[0].count) / timeDiff
+          );
+        }
+
         this.dbSyncQueueLength = e.payload[0].count;
       });
 

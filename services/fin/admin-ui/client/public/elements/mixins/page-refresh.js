@@ -11,6 +11,7 @@ const AutoRefresh = (superClass) => class extends superClass {
     super();
     this.autoRefresh = false;
     this.active = false;
+    this.refreshInterval = 10000;
   }
 
   updated(props) {
@@ -32,7 +33,7 @@ const AutoRefresh = (superClass) => class extends superClass {
       if( this._onAutoRefresh ) {
         this._onAutoRefresh();
       }
-    }, 10000);
+    }, this.refreshInterval);
   }
 
   _stopAutoRefresh() {

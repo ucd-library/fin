@@ -81,12 +81,26 @@ class TransformUtils {
     let val = await this._getValues(sAttr, opts);
     if( val === null || val.length === 0 ) {
       if( opts.default ) {
-        this.item[opts.attr] = opts.default;
+        val = opts.default;
       }
-    } else {
-      if( val.length === 1 ) val = val[0];
-      this.item[opts.attr] = val;
+    } else if( val.length === 1 ) {
+      val = val[0];
     }
+
+    if( val === null || val === undefined ) {
+      return;
+    }
+
+    if( this.item[opts.attr] === undefined ) {
+      this.item[opts.attr] = val;
+      return;
+    }
+
+    if( !Array.isArray(this.item[opts.attr]) ) {
+      this.item[opts.attr] = [this.item[opts.attr]];
+    }
+  
+    this.item[opts.attr] = this.item[opts.attr].concat(val);
   }
 
   async _getValues(attr, opts) {
@@ -115,16 +129,20 @@ class TransformUtils {
       }
       return null;
     }
-    
-    let val = obj['@value'];
+
+    let val = obj;
+    if( typeof val === 'object' && obj['@value'] !== undefined ) {
+      val = obj['@value'];
+    } 
+
     if( val === undefined ) return null;
 
     if( !opts.type && !opts.parser ) return val;
+    if( opts.parser ) return opts.parser(val);
     if( opts.type === 'date' ) return new Date(val);
     if( opts.type === 'number' ) return parseInt(val);
     if( opts.type === 'float' ) return parseFloat(val);
     if( opts.type === 'boolean' ) return ((val+'').toLowerCase().trim() === 'true') ? true : false;
-    if( opts.parser ) return opts.parser(val);
     
     return val;
   }
