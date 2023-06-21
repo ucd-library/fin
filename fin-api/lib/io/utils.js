@@ -20,6 +20,7 @@ class IoUtils {
     };
 
     this.TYPES = {
+      BINARY : 'http://fedora.info/definitions/v4/repository#Binary',
       ARCHIVAL_GROUP : 'http://fedora.info/definitions/v4/repository#ArchivalGroup',
       INDIRECT_CONTAINER : 'http://www.w3.org/ns/ldp#IndirectContainer',
       COLLECTION : 'http://schema.org/Collection',

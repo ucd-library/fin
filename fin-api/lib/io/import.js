@@ -371,6 +371,15 @@ class FinIoImport {
       path: containerPath
     });
 
+    if( response.last.statusCode === 200 ) {
+      let links = api.parseLinkHeader(response.last.headers.link || '') || {};
+      if( !links.type ) links.type = [];
+      if( links.type.find(item => item.url === utils.TYPES.BINARY) ) {
+        console.log(' -> LDP has binary, changing to /fcr:metadata');
+        containerPath = pathutils.joinUrlPath(containerPath, 'fcr:metadata');
+      }
+    }
+
     // collections might have already created the node in the manifest check set
     let finIoNode = container.finIoNode || this.createFinIoNode();
     let finTag = container.finTag || {};
@@ -386,6 +395,8 @@ class FinIoImport {
         this.diskLog({verb: 'ignore', path: containerPath, file: localpath, message : 'sha match'});
         return;
       }
+      // isMetadataShaMatch sets the hash
+      finTag[this.FIN_TAGS.METADATA_HASH] = tags[this.FIN_TAGS.METADATA_HASH];
     } else if ( localpath !== '_virtual_' ) {
       let hash = await api.hash(localpath);
       finIoNode[utils.PROPERTIES.FIN_IO.METADATA_SHA] = [{'@value': hash.sha}];
@@ -534,15 +545,18 @@ class FinIoImport {
 
       // check if d exists and if there is the ucd metadata sha.
       if( this.options.forceMetadataUpdate !== true && response.last.statusCode === 200 ) {
-        response = this.getFinTags(response.last);
-        if( await this.isMetaShaMatch(response, finIoContainer, binary.containerFile ) ) {
+        let tags = this.getFinTags(response.last);
+        if( await this.isMetaShaMatch(tags, finIoContainer, binary.containerFile) ) {
           console.log(` -> IGNORING (sha match)`);
           this.diskLog({verb: 'ignore', path: containerPath, file: binary.containerFile, message : 'sha match'});
           return false;
         }
+        headers[`fin-tag`] = JSON.stringify({
+          [this.FIN_TAGS.METADATA_HASH]: tags[this.FIN_TAGS.METADATA_HASH]
+        });
       } else {
         let localSha = await api.sha(binary.containerFile);
-        headers[`fin-tag`] = {[this.FIN_TAGS.BINARY_HASH]: localSha};
+        headers[`fin-tag`] = JSON.stringify({[this.FIN_TAGS.METADATA_HASH]: localSha});
         finIoContainer[utils.PROPERTIES.FIN_IO.METADATA_SHA] = [{'@value': localSha}];
       }
 
@@ -895,7 +909,7 @@ class FinIoImport {
     return {equal: true};
   }
 
-  async isMetaShaMatch(tags={}, newJsonld, file) {
+  async isMetaShaMatch(tags={}, newJsonld, file, isBinary=false) {
     // newJsonLd might not be a graph, but the node itself
     // if( !Array.isArray(newJsonld) ) newJsonld = [newJsonld];
 
@@ -911,6 +925,12 @@ class FinIoImport {
     // if not match, set value on new finIoNode
     let newFinIoNode = utils.getGraphNode(newJsonld, utils.GRAPH_NODES.FIN_IO);
     newFinIoNode[utils.PROPERTIES.FIN_IO.METADATA_SHA] = [{'@value': localSha}];
+
+    if( isBinary ) {
+      tags[this.FIN_TAGS.BINARY_HASH] = localSha;
+    } else {
+      tags[this.FIN_TAGS.METADATA_HASH] = localSha;
+    }
 
     return false;
   }

@@ -6,9 +6,9 @@ CREATE TABLE IF NOT EXISTS tag (
   created timestamp NOT NULL DEFAULT NOW(),
   updated timestamp NOT NULL DEFAULT NOW(),
   subject TEXT NOT NULL,
-  object TEXT NOT NULL,
   predicate TEXT NOT NULL,
-  UNIQUE(subject, object, predicate)
+  object TEXT NOT NULL,
+  UNIQUE(subject, predicate)
 );
 CREATE INDEX IF NOT EXISTS tags_subject_idx ON tag (subject);
 

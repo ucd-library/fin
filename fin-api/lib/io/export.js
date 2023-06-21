@@ -11,6 +11,7 @@ const GIT_SOURCE_ROOT_DIR = 'http://digital.ucdavis.edu/schema#git/rootDir';
 
 const ARCHIVAL_GROUP = 'http://fedora.info/definitions/v4/repository#ArchivalGroup';
 const BINARY = 'http://fedora.info/definitions/v4/repository#Binary';
+const BINARY_COMPACT = 'fedora:Binary';
 const NON_RDF_SOURCE = 'http://www.w3.org/ns/ldp#NonRDFSource';
 const CONTAINS = 'http://www.w3.org/ns/ldp#contains';
 const DIGEST = 'http://fedora.info/definitions/v4/repository#hasMessageDigest';
@@ -513,6 +514,13 @@ class ExportCollection {
           }
         }
       }
+
+      // if binary, add binary type
+      // if( links.type.find(item => item.url === BINARY) ) {
+      //   if( !metadata['@type'].includes(BINARY) && !metadata['@type'].includes(BINARY_COMPACT) ) {
+      //     metadata['@type'].push(BINARY_COMPACT);
+      //   }
+      // }
     }
 
     // metadata = metadata.find(item => item['@id'] = fcrepoPath);
