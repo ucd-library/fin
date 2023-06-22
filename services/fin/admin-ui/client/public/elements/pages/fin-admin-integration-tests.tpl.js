@@ -14,7 +14,10 @@ export function render() {
 return html`
 
   <div>
-  <h2 class="heading--weighted-underline">Latest Tests</h2>
+    <h2 class="heading--weighted-underline">
+      Latest Tests
+      <a href="${this.baseDocsUrl}/docs/integration-health-tests.md" target="_blank">Documentation</a>
+    </h2>
     <div style="display:flex">
       <div>All times in milliseconds</div>
       <div style="flex:1"></div>

@@ -3,6 +3,8 @@ import {render, styles} from "./fin-admin-es-management.tpl.js";
 import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
 import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 
+import config from "../../src/config.js"
+
 export default class FinAdminEsManagement extends Mixin(LitElement)
   .with(MainDomElement, LitCorkUtils) {
 
@@ -12,7 +14,8 @@ export default class FinAdminEsManagement extends Mixin(LitElement)
       selectedModel : {type: String},
       indexes : {type: Array},
       readAlias : {type: Object},
-      writeAlias : {type: Object}
+      writeAlias : {type: Object},
+      baseDocsUrl : {type: String}
     }
   }
 
@@ -73,6 +76,8 @@ export default class FinAdminEsManagement extends Mixin(LitElement)
 
     this.dataModels = Object.values(e.payload.registeredModels || {})
       .map(model => model.props);
+
+    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
   }
 
   async _onDataModelSelect(e) {

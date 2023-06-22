@@ -12,6 +12,7 @@
     "@ucd-lib/cork-app-utils": "^5.1.0",
     "@ucd-lib/theme-elements": "^1.2.3",
     "@ucd-lib/theme-sass": "^5.0.16",
+    "bytes": "^3.1.2",
     "lit": "^2.7.4"
   }
 }

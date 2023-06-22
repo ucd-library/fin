@@ -96,7 +96,7 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
       env : {
         FIN_APP_VERSION : process.env.FIN_APP_VERSION,
         FIN_REPO_TAG : process.env.FIN_REPO_TAG,
-        FIN_REPO_BRANCH : process.env.FIN_REPO_BRANCH,
+        FIN_BRANCH_NAME : process.env.FIN_BRANCH_NAME,
         FIN_SERVER_REPO_HASH : process.env.FIN_SERVER_REPO_HASH
       }
     });

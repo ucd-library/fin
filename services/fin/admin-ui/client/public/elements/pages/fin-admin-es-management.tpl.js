@@ -21,7 +21,10 @@ return html`
   }
 </style>
 
-<h2 class="heading--weighted-underline">Elastic Search - Index Management</h2>
+<h2 class="heading--weighted-underline">
+  Elastic Search - Index Management
+  <a href="${this.baseDocsUrl}/services/es-index-management-service.md" target="_blank">Documentation</a>
+</h2>
 <fieldset>
   <div class="field-container">
     <label for="datamodel-picker">Data Model</label>

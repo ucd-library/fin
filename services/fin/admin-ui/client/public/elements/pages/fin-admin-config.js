@@ -3,6 +3,8 @@ import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
 import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 import {render, styles} from "./fin-admin-config.tpl.js";
 
+import config from "../../src/config.js"
+
 export default class FinAdminConfig extends Mixin(LitElement)
   .with(MainDomElement, LitCorkUtils) {
 
@@ -10,7 +12,9 @@ export default class FinAdminConfig extends Mixin(LitElement)
     return {
       config : {type: Object},
       serviceAccountError : {type: Boolean},
-      serviceAccount : {type: Object}
+      serviceAccount : {type: Object},
+      env : {type: Object},
+      baseDocsUrl : {type: String}
     }
   }
 
@@ -27,6 +31,7 @@ export default class FinAdminConfig extends Mixin(LitElement)
     this.config = {};
     this.serviceAccountError = false;
     this.serviceAccount = {};
+    this.env = {};
 
     this.DataViewModel.coreData()
       .then(e => this._onCoreDataUpdate(e));
@@ -35,6 +40,9 @@ export default class FinAdminConfig extends Mixin(LitElement)
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
     this.config = e.payload.config;
+    this.env = e.payload.env;
+    this.env.REPO_URL = config.repoUrl;
+    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/';
 
     let serviceAccount = e.payload.finServiceAccount;
 

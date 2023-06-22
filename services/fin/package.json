@@ -14,6 +14,7 @@
     "gateway": "node gateway/index.js",
     "workflow": "node workflow/index.js",
     "admin-ui-watch": "./admin-ui/client/watch.sh",
+    "admin-ui-build": "./admin-ui/client/build.sh",
     "admin-ui-dist": "./admin-ui/client/dist.sh"
   },
   "author": "jrmerz@ucdavis.edu",

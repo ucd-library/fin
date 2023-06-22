@@ -23,6 +23,17 @@ return html`
     }
   </style>
 
+  <h2 class="heading--weighted-underline">
+    Fin Config
+    <a href="${this.baseDocsUrl}/docs/env-config.md" target="_blank">Documentation</a>
+    <a href="${this.baseDocsUrl}/services/fin/node-utils/config.js" target="_blank">Code Reference</a>
+  </h2>
+
+  ${unsafeHTML(this._renderConfig(this.env,      undefined, 
+      undefined, 
+      0, 
+      false))}
+
   <div ?hidden="${!this.serviceAccountError}">
     <div>Fin Service Account Error</div>
   </div>

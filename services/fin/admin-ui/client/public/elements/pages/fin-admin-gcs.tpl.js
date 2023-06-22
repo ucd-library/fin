@@ -14,7 +14,11 @@ export function styles() {
 export function render() { 
 return html`
 
-<h2 class="heading--weighted-underline">GCS Config</h2>
+<h2 class="heading--weighted-underline">
+  GCS Config
+  <a href="${this.baseDocsUrl}/services/gcs-service.md" target="_blank">Access Documentation</a>
+  <a href="${this.baseDocsUrl}/services/gcssync-service.md" target="_blank">Sync Documentation</a>
+</h2>
 <div>
   ${unsafeHTML(this._renderConfig(this.config))}
 </div>

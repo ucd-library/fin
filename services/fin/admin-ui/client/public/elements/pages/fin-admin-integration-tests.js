@@ -3,6 +3,7 @@ import {render, styles} from "./fin-admin-integration-tests.tpl.js";
 import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 
 import "../widgets/fin-admin-line-chart.js"
+import config from "../../src/config.js"
 
 export default class FinAdminIntegrationTests extends Mixin(LitElement)
   .with(MainDomElement, LitCorkUtils) {
@@ -11,6 +12,7 @@ export default class FinAdminIntegrationTests extends Mixin(LitElement)
     return {
       statsData : {type: Array},
       lastEvents : {type: Array},
+      baseDocsUrl : {type: String},
     }
   }
 
@@ -27,12 +29,20 @@ export default class FinAdminIntegrationTests extends Mixin(LitElement)
     this.lastEvents = [];
 
     this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
+
+    this.DataViewModel.coreData()
+      .then(e => this._onCoreDataUpdate(e));
   }
 
   _onAppStateUpdate(e) {
     if( e.page !== 'health' && this.page !== e.page ) return;
     this.page = e.page;
     this.refresh();
+  }
+
+  _onCoreDataUpdate(e) {
+    if( e.state !== 'loaded' ) return;
+    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/';
   }
 
   async runTest() {

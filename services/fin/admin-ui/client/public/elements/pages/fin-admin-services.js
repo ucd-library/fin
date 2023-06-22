@@ -3,6 +3,8 @@ import {render, styles} from "./fin-admin-services.tpl.js";
 import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
 import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 
+import config from "../../src/config.js"
+
 export default class FinAdminServices extends Mixin(LitElement)
   .with(MainDomElement, LitCorkUtils) {
 
@@ -25,6 +27,9 @@ export default class FinAdminServices extends Mixin(LitElement)
       'urlTemplate', 'id']
 
     this._injectModel('DataViewModel');
+
+    this.DataViewModel.coreData()
+      .then(e => this._onCoreDataUpdate(e));
   }
 
   async firstUpdated() {
@@ -34,6 +39,9 @@ export default class FinAdminServices extends Mixin(LitElement)
 
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
+
+    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
+
     let services = [];
 
     for( let key in e.payload.services ) {

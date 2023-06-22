@@ -12,6 +12,10 @@ export function render() {
 return html`
 
 <style>
+  h1 a, h2 a {
+    font-size: 16px;
+  }
+
   .data-model-panel {
     margin: 10px;
     padding: 20px;
@@ -29,7 +33,9 @@ return html`
 </style>
 
 <div>
-  <h2 id="data-models" class="heading--weighted-underline">Data Models</h2>
+  <h2 id="data-models" class="heading--weighted-underline">
+    Data Models <a href="${this.baseDocsUrl}/data-models" target="_blank">Documentation</a>
+  </h2>
   <div>Validate Queue Length: ${this.dbSyncValidateQueueLength}<div>
   <fin-admin-data-table 
     name="dashboard-data-models"
@@ -40,7 +46,9 @@ return html`
 </div>
 
 <div>
-  <h2 id="db-sync-stats" class="heading--weighted-underline">DB Sync Stats</h2>
+  <h2 id="db-sync-stats" class="heading--weighted-underline">
+    DB Sync Stats <a href="${this.baseDocsUrl}/services/dbsync-service.md" target="_blank">Documentation</a>
+  </h2>
   <div>
     Event Queue Length: ${this.dbSyncQueueLength}
     <span ?hidden="${this.dbSyncSpeed === 0 || this.dbSyncQueueLength === 0}"> - Processing: ${this.dbSyncSpeed} containers/sec</span>  
@@ -53,7 +61,9 @@ return html`
 </div>
 
 <div>
-  <h2 id="workflow-stats" class="heading--weighted-underline">Workflow Stats</h2>
+  <h2 id="workflow-stats" class="heading--weighted-underline">
+    Workflow Stats <a href="${this.baseDocsUrl}/services/workflow-service.md" target="_blank">Documentation</a>
+  </h2>
   <div ?hidden="${!this.deletingWorkflows}">
     <div>Deleting worflow <b>${this.workflowName}</b> for path <b>${this.workflowPath}</b></div>
   </div>
@@ -65,12 +75,34 @@ return html`
   </fin-admin-data-table>
 </div>
 
-<div>
+<div style="margin-bottom: 20px">
   <h2 id="fcrepo-type-stats" class="heading--weighted-underline">Fcrepo - Type Stats</h2>
-  <fin-admin-data-table 
+  <!-- <fin-admin-data-table 
     name="dashboard-fcrepo-stats"
     ?auto-refresh="${this.autoRefresh}">
-  </fin-admin-data-table>
+  </fin-admin-data-table> -->
+  ${this.fcrepoTypeStats.map(stat => html`
+    <ucd-theme-collapse title="${stat.ns}">
+      <div class="responsive-table">
+        <table>
+          <thead>
+            <tr class="column-label">
+              <th>Property</th>
+              <th>Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${stat.properties.map(prop => html`
+              <tr>
+                <td>${prop.name}</td>
+                <td>${prop.count}</td>
+              </tr>
+            `)}
+          </tbody>
+        </table>
+      </div>  
+    </ucd-theme-collapse>
+  `)}
 </div>
 
 <div>

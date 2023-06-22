@@ -5,7 +5,10 @@ import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 import AutoRefresh from '../mixins/page-refresh.js';
 import clone from 'clone';
 
+import "@ucd-lib/theme-elements/brand/ucd-theme-collapse/ucd-theme-collapse.js"
+
 import "../widgets/fin-admin-data-table.js"
+import config from "../../src/config.js"
 
 export default class FinAdminDashboard extends Mixin(LitElement)
   .with(MainDomElement, LitCorkUtils, AutoRefresh) {
@@ -21,7 +24,9 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       reindexing : {type: Boolean},
       workflowName : {type: String},
       workflowPath : {type: String},
-      deletingWorkflows : {type: Boolean}
+      fcrepoTypeStats : {type: Array},
+      deletingWorkflows : {type: Boolean},
+      baseDocsUrl : {type: String}
     }
   }
 
@@ -42,26 +47,16 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.workflowPath = '';
     this.deletingWorkflows = false;
     this.dbSyncSpeed = 0;
+    this.fcrepoTypeStats = [];
+
+    this.baseDocsUrl = '';
 
     this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
 
-    this.DataViewModel.coreData()
-      .then(e => this._onCoreDataUpdate(e));
-
     this.dbSyncQueueLength = '...';
-    this.DataViewModel.dbSyncEventQueueSize()
-      .then(e => {
-        if( e.payload.length < 1 ) return;
-        this.lastRefreshed = Date.now();
-        this.dbSyncQueueLength = e.payload[0].count;
-      });
-
     this.dbSyncValidateQueueLength = '...';
-    this.DataViewModel.dbSyncValidateQueueSize()
-      .then(e => {
-        if( e.payload.length < 1 ) return;
-        this.dbSyncValidateQueueLength = e.payload[0].count;
-      });
+
+    this._onAutoRefresh();
   }
 
   firstUpdated() {
@@ -109,12 +104,18 @@ export default class FinAdminDashboard extends Mixin(LitElement)
 
     this.DataViewModel.coreData({refresh: true})
       .then(e => this._onCoreDataUpdate(e));
+
+    this.DataViewModel.pgQuery(
+      'fcrepo_type_stats', {}, {refresh: true}, 'dashboard-fcrepo-stats'
+    ).then(e => this._onFcrepoTypeStatsUpdate(e));
   }
 
   async _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
 
     this.openTransactions = e.payload.openTransactions || [];
+
+    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
 
     this.dataModels = Object.values(e.payload.registeredModels || {});
     this.dataModels = clone(this.dataModels);
@@ -256,6 +257,36 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       this.deletingWorkflows = false;
       this.querySelector('fin-admin-data-table[name="dashboard-workflow-stats"]').runQuery();
     }
+  }
+
+  _onFcrepoTypeStatsUpdate(e) {
+    if( e.state !== 'loaded' ) return;
+
+    let stats = {};
+    e.payload.forEach(item => {
+      let parts = item.rdf_type_uri.split(/#|\//);
+      let name = parts.pop();
+      let ns = parts.join('/');
+      if( !stats[ns] ) stats[ns] = {};
+      stats[ns][name] = item.count;
+    });
+
+    let tmp = [];
+    for( let ns in stats ) {
+      let item = {
+        ns,
+        properties : []
+      };
+      for( let name in stats[ns] ) {
+        item.properties.push({
+          name,
+          count : stats[ns][name]
+        });
+      }
+      tmp.push(item);
+    }
+
+    this.fcrepoTypeStats = tmp;
   }
 
 }

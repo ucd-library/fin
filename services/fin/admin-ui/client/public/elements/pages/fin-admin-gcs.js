@@ -4,6 +4,8 @@ import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 import AutoRefresh from '../mixins/page-refresh.js';
 import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
 
+import config from "../../src/config.js"
+
 export default class FinAdminGcs extends Mixin(LitElement)
   .with(MainDomElement, LitCorkUtils, AutoRefresh) {
 
@@ -32,6 +34,7 @@ export default class FinAdminGcs extends Mixin(LitElement)
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
     this.config = e.payload.gcs || {};
+    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
   }
 
   _renderConfig(json, arr=[], currentKey='', depth=0, highlightRoot=true) {

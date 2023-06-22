@@ -5,6 +5,7 @@ import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 import AutoRefresh from '../mixins/page-refresh.js';
 
 import "../widgets/fin-admin-data-table.js"
+import config from "../../src/config.js"
 
 export default class FinAdminWorkflows extends Mixin(LitElement)
   .with(MainDomElement, LitCorkUtils, AutoRefresh) {
@@ -68,6 +69,7 @@ export default class FinAdminWorkflows extends Mixin(LitElement)
     };
     ele.requestUpdate();
 
+    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
   }
 
   _onAppStateUpdate(e) {

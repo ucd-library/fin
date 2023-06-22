@@ -1,5 +1,6 @@
 import {html} from 'lit';
 import {unsafeHTML} from 'lit/directives/unsafe-html.js';
+import bytes from 'bytes';
 
 function replaceWhitespace(str='') {
   if( str === null || str === undefined ) return '';
@@ -15,8 +16,7 @@ const viewConfig = {
       validation_error_count : 'Errors',
       validation_warning_count : 'Warnings'
     },
-    actions : [{
-      type : 'view-info',
+    actions : [{      type : 'view-info',
       label : 'View Info'
     }],
     renderCellValue : (row, key) => {
@@ -169,6 +169,18 @@ const viewConfig = {
     }]
   },
 
+  'dashboard-gcs-diskcache-stats' : {
+    renderCellValue : (row, key) => {
+      if( key === 'total_size_kb' ) {
+        return bytes(row[key]*1000);
+      }
+      return standardRender(row, key);
+    },
+    columnLabels : {
+      total_size_kb : 'Total Size',
+    }
+  },
+
   'dashboard-gcs-diskcache-largest' : {
     table : 'gcssync_disk_cache',
     ignoreKeys: ['file_md5', 'disk_cache_id'],
@@ -176,9 +188,14 @@ const viewConfig = {
       limit : 10,
       order : 'size.desc'
     },
-    renderCellValue : standardRender,
+    renderCellValue : (row, key) => {
+      if( key === 'size' ) {
+        return bytes(row[key]*1000);
+      }
+      return standardRender(row, key);
+    },
     columnLabels : {
-      size : 'Size (KB)',
+      size : 'Size',
     }
   },
 

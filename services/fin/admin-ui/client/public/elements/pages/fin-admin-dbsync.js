@@ -6,13 +6,15 @@ import AutoRefresh from '../mixins/page-refresh.js';
 
 import "../widgets/fin-admin-data-table.js"
 import viewConfig from '../config.js'
+import config from "../../src/config.js"
 
 export default class FinAdminDbsync extends Mixin(LitElement)
   .with(MainDomElement, LitCorkUtils, AutoRefresh) {
 
   static get properties() {
     return {
-      query : {type: Object}
+      query : {type: Object},
+      baseDocsUrl : {type: String},
     }
   }
 
@@ -42,6 +44,8 @@ export default class FinAdminDbsync extends Mixin(LitElement)
     if( e.state !== 'loaded' ) return;
     let dataModels = Object.keys(e.payload.registeredModels || {});
     this.tableConfig.filters.model.options = dataModels;
+
+    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
   }
 
   _onAppStateUpdate(e) {

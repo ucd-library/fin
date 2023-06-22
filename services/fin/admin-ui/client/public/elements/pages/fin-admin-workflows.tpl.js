@@ -14,7 +14,10 @@ export function render() {
 return html`
 
 <div>
-  <h2 class="heading--weighted-underline">Registered Workflows</h2>
+  <h2 class="heading--weighted-underline">
+    Registered Workflows
+    <a href="${this.baseDocsUrl}/services/workflow-service.md" target="_blank">Documentation</a>
+  </h2>
   <div class="o-flex-region">
   ${this.workflows.map(workflow => html`
     <div class="o-flex-region__item data-model-panel">

@@ -13,7 +13,10 @@ export function styles() {
 export function render() { 
 return html`
 
-<h1 class="heading--weighted-underline">DbSync</h1>
+<h1 class="heading--weighted-underline">
+  DbSync
+  <a href="${this.baseDocsUrl}/services/dbsync-service.md" target="_blank">Documentation</a>
+</h1>
 
 <fin-admin-data-table 
   name="dbsync-main"

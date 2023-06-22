@@ -20,7 +20,10 @@ return html`
   }
 </style>
 
-<h2 class="heading--weighted-underline">Registered Services</h2>
+<h2 class="heading--weighted-underline">
+  Registered Services
+  <a href="${this.baseDocsUrl}/service-types" target="_blank">Documentation</a>
+</h2>
 
 <div class="o-flex-region service-panel">
 ${this.services.map(service => html`
