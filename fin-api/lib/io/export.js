@@ -615,7 +615,9 @@ class ExportCollection {
 
     if( isArchivalGroup ) {
       let node = utils.getGraphNode(graph, '', context);
-      utils.applyTypeToNode(node, ARCHIVAL_GROUP, context);
+      if( node ) {
+        utils.applyTypeToNode(node, ARCHIVAL_GROUP, context);
+      }
       return;
     }
 
@@ -623,10 +625,17 @@ class ExportCollection {
     for( let typeMapper of this.instanceConfig.typeMappers ) {
       for( let type of typeMapper.types ) {
         let node = utils.getGraphNode(graph, type, context);
-        if( node ) {
-          utils.applyTypeToNode(node, ARCHIVAL_GROUP, context);
-          return {isArchivalGroup: true};
+        if( !node ) {
+          if( Array.isArray(graph) ) {
+            node = {'@id' : ''};
+            graph.push(node);
+          } else {
+            node = graph;
+            if( !node['@id'] ) node['@id'] = '';
+          }
         }
+        utils.applyTypeToNode(node, ARCHIVAL_GROUP, context);
+        return {isArchivalGroup: true};
       }
 
       if( !typeMapper.virtualIndirectContainers ) continue;
