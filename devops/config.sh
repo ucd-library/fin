@@ -23,7 +23,7 @@ else
   FIN_TAG_NAME=$TAG_NAME
 fi
 
-if [[ "$FIN_BRANCH_NAME" == "main" && ! -z "$FIN_TAG_NAME" ]]; then
+if [[ ! -z "$FIN_TAG_NAME" ]]; then
   APP_TAG=$FIN_TAG_NAME
 else
   APP_TAG=$FIN_BRANCH_NAME
