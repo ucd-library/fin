@@ -74,6 +74,10 @@ class IoDir {
 
     this.hasContainerGraph = false;
 
+    if( this.fsfull.match(/\/\.git$/) ) {
+      return;
+    }
+
     let folderGraph = await this.getContainerGraph(this.fsfull);
     this.containerGraph = null;
     if( folderGraph.graph !== null ) {
