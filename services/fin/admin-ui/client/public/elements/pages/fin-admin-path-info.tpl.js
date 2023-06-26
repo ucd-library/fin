@@ -54,7 +54,7 @@ return html`
 <div class="path-info-header">
   <div>
     <div>
-      <a href="/fcrepo/rest${this.path}" target="_blank">View in Fedora</a>
+      <a href="/fcrepo/rest${this.path}" target="_blank">View in Fedora UI</a>
     </div>
     ${this.properties.map(prop => html`
       <div>

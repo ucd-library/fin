@@ -17,6 +17,7 @@ import '@ucd-lib/theme-elements/ucdlib/ucdlib-pages/ucdlib-pages.js'
 import "./pages/fin-admin-dashboard.js"
 import "./pages/fin-admin-dbsync.js"
 import "./pages/fin-admin-workflows.js"
+import "./pages/fin-admin-data-validation.js"
 import "./pages/fin-admin-path-info.js"
 import "./pages/fin-admin-es-management.js"
 import "./pages/fin-admin-gcs.js"

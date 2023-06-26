@@ -30,6 +30,10 @@ export function styles() {
       font-weight: bold;
       min-width: 200px;
     }
+    .list-cell.scrollable .value {
+      overflow: auto;
+      max-height: 200px;
+    }
 
     .json-row {
       font-size: 14px;

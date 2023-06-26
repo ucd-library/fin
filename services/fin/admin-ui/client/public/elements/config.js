@@ -22,9 +22,49 @@ const viewConfig = {
     renderCellValue : (row, key) => {
       if ( ['validation_error_count', 'validation_warning_count', 'validation_comment_count'].includes(key) ) {
         if( row[key] === undefined || row[key] === null ) return '';
-        return html`<a href="#dbsync?${key}=gt.0&model=eq.${row.name}">${row[key]}</a>`;
+        let filterKey = key.replace('validation_', '');
+        return html`<a href="#data-validation?limit=10&order=db_id.asc&${filterKey}=gt.0&model=eq.${row.name}">${row[key]}</a>`;
       }
       return standardRender(row, key);
+    }
+  },
+
+  'data-validation-main' : {
+    table : 'dbsync_validate_response_view',
+    ignoreKeys : ['comment_count', 'error_count', 'warning_count'],
+    renderCellValue : (row, key) => {
+      if( key === 'paths' ) {
+        row[key].sort((a, b) => a < b ? -1 : 1);
+        return row[key].map(path => {
+          return html`<div><a href="#path-info${path}">${path}</a></div>`;
+        });
+      }
+      return standardRender(row, key);
+    },
+    columnLabels : {
+      'db_id' : 'Database ID',
+      'paths' : 'Fcrepo Paths'
+    },
+    filters : {
+      db_id : {
+        type : 'text'
+      },
+      model : {
+        type : 'keyword',
+        options : []
+      },
+      validation : {
+        type : 'custom',
+        options : [
+          {label: 'Has Errors', query : {error_count: 'gt.0'}},
+          {label: 'Has Warnings', query : {warning_count: 'gt.0'}},
+          {label: 'Has Comments', query : {comment_count: 'gt.0'}}
+        ]
+      }
+    },
+    renderCellClass : (row, key) => {
+      if( key === 'paths' ) return 'scrollable';
+      return '';
     }
   },
 
@@ -282,6 +322,8 @@ function dbsync(row, key) {
       }
       return item.split(/#|\//).pop()
     }).join(', ');
+  } else if( key === 'db_id' ) {
+    return html`<a href="#data-validation?db_id=eq.${row.db_id}&model=eq.${row.model}">${row[key]}</a>`;
   } else if( key === 'message' ) {
       return html`${unsafeHTML(replaceWhitespace(row[key]))}`;
   } else if ( key === 'transform_service' && row[key] ) {

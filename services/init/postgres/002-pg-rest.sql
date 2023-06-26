@@ -55,6 +55,31 @@ CREATE OR REPLACE VIEW dbsync_update_status AS
   LEFT JOIN 
     dbsync.validate_response_view vr on us.validate_response_id = vr.validate_response_id; 
 
+CREATE OR REPLACE VIEW dbsync_validate_response_view AS
+  SELECT 
+    vr.validate_response_id, 
+    vr.updated,
+    vr.db_id,
+    vr.model, 
+    vr.response,
+    vr.error_count,
+    vr.warning_count,
+    vr.comment_count,
+    array_agg(us.path) as paths
+  FROM 
+    dbsync.validate_response_view vr
+  LEFT JOIN 
+    dbsync.update_status us on vr.validate_response_id = us.validate_response_id
+  GROUP BY
+    vr.validate_response_id, 
+    vr.updated,
+    vr.db_id,
+    vr.model, 
+    vr.response,
+    vr.error_count,
+    vr.warning_count,
+    vr.comment_count;
+
 CREATE OR REPLACE VIEW dbsync_stats AS
   SELECT action, count(*) as count FROM dbsync.update_status GROUP BY action;
 

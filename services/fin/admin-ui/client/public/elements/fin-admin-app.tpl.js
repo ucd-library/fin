@@ -41,12 +41,13 @@ return html`
       <a href="#dashboard/gcs-cache-stats">GCS - Disk Cache Stats</a>
       <a href="#dashboard/gcs-cache">GCS - Disk Cache</a>
     </ul>
+    <a href="#path-info">Fcrepo</a>
     <a href="#dbsync">DBSync</a>
+    <a href="#data-validation">Data Validation</a>
     <a href="#workflows">Workflows</a>
     <a href="#es-management">ES Management</a>
     <a href="#gcs">GCS</a>
     <a href="#health">Health</a>
-    <a href="#path-info">Path Info</a>
     <a href="#services">Services</a>
     <a href="#config">Config</a>
   </ucd-theme-primary-nav>
@@ -56,8 +57,9 @@ return html`
 <ucdlib-pages selected="${this.currentPage}" selected-attribute="active">
   <fin-admin-dashboard id="dashboard"></fin-admin-dashboard>
   <fin-admin-dbsync id="dbsync"></fin-admin-dbsync>
-  <fin-admin-workflows id="workflows"></fin-admin-workflows>
+  <fin-admin-data-validation id="data-validation"></fin-admin-data-validation>
   <fin-admin-path-info id="path-info"></fin-admin-path-info>
+  <fin-admin-workflows id="workflows"></fin-admin-workflows>
   <fin-admin-services id="services"></fin-admin-services>
   <fin-admin-gcs id="gcs"></fin-admin-gcs>
   <fin-admin-integration-tests id="health"></fin-admin-integration-tests>
