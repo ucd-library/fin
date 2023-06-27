@@ -26,6 +26,11 @@ const IGNORE_CONTAINER_WITH_TYPE = [
   'http://digital.ucdavis.edu/schema#FinIoIndirectReference'
 ];
 
+const IGNORE_NODE_TYPES = [
+  /(:|\/)?GitSource$/,
+  /(:|\/)?FinIoContainer$/,
+]
+
 const OMIT = [
   'http://www.w3.org/ns/ldp#PreferMembership',
   'http://www.w3.org/ns/ldp#PreferContainment',
@@ -140,8 +145,10 @@ class ExportCollection {
         }
       })
 
-      console.log('INSTANCE FINIO CONFIG:');
-      console.log(JSON.stringify(this.instanceConfig, null, 2));
+      if( options.printConfig !== false ) {
+        console.log('INSTANCE FINIO CONFIG:');
+        console.log(JSON.stringify(this.instanceConfig, null, 2));
+      }
     } else {
       console.log('No instance config found');
     }
@@ -182,6 +189,16 @@ class ExportCollection {
     let links = api.parseLinkHeader(metadata.data.headers.link);
     let cpath = options.currentPath;
 
+    for( let type of IGNORE_CONTAINER_WITH_TYPE ) {
+      if( links.type.find(item => item.url === type) ) {
+        console.log('IGNORING CONTAINER: '+options.currentPath);
+        console.log('  -> CONTAINS IGNORE TYPE: '+type);
+        // await this.crawlContains(options, metadata, archivalGroup, graph);
+        return;
+      }
+    }
+
+
     let isBinary = false;
     if( links.type ) {
       if( links.type.find(item => item.url === BINARY) || links.type.find(item => item.url === NON_RDF_SOURCE) ) {
@@ -211,15 +228,6 @@ class ExportCollection {
     let graph = this.implBaseAndInfoFedoraPrefix(metadata.last.body, options.currentPath);
     // let graph = JSON.parse(metadata.last.body);
     metadata = utils.getGraphNode(graph, '');
-
-    for( let type of IGNORE_CONTAINER_WITH_TYPE ) {
-      if( utils.getGraphNode(graph, type) ) {
-        console.log('IGNORING CONTAINER: '+options.currentPath);
-        console.log('  -> CONTAINS IGNORE TYPE: '+type);
-        await this.crawlContains(options, metadata, archivalGroup, graph);
-        return;
-      }
-    }
 
 
     // set archivalGroup and gitsource if is archivalGroup
@@ -491,6 +499,21 @@ class ExportCollection {
       graph = await jsonld.compact(graph, METADATA_CONTEXT);
     } catch(e) {}
 
+    // remove graph nodes from IGNORE_NODE_TYPES list
+    let tmp = graph;
+    if( tmp['@graph'] ) tmp = tmp['@graph'];
+    if( !Array.isArray(tmp) ) tmp = [tmp];
+    for( let type of IGNORE_NODE_TYPES ) {
+      let node = tmp.findIndex(node => {
+        let types = node['@type'] || [];
+        if( !Array.isArray(types) ) types = [types];
+        return types.find(t => t.match(type));
+      });
+      if( node !== -1 ) {
+        tmp.splice(node, 1);
+      }
+    }
+    
     graph = JSON.stringify(graph);
 
     graph = this.implBaseAndInfoFedoraPrefix(graph, fcrepoPath, true);
