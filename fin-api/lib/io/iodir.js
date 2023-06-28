@@ -116,7 +116,7 @@ class IoDir {
             gitInfo.file = containerFile.filePath.replace(this.gitInfo.rootDir, '');
             gitInfo.rootDir = path.parse(gitInfo.file).dir;
 
-            let id = this.getIdentifier(containerFile.mainNode) || fileInfo.base;
+            let id = this.getIdentifier(containerFile.mainNode, graph['@context']) || fileInfo.base;
             this.archivalGroups.push({
               id,
               isBinary : true,
@@ -475,7 +475,7 @@ class IoDir {
       if( fileObject.typeConfig ) {
         fileObject.fcrepoPath = fileObject.typeConfig.basePath;
       }
-      fileObject.id = this.getIdentifier(fileObject.mainGraphNode) || fileObject.id;
+      fileObject.id = this.getIdentifier(fileObject.mainGraphNode, fileObject.containerGraph['@context']) || fileObject.id;
       fileObject.fcrepoPath = this.getFcrepoPath(fileObject.subPath, fileObject.id, fileObject);
     }
   }
