@@ -13,7 +13,7 @@ class GcsSync {
 
     this.FCREPO_UPDATE_TYPES = {
       UPDATE : ['Create', 'Update'],
-      DELETE : ['Delete', 'Purge']
+      DELETE : ['Delete']
     }
   }
 
@@ -72,20 +72,21 @@ class GcsSync {
     if( !container ) return;
     if( container.direction !== 'fcrepo-to-gcs' ) return;
 
-    if( this.isFcrepoDelete(msg) ) {
+    if( this.isFcrepoDelete(finPath, msg.body.type) ) {
       if( container.enabledDeletes === true ) {
         await gcs.cleanFolder(container.bucket, finPath);
       }
-      
       return;
     }
 
-    await gcs.syncToGcs(finPath, container.bucket, {
-      proxyBinary : container.proxyBinary,
-      crawlChildren : false,
-      basePath : finPath,
-      event : msg
-    });
+    if( this.isFcrepoUpdate(finPath, msg.body.type) ) {
+      await gcs.syncToGcs(finPath, container.bucket, {
+        proxyBinary : container.proxyBinary,
+        crawlChildren : false,
+        basePath : finPath,
+        event : msg
+      });
+    }
   }
 
   async onGcMessage(message) {
@@ -98,7 +99,9 @@ class GcsSync {
       return false;
     });
 
+    console.log('container', container);
     if( container && container.direction === 'gcs-to-fcrepo' ) {
+      console.log('syncing to fcrepo');
       await gcs.syncToFcrepo('/'+message.data.name, container.bucket, {
         proxyBinary : container.proxyBinary,
         crawlChildren : false,
@@ -110,11 +113,22 @@ class GcsSync {
       });
     }
 
+    console.log('ack');
     message.ack();
   }
 
-  isFcrepoDelete(e) {
-    return (e.update_types || []).find(item => this.UPDATE_TYPES.DELETE.includes(item)) ? true : false;
+  isFcrepoDelete(finPath, updateTypes=[]) {
+    if( !Array.isArray(updateTypes) ) {
+      updateTypes = [updateTypes];
+    }
+    return updateTypes.find(item => this.FCREPO_UPDATE_TYPES.DELETE.includes(item)) ? true : false;
+  }
+
+  isFcrepoUpdate(finPath, updateTypes=[]) {
+    if( !Array.isArray(updateTypes) ) {
+      updateTypes = [updateTypes];
+    }
+    return updateTypes.find(item => this.FCREPO_UPDATE_TYPES.UPDATE.includes(item)) ? true : false;
   }
 }
 
