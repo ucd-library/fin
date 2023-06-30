@@ -2,7 +2,8 @@
 
  - Disabling autoversioning of ocfl.  `fcrepo.autoversioning.enabled=false`
  - Fix for exposing pg uuid to public schema
- 
+ - update for data model fcrepo access when no transform provided
+ - Start of new `/fin/rest` endpoint for; direct access to OCFL via fs and pg, always returns expanded JSONLD even for binaries, so no need for `/fcr:metadata`.
 
 # 2.0.2
  
