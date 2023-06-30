@@ -20,6 +20,7 @@ class GcsWrapper {
   constructor() {
     this.JSON_LD_EXTENTION = '.jsonld.json';
     this.JSON_LD_CONTENT_TYPE = 'application/ld+json';
+    this.PLACEHOLDER_TYPE = 'http://digital.ucdavis.edu/schema#GcsSyncPlaceholder';
 
     this.storage = storage;
 
@@ -90,6 +91,10 @@ class GcsWrapper {
   async syncToFcrepo(finPath, gcsBucket, opts={}) {
     let gcsPath = 'gs://'+gcsBucket+finPath;
 
+    if( !opts.ensurePathCache ) {
+      opts.ensurePathCache = new Set();
+    }
+
     // this is just for the start of the sync
     if( opts.ignoreRootFile !== true ) {
       let queryPath = finPath.replace(/\/$/, '');
@@ -123,7 +128,7 @@ class GcsWrapper {
 
         // there are no sub files in this folder
         // we are done.
-        return;
+        // return;
       } else {
 
         // no gcs file found, so we are done
@@ -135,15 +140,13 @@ class GcsWrapper {
           error : 'gcs file not found',
           message : 'error'
         });
-        logger.error('gcs file not found, skipping sync', gcsPath)
+        logger.info('root gcs metadat file not found', gcsPath)
 
-        return;
+        // return;
       }
 
       if( opts.crawlChildren === false ) return;
     }
-
-
 
     let {files, folders} = await this.getGcsFilesInFolder(gcsPath);
 
@@ -176,6 +179,11 @@ class GcsWrapper {
             path : '/'+file.name,
             file : file,
             metadata : metadataFile
+          }
+        } else {
+          grouping[name] = {
+            path : '/'+file.name,
+            file : file
           }
         }
       }
@@ -316,6 +324,8 @@ class GcsWrapper {
       logger.info('syncing binary from gcs to fcrepo'+(opts.proxyBinary === true ? ' as proxy' : ''), gcsFile, item.path);
       let result;
 
+      await this.ensureRootPaths(item.path, opts.ensurePathCache);
+
       if( opts.proxyBinary === true ) {
         let url = item.file.metadata.mediaLink;
         if( opts.basePath ) {
@@ -446,6 +456,8 @@ class GcsWrapper {
 
     if( !this.isMetadataTagMatch(finTags, item.metadata.metadata) ) {
       logger.info('syncing container from gcs to fcrepo', gcsFile, item.path);
+
+      await this.ensureRootPaths(item.path, opts.ensurePathCache);
 
       let jsonld = JSON.parse(await this.loadFileIntoMemory(gcsFile));
       this.addGcsMetadataNode(jsonld, {
@@ -835,6 +847,46 @@ class GcsWrapper {
     opts.jwt = await keycloak.getServiceAccountToken();
     opts.host = config.gateway.host;
     return api.put(opts);
+  }
+
+  async ensureRootPaths(finPath, cache) {
+    let parts = finPath.split('/');
+    parts.pop();
+
+    let jwt = await keycloak.getServiceAccountToken();
+    let host = config.gateway.host;
+
+    let container = {
+      '@id' : '',
+      '@type' : this.PLACEHOLDER_TYPE,
+      'http://schema.org/name' : 'GCS Sync Placeholder'
+    }
+
+    let path = '';
+    for( let part of parts ) {
+      if( !part ) continue;
+      path += '/'+part;
+
+      if( cache && cache.has(path) ) continue;
+
+      let resp = await api.head({
+        path, jwt, host
+      });
+
+      if( resp.last.statusCode === 404 ) {
+        logger.info('Ensuring gcssync root path: '+path);
+
+        await this.fcrepoPut({
+          path,
+          body : JSON.stringify(container),
+          headers : {
+            'Content-Type' : api.RDF_FORMATS.JSON_LD
+          }
+        });
+      }
+
+      if( cache ) cache.add(path);
+    }
   }
 
 }

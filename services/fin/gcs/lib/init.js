@@ -37,6 +37,7 @@ class GcsSyncDataHydration {
 
   async hydrate(syncConfig) {
     logger.info('Hydrating container from gcssync', syncConfig);
+    let timestamp = Date.now();
 
     await gcs.syncToFcrepo(syncConfig.basePath, syncConfig.bucket, {
       proxyBinary : syncConfig.proxyBinary,
@@ -48,7 +49,7 @@ class GcsSyncDataHydration {
       }
     });
 
-    logger.info('Hydration complete from gcssync', syncConfig);
+    logger.info('Hydration complete from gcssync, time='+Math.round((Date.now()/timestamp)/1000)+'s', syncConfig);
 
     return;
 

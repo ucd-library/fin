@@ -1,3 +1,8 @@
+# 2.0.4
+
+ - Fix for gcssync when root path is a `gcs` 'directory' (i.e. a real file)
+ - GCS sync now creates sub paths if they don't exist ensure that they can by modified later on
+
 # 2.0.3
 
  - Disabling autoversioning of ocfl.  `fcrepo.autoversioning.enabled=false`
