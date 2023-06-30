@@ -188,6 +188,8 @@ class ActiveMqStompConnection extends ActiveMqClient {
         } catch(e) {
           await this.logDebug('processing-error', e);
           logger.error('STOMP client '+clientId+' processing error', e);
+          try { throw new Error('stack trace') } 
+          catch(e) { logger.error(e.stack) }
         }
       }
     });   

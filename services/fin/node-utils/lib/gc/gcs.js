@@ -800,15 +800,26 @@ class GcsWrapper {
    * @description remove all files in a gcs folder
    * 
    */
-  cleanFolder(bucket, folder) {
-    // ensure proper folder format
-    folder = folder.replace(/\/$/, '').replace(/^\//, '')+'/';
+  async cleanFolder(bucket, folder) {
+    try {
+      // ensure proper folder format
+      folder = folder.replace(/\/$/, '').replace(/^\//, '')+'/';
 
-    logger.info(`Deleting folder ${folder} in bucket ${bucket}`);
-    return storage.bucket(bucket).deleteFiles({
-      force: true,
-      prefix: folder
-    });
+      logger.info(`Deleting folder ${folder} in bucket ${bucket}`);
+      await storage.bucket(bucket).deleteFiles({
+        force: true,
+        prefix: folder
+      });
+
+      let folderMetadata = folder.replace(/\/$/, '');
+      let exists = await storage.bucket(bucket).file(folderMetadata).exists()
+      if( exists[0] === true ) {
+        logger.info('Deleting folder metadata file', folderMetadata);
+        await storage.bucket(bucket).file(folderMetadata).delete();
+      }
+    } catch(e) {
+      logger.error('Error cleaning folder '+bucket+' '+folder, e);
+    }
   }
 
   /**
