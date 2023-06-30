@@ -48,6 +48,8 @@ class GcsSyncDataHydration {
       }
     });
 
+    logger.info('Hydration complete from gcssync', syncConfig);
+
     return;
 
     // now set the init flag

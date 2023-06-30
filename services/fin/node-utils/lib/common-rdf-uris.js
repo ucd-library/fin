@@ -9,6 +9,7 @@ module.exports = {
   },
 
   TYPES : {
+    AUTHORIZATION : 'http://www.w3.org/ns/auth/acl#Authorization',
     BINARY : 'http://fedora.info/definitions/v4/repository#Binary',
     NON_RDF_SOURCE : 'http://www.w3.org/ns/ldp#NonRDFSource',
     FIN_IO_INDIRECT : 'http://digital.ucdavis.edu/schema#FinIoIndirectReference',

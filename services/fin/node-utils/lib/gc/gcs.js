@@ -242,7 +242,7 @@ class GcsWrapper {
     let binaryNode = api.io.utils.getGraphNode(fcrepoContainer, RDF_URIS.TYPES.BINARY);
 
     if( this.isBinaryMd5Match(binaryNode, gcsMetadata) ) {
-      logger.info('md5 match, ignoring fcrepo to gcs sync', finPath, gcsFile);
+      logger.debug('md5 match, ignoring fcrepo to gcs sync', finPath, gcsFile);
       await pg.updateStatus({
         path : finPath,
         gcsFile,
@@ -378,7 +378,7 @@ class GcsWrapper {
         event : opts.event,
         message : 'md5 match'
       });
-      logger.info('md5 match, ignoring gcs to fcrepo sync', gcsFile, item.path)
+      logger.debug('md5 match, ignoring gcs to fcrepo sync', gcsFile, item.path)
     }
 
     
@@ -428,7 +428,7 @@ class GcsWrapper {
 
       this.stats.toFcrepo.containers++;
     } else {
-      logger.info('md5 match, ignoring gcs to fcrepo sync', gcsFile, item.path+'/fcr:metadata');
+      logger.debug('md5 match, ignoring gcs to fcrepo sync', gcsFile, item.path+'/fcr:metadata');
     
       await pg.updateStatus({
         path : item.path+'/fcr:metadata',
@@ -485,7 +485,7 @@ class GcsWrapper {
 
       this.stats.toFcrepo.containers++;
     } else {
-      logger.info('md5 match, ignoring gcs to fcrepo sync', gcsFile, item.path)
+      logger.debug('md5 match, ignoring gcs to fcrepo sync', gcsFile, item.path)
 
       await pg.updateStatus({
         path : item.path,
@@ -517,7 +517,7 @@ class GcsWrapper {
 
     let fileContent = JSON.stringify(fcrepoContainer);
     if( this.isMetadataMd5Match(fileContent, gcsMetadata) ) {
-      logger.info('md5 match, ignoring fcrepo to gcs sync', finPath, gcsFile);
+      logger.debug('md5 match, ignoring fcrepo to gcs sync', finPath, gcsFile);
       await pg.updateStatus({
         path : finPath,
         gcsFile,

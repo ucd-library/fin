@@ -483,11 +483,14 @@ class FinApi {
       delete hOptions.headers.accept; 
     }
 
-    let req = await this.head(hOptions);
-    if( req.error || req.last.statusCode !== 200 ) return req;
-    
-    if( !this.isRdfContainer(req.last) ) {
-      options.path += '/fcr:metadata';
+    // if using fin ocfl access we can skip this step
+    if( options.fcBasePath !== '/fin/rest' ) {
+      let req = await this.head(hOptions);
+      if( req.error || req.last.statusCode !== 200 ) return req;
+      
+      if( !this.isRdfContainer(req.last) ) {
+        options.path += '/fcr:metadata';
+      }
     }
 
     if( !options.headers ) options.headers = {};

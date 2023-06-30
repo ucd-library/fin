@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const {keycloak, models, config, logger, jwt, tests} = require('@ucd-lib/fin-service-utils');
+const {keycloak, models, config, logger, jwt, tests, directAccess} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('../models/services.js');
 const httpProxy = require('http-proxy');
 const fetch = require('node-fetch');
@@ -173,6 +173,34 @@ router.post('/archive', async (req, res) => {
 
   } catch(e) {
     res.status(500).json({
+      error : true,
+      message : e.message
+    });
+  }
+});
+
+router.get(/\/rest\/.*/, async (req, res) => {
+  let finPath = req.originalUrl.replace('/fin/rest', '');
+  try {
+    let t = Date.now();
+    let container = await directAccess.getContainer(finPath);
+    logger.info('getContainer', finPath, Date.now()-t);
+    res.json(container);
+  } catch(e) {
+    if( e.message === 'Not Found' ) {
+      return res.status(404).json({
+        error : true,
+        message : 'Not Found'
+      });
+    } else if ( e.message === 'Forbidden' ) {
+      return res.status(403).json({
+        error : true,
+        message : 'Forbidden'
+      });
+    }
+
+    logger.error('Error getting container', finPath, e);
+    return res.status(500).json({
       error : true,
       message : e.message
     });

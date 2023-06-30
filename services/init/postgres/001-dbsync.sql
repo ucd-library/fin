@@ -1,4 +1,6 @@
 create schema if not exists dbsync;
+
+set search_path=public;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 set search_path=dbsync,public;
