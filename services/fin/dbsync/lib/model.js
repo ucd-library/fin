@@ -314,11 +314,24 @@ class DbSync {
 
       let jsonld = JSON.parse(response.last.body);
 
+      if( !model.tranformService ) {
+        if( !jsonld['@graph'] ) {
+          jsonld = {
+            '@id': event.path,
+            '@graph': [jsonld]
+          }
+        }
+
+        if( !jsonld['@id'] ) {
+          jsonld['@id'] = event.path;
+        }
+      }
+
 
       // if no esId, we don't add to elastic search
       if (model.expectGraph === true) {
         if (!jsonld['@graph'] || !jsonld['@id']) {
-          logger.info('Container ' + event.path + ' ignored, no jsonld["@graph"] or jsonld["@id"] provided');
+          logger.info('Container ' + event.path + ' ignored, no jsonld["@graph"] and jsonld["@id"] provided');
 
           event.action = 'ignored';
           event.message = 'no jsonld["@graph"] or jsonld["@id"] provided';
