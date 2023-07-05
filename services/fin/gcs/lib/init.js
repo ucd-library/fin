@@ -39,7 +39,7 @@ class GcsSyncDataHydration {
     logger.info('Hydrating container from gcssync', syncConfig);
     let timestamp = Date.now();
 
-    await gcs.syncToFcrepo(syncConfig.basePath, syncConfig.bucket, {
+    let fileCounts = await gcs.syncToFcrepo(syncConfig.basePath, syncConfig.bucket, {
       proxyBinary : syncConfig.proxyBinary,
       crawlChildren : true,
       basePath : syncConfig.basePath,
@@ -49,47 +49,47 @@ class GcsSyncDataHydration {
       }
     });
 
-    logger.info('Hydration complete from gcssync, time='+Math.round((Date.now()/timestamp)/1000)+'s', syncConfig);
+    logger.info('Hydration complete from gcssync, files='+JSON.stringify(fileCounts)+' time='+Math.round((Date.now()-timestamp)/1000)+'s', syncConfig);
 
     return;
 
-    // now set the init flag
-    let response = await api.get({
-      path : syncConfig.basePath,
-      headers : {
-        'accept' : 'application/ld+json',
-        Prefer : api.GET_PREFER.REPRESENTATION_OMIT_SERVER_MANAGED
-      },
-      host : config.fcrepo.host,
-      superuser : true,
-      directAccess : true
-    });
+    // // now set the init flag
+    // let response = await api.get({
+    //   path : syncConfig.basePath,
+    //   headers : {
+    //     'accept' : 'application/ld+json',
+    //     Prefer : api.GET_PREFER.REPRESENTATION_OMIT_SERVER_MANAGED
+    //   },
+    //   host : config.fcrepo.host,
+    //   superuser : true,
+    //   directAccess : true
+    // });
 
-    // sync failed, don't set init flag
-    if( response.last.statusCode !== 200 ) {
-      return;
-    }
+    // // sync failed, don't set init flag
+    // if( response.last.statusCode !== 200 ) {
+    //   return;
+    // }
 
-    let graph = JSON.parse(response.last.body);
-    if( graph['@graph'] ) graph = graph['@graph'];
-    if( !Array.isArray(graph) ) graph = [graph];
+    // let graph = JSON.parse(response.last.body);
+    // if( graph['@graph'] ) graph = graph['@graph'];
+    // if( !Array.isArray(graph) ) graph = [graph];
 
-    graph.push({
-      '@id' : this.NODE_URI_HASH,
-      '@type' : 'http://digital.ucdavis.edu/schema/FinInit',
-      'http://schema.org/name' : 'gcssync init flag'
-    });
+    // graph.push({
+    //   '@id' : this.NODE_URI_HASH,
+    //   '@type' : 'http://digital.ucdavis.edu/schema/FinInit',
+    //   'http://schema.org/name' : 'gcssync init flag'
+    // });
 
-    await api.put({
-      path : syncConfig.basePath,
-      body : JSON.stringify(graph),
-      headers : {
-        'Content-Type' : 'application/ld+json'
-      },
-      host : config.fcrepo.host,
-      superuser : true,
-      directAccess : true
-    });
+    // await api.put({
+    //   path : syncConfig.basePath,
+    //   body : JSON.stringify(graph),
+    //   headers : {
+    //     'Content-Type' : 'application/ld+json'
+    //   },
+    //   host : config.fcrepo.host,
+    //   superuser : true,
+    //   directAccess : true
+    // });
   }
 
 }
