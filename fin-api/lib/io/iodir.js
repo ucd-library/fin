@@ -10,8 +10,8 @@ class IoDir {
 
   /**
    * 
-   * @param {String} fsroot 
-   * @param {String} subPath for child directories 
+   * @param {String} fsroot root path for import, doesn't change
+   * @param {String} subPath subPath from fsroot
    * @param {Object} config
    * @param {Object} config.fcrepoPathType id or subpath. 
    * @param {IoDir} archivalGroup reference to IoDir object for ArchivalGroup 
@@ -19,9 +19,10 @@ class IoDir {
    */
   constructor(fsroot, subPath='', config={}, archivalGroup, archivalGroups=[]) {
     if( process.stdout && process.stdout.clearLine ) {
-      process.stdout.clearLine();
-      process.stdout.cursorTo(0); 
-      process.stdout.write('Crawling: '+subPath);
+      // process.stdout.clearLine();
+      // process.stdout.cursorTo(0); 
+      // process.stdout.write('Crawling: '+subPath);
+      console.log('Crawling: '+subPath);
     }
 
     if( !subPath.match(/^\//) ) {
@@ -35,109 +36,114 @@ class IoDir {
     this.hasRelations = []; // virtualIndirectContainers defined on disk
     this.fsroot = fsroot;
     this.subPath = subPath;
-    this.fcrepoPath = '';
+
+    // full path on disk
     this.fsfull = path.join(this.fsroot, this.subPath);
 
     this.config = config;
-    if( !this.config.ignore ) {
-      this.config.ignore = [];
-    }
-    if( !this.config.subPaths ) {
-      this.config.subPaths = [];
-    }
 
     let parts = subPath.split('/');
     this.id = parts.pop();
-    this.pathName = this.id;
 
-    this.parentSubPath = parts.join('/');
-
-
+    // container metadata for this diredcetory
+    this.metadataContainer = null;
     this.containers = [];
     this.binaries = [];
   }
 
   async crawl() {
+    // a check to see if we have already crawled
     if( this.children ) return this.children;
 
-    if( !this.gitInfo ) {
-      this.gitInfo = await git.info(this.fsfull, {cwd: this.fsroot});
-    }
-
-
+    // check if directory exists
     if( !fs.existsSync(this.fsfull) ) {
       throw new Error('Unable to crawl directory: '+this.fsfull);
+    }
+
+    // read in git info for this directory
+    if( !this.gitInfo ) {
+      this.gitInfo = await git.info(this.fsfull, {cwd: this.fsroot});
     }
 
     this.children = [];
     this.files = [];
 
-    this.hasContainerGraph = false;
-
+    // never crawl .git directories
+    // TODO: make this config option
     if( this.fsfull.match(/\/\.git$/) ) {
       return;
     }
 
+    // handle folder metadata
     let folderGraph = await this.getContainerGraph(this.fsfull);
-    this.containerGraph = null;
     if( folderGraph.graph !== null ) {
-      this.hasContainerGraph = true;
-      this.containerGraph = folderGraph.graph;
-      this.containerFile = folderGraph.filePath;
-      this.mainGraphNode = folderGraph.mainNode;
-      await this.handleArchivalGroup();
+      this.metadataContainer = folderGraph;
 
-      if( !this.fcrepoPath ) {
-        this.fcrepoPath = this.getFcrepoPath(path.resolve(this.subPath, '..'), this.id);
-      }
+      this.containerFile = this.metadataContainer.filePath;
+      this.mainGraphNode = this.metadataContainer.mainNode;
+      this.containerGraph = this.metadataContainer.graph;
+
+      await this.handleArchivalGroup();
+      
+      // update the id for this dir so looks like file object
+      this.id = this.getIdentifier(this.mainGraphNode) || this.id;
+      this.fcrepoPath = this.getFcrepoPath(this.subPath, this.id, this.archivalGroup);
     }
 
     let children = await fs.readdir(this.fsfull);
     for( let child of children ) {
-      let p = path.join(this.fsfull, child);
-      if( !fs.statSync(p).isDirectory() ) {
+      let childPath = path.join(this.fsfull, child);
 
-        // if this is a .ttl file and there is a directory of same name, skip.
-        let childFileInfo = path.parse(child.replace(utils.CONTAINER_FILE_EXTS_REGEX, ''));
-        if( this.isContainerGraphFile(child) && 
-            children.includes(childFileInfo.name) && 
-            fs.statSync(path.join(this.fsfull, childFileInfo.name)) ) {
-          continue;
-        }
+      let isDir = fs.statSync(childPath).isDirectory();
+      let metadataFileName = utils.getMetadataFileFor(child);
+
+      // skip metadata files if there is a directory of same name
+      if( child !== metadataFileName  && children.includes(utils.getMetadataFileFor(child)) && !isDir ) {
+        // this is a metadata file, and there is a directory of same name, skip.
+        // this file will be handled by the directory
+        continue; 
+      }
+
+      if( !isDir ) {
 
         // add archive groups for binary files not in archive group
-        let fileInfo = path.parse(p);
-        if( !this.archivalGroup && !this.isContainerGraphFile(p) && !this.config.importFromRoot ) {
-          let containerFile = await this.getContainerGraph(p);
+        let fileInfo = path.parse(childPath);
 
-          if( containerFile.graph !== null ) {
-            let graph = containerFile.graph;
-            let gitInfo = clone(this.gitInfo);
-            gitInfo.file = containerFile.filePath.replace(this.gitInfo.rootDir, '');
-            gitInfo.rootDir = path.parse(gitInfo.file).dir;
+        if( !this.archivalGroup && !utils.isMetadataFile(childPath) && !this.config.importFromRoot ) {
+          let containerFile = await this.getContainerGraph(childPath);
 
-            let id = this.getIdentifier(containerFile.mainNode, graph['@context']) || fileInfo.base;
-            this.archivalGroups.push({
-              id,
-              isBinary : true,
-              fsroot : this.fsroot,
-              localpath : p,
-              subPath : this.subPath,
-              fcrepoPath : this.subPath+'/'+id,
-              gitInfo,
-              containerGraph: graph,
-              mainGraphNode : containerFile.mainNode,
-              containerFile : containerFile.filePath
-            });
-            continue;
-          }
+          if( containerFile.graph === null ) continue;
+
+          let gitInfo = clone(this.gitInfo);
+          gitInfo.file = containerFile.filePath.replace(this.gitInfo.rootDir, '');
+          gitInfo.rootDir = path.parse(gitInfo.file).dir;
+
+          let id = this.getIdentifier(containerFile.mainNode) || fileInfo.base;
+
+          let node = {
+            id,
+            isBinary : true,
+            fsfull : childPath,
+            archivalGroup : this.archivalGroup,
+            gitInfo,
+            containerGraph: containerFile.graph,
+            mainGraphNode : containerFile.mainNode,
+            containerFile : containerFile.filePath
+          };
+
+          this.handleArchivalGroup(node);
+
+          node.fcrepoPath = this.getFcrepoPath(this.subPath, id, node);
+
+          this.archivalGroups.push(node);
+          continue;
         }
 
         // TODO: need to check for hasPart/isPartOf and add inverse
         // perhaps on the crawl?  check collection AG and dir hasPart?
-        if( this.archivalGroup && this.isContainerGraphFile(p) && 
+        if( this.archivalGroup && utils.isMetadataFile(childPath) && 
           this.typeConfig && this.typeConfig.virtualIndirectContainers ) {
-          await this.setHasRelation(p)
+          await this.setHasRelation(childPath);
           // continue;
         }
 
@@ -230,6 +236,23 @@ class IoDir {
     let binaryFiles = {};
     let containerFiles = {};
 
+    // first add dir container if it exits
+    if( this.metadataContainer) {
+      let id = this.getIdentifier(this.metadataContainer.mainNode);
+
+      let fileObject = {
+        fsfull : this.fsfull,
+        archivalGroup : this.archivalGroup,
+        fcrepoPath: this.getFcrepoPath(this.subPath, id, this.archivalGroup),
+        id,
+        containerFile : this.metadataContainer.filePath,
+        mainGraphNode : this.metadataContainer.mainNode,
+        containerGraph : this.metadataContainer.graph
+      }
+
+      this.containers.push(fileObject);
+    }
+
     for( let child of this.files ) {
       if( child.match(/^\..*/) ) {
         console.log('IGNORING (dot file):', path.join(this.subPath, child));
@@ -242,7 +265,7 @@ class IoDir {
       if( info.isSymbolicLink() ) {
         let pointer = fs.realpathSync(childFsPath).split('/').pop();
         symlinks[pointer] = child;
-      } else if( !this.isContainerGraphFile(child) ) {
+      } else if( !utils.isMetadataFile(child) ) {
         binaryFiles[child] = childFsPath;
       } else {
         containerFiles[child] = childFsPath;
@@ -258,22 +281,23 @@ class IoDir {
       let container = {
         id,
         filename : name,
-        parentPath : this.subPath,
-        fcrepoPath : this.getFcrepoPath(this.subPath, id),
-        localpath : path.join(this.fsfull, name),
+        archivalGroup : this.archivalGroup,
+        fsfull : path.join(this.fsfull, name),
         containerGraph : binaryGraph.graph,
         mainGraphNode : binaryGraph.mainNode,
         containerFile : binaryGraph.graph ? binaryGraph.filePath : null
       };
+
+      container.fcrepoPath = this.getFcrepoPath(this.subPath, id, container)
 
       // if we are not an archive group, grab git info
       if( !this.archivalGroup && this.containerFile ) {
         container.gitInfo = clone(this.gitInfo);
         container.gitInfo.file = binaryGraph.filePath.replace(this.gitInfo.rootDir, '');
         container.gitInfo.rootDir = path.parse(container.gitInfo.file).dir;
-        if( !this.config.importFromRoot ) {
-          container.fcrepoPath = pathutils.joinUrlPath(container.fcrepoPath);
-        }
+        // if( !this.config.importFromRoot ) {
+        //   container.fcrepoPath = pathutils.joinUrlPath(container.fcrepoPath);
+        // }
       }
 
       // add binary container to list
@@ -288,25 +312,24 @@ class IoDir {
     }
 
     // for all container (.ttl, jsonld.json) files, create binary file container objects
-    for( let name in containerFiles ) {
-      let fcpath = this.getFcrepoPath(this.subPath, path.parse(name).base.replace(utils.CONTAINER_FILE_EXTS_REGEX, ''));
-
-      let parentFcPath = fcpath.split('/');
-      let id = parentFcPath.pop();
-      parentFcPath = parentFcPath.join('/');
+    for( let name in containerFiles ) {      
       let containerGraph = await this.getContainerGraph(path.join(this.fsfull, name));
-
+      let id = this.getIdentifier(containerGraph.mainNode);
+      
       let fileObject = {
-        localpath : path.join(this.fsfull, name),
-        fcrepoPath: fcpath, 
+        fsfull : path.join(this.fsfull, name),
+        archivalGroup : this.archivalGroup,
         id, 
-        parentPath : parentFcPath,
         containerFile : containerGraph.filePath,
         mainGraphNode : containerGraph.mainNode,
         containerGraph : containerGraph.graph
       }
 
       await this.handleArchivalGroup(fileObject);
+
+      // archive group must behandled before fcrepo path is set
+      fileObject.fcrepoPath = this.getFcrepoPath(this.subPath, id, this.archivalGroup);
+
       this.containers.push(fileObject);
     }
 
@@ -317,19 +340,13 @@ class IoDir {
   }
 
   /**
-   * @method isContainerGraphFile
-   * @description is the given file path a special container graph (metadata) file
-   * type
+   * @method getContainerGraph
+   * @description given a file path, return the container graph (metadata)
    * 
-   * @param {String} filePath 
-   * @returns {Boolean}
+   * @param {*} filePath 
+   * @param {*} options 
+   * @returns 
    */
-  isContainerGraphFile(filePath) {
-    let info = path.parse(filePath);
-    if( info.base.match(utils.CONTAINER_FILE_EXTS_REGEX) ) return true;
-    return false;
-  }
-
   async getContainerGraph(filePath, options={}) {
     if( !fs.existsSync(filePath) ) return {filePath, graph:null};
 
@@ -347,7 +364,7 @@ class IoDir {
     }
 
     // special check for binary files
-    if( !this.isContainerGraphFile(filePath) ) {
+    if( !utils.isMetadataFile(filePath) ) {
       // see if there is an [binaryFile].[containerExt] file
       for( let ext of utils.CONTAINER_FILE_EXTS ) {
         let jsonldPath = filePath+ext;
@@ -360,10 +377,6 @@ class IoDir {
 
     let jsonld = await utils.parseContainerGraphFile(filePath);
     if( jsonld === null ) return {filePath, graph: null};
-
-    if( !jsonld['@graph'] && !Array.isArray(jsonld) ) {
-      jsonld = [jsonld];
-    }
 
     // attempt to lookup main node for graph
     let mainNode = utils.getMainGraphNode(jsonld, options.id);
@@ -386,43 +399,61 @@ class IoDir {
 
     // this is root archival group
     if( fileObject.archivalGroup === fileObject ) {
+      let agRoot = fileObject?.typeConfig?.basePath || '/';
+
       if( this.config.fcrepoPathType === 'id' ) {
-        return pathutils.joinUrlPath(fileObject.archivalGroup.fcrepoPath, id);
+        return pathutils.joinUrlPath(agRoot, id);
       } else if( this.config.fcrepoPathType === 'subpath' ) {
-        return pathutils.joinUrlPath(fileObject.archivalGroup.fcrepoPath, subPath, id);
+        return pathutils.joinUrlPath(agRoot, subPath, id);
       }
     }
 
+    // this is a child archival group
     if( fileObject.archivalGroup ) {
       if( this.config.fcrepoPathType === 'id' ) {
+        console.log(3)
         return pathutils.joinUrlPath(
           fileObject.archivalGroup.fcrepoPath,
           subPath.replace(fileObject.archivalGroup.subPath, ''),
           id
         );
       } else if( this.config.fcrepoPathType === 'subpath' ) {
+        console.log(4)
         return pathutils.joinUrlPath(fileObject.archivalGroup.fcrepoPath, subPath, id);
       }
     }
 
+    // non-archival group import by id
     if( this.config.fcrepoPathType === 'id' ) {
       return id;
     }
 
+    // non-archival group import by subpath
+
     return pathutils.joinUrlPath(subPath, id);
   }
 
-  getIdentifier(graphNode={}, context) {
+  /**
+   * @method getIdentifier
+   * @description given a graph node, return the identifier.  First checks for @id of node,
+   * then checks for schema:identifier.  If found, returns first identifier that matches
+   * ^ark:/, if no ark found, first identifier is returned. If no identifier is found, 
+   * returns null.
+   * 
+   * @param {Object} graphNode 
+   * 
+   * @returns {String|null}
+   */
+  getIdentifier(graphNode={}) {
     if( graphNode['@id'] ) {
       return graphNode['@id'];
     }
 
-    let ids = utils.getPropAsString(graphNode, utils.PROPERTIES.SCHEMA.IDENTIFIER, graphNode['@context'] || context);
+    let ids = utils.getPropAsString(graphNode, utils.PROPERTIES.SCHEMA.IDENTIFIER);
     if( !Array.isArray(ids) ) ids = [ids];
-    ids = ids.map(item => item['@id'] || item['@value'] || item);
 
     if( ids && ids.length ) {
-        // attempt to find ark
+      // attempt to find ark
       let ark = ids
         .find(item => item.match(/^ark:\//));
       if( ark ) return ark;
@@ -441,42 +472,54 @@ class IoDir {
    * correct ldp:ArchivalGroup type. If so, sets the gitInfo for the node, and sets
    * the correct fcrepo root path based on container type.
    * 
-   * @param {*} fileObject 
+   * @param {Object} fileObject 
    */
   async handleArchivalGroup(fileObject) {
     if( fileObject === undefined ) fileObject = this;
 
+    if( fileObject.archivalGroup ) return;
+
+    // check for archival group node
     if( fileObject.mainGraphNode && fileObject.mainGraphNode['@type'] && 
       fileObject.mainGraphNode['@type'].includes(utils.TYPES.ARCHIVAL_GROUP) ) {
+
+      // set archival group
       fileObject.archivalGroup = fileObject;
 
+      // add to list of archival groups
       this.archivalGroups.push(fileObject);
+
+      // clone git info from archival group to all children
       fileObject.gitInfo = clone(this.gitInfo);
       fileObject.gitInfo.file = fileObject.containerFile.replace(this.gitInfo.rootDir, '');
       fileObject.gitInfo.rootDir = path.parse(fileObject.gitInfo.file).dir;
 
+      // handle fin io import instance config if provided by the server
       if( this.config.instanceConfig ) {
         fileObject.typeConfig = this.config.instanceConfig.typeMappers.find(item => {
-          
-          let context = fileObject.containerGraph['@context'] || fileObject.mainGraphNode['@context'] || {}; 
-
+          // search for type definition for the node
           for( let itype of item.types ) {
-            if( utils.isNodeOfType(fileObject.mainGraphNode, itype, context) ) {
+            if( utils.isNodeOfType(fileObject.mainGraphNode, itype) ) {
               return true;
             }
           }
         });
 
+        // set default type config if none found and default is provided
         if( !fileObject.typeConfig && this.config.instanceConfig.default ) {
           fileObject.typeConfig = this.config.instanceConfig.default;
         }
       }
 
-      if( fileObject.typeConfig ) {
-        fileObject.fcrepoPath = fileObject.typeConfig.basePath;
-      }
-      fileObject.id = this.getIdentifier(fileObject.mainGraphNode, fileObject.containerGraph['@context']) || fileObject.id;
-      fileObject.fcrepoPath = this.getFcrepoPath(fileObject.subPath, fileObject.id, fileObject);
+      // if( fileObject.typeConfig ) {
+      //   fileObject.fcrepoPath = fileObject.typeConfig.basePath;
+      // }
+
+      // update the id for this object
+      fileObject.id = this.getIdentifier(fileObject.mainGraphNode) || fileObject.id;
+      
+      // update the fcrepo path for this object
+      // fileObject.fcrepoPath = this.getFcrepoPath(fileObject.subPath, fileObject.id, fileObject);
     }
   }
 

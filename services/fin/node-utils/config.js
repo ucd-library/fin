@@ -132,10 +132,6 @@ module.exports = {
     ]
   },
 
-  finTag : {
-    header : 'fin-tag'
-  },
-
   finac : {
     agents : {
       admin : 'admin',

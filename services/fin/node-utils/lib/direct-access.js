@@ -1,17 +1,19 @@
 const ocfl = require('@ocfl/ocfl-fs');
 const jsonld = require('jsonld');
+const N3 = require('n3');
 const path = require('path');
 const deepmerge = require('deepmerge');
 const pg = require('./pg.js');
+const config = require('../config.js');
 const RDF_URIS = require('./common-rdf-uris.js');
-const FinTag = require('./fin-tag.js');
-const finTags = new FinTag();
-const crypto = require('crypto');
+
+// ocfl.extensions['9999-local-test']
 
 const storage = ocfl.storage({
   root: '/data/ocfl-root', 
   layout: {
-	  extensionName: '0004-hashed-n-tuple-storage-layout'
+	  // extensionName: '0004-hashed-n-tuple-storage-layout'
+    extensionName: '0004-hashed-n-tuple-storage-layout'
   }
 });
 
@@ -31,27 +33,38 @@ class DirectAccess {
       MODE : 'http://www.w3.org/ns/auth/acl#mode'
     }
 
+    this.quadParser = new N3.Parser({ format: 'N-Quads' });
+
     this.aclCache = new Map();
     this.aclCacheExpire = 1000*10; // 10 seconds
   }
 
-  async getContainer(fcPath, roles=[], opts={}) {
+  async checkAccess(fcPath, roles=[], opts={}) {
     fcPath = this.cleanPath(fcPath);
 
-    let t = Date.now();
-    // first we need to see if roles have access to this path
-    let acl = await this.getAcl(fcPath, opts);
+    if( !roles.includes(config.finac.agents.admin) ) {
+      let acl = await this.getAcl(fcPath, opts);
 
-    if( !this.hasAccess(acl, fcPath, roles) ) {
-      throw new Error('Forbidden');
+      if( !this.hasAccess(acl, fcPath, roles) ) {
+        throw new Error('Forbidden');
+      }
     }
+  }
+
+  async getContainer(fcPath, roles=[], opts={}) {
+    console.log('getContainer', fcPath);
+    fcPath = this.cleanPath(fcPath);
+
+    // first we need to see if roles have access to this path
+    await this.checkAccess(fcPath, roles, opts);
 
     let pgGraph = await this.readPg(fcPath);
-    let isBinary = this.isBinary(fcPath, pgGraph);
+    opts.isBinary = this.isBinary(fcPath, pgGraph);
+
     let ocflGraph = null;
     
     try {
-      ocflGraph = await this.readOcfl(fcPath, {isBinary});
+      ocflGraph = await this.readOcfl(fcPath, opts);
       if( !ocflGraph ) {
         throw new Error('Not Found');
       }
@@ -236,16 +249,21 @@ class DirectAccess {
   }
 
   async readOcfl(fcPath, opts={}) {
+    console.log('original', fcPath)
     fcPath = this.cleanPath(fcPath);
+    console.log('da clean', fcPath);
 
     let result = await pg.query(`select * from ocfl_id_map where fedora_id = $1`, [fcPath]);
     if( !result.rows.length ) {
+      console.lop('nope');
       return null;
     }
     result = result.rows[0];
 
     let ocflId = result.ocfl_id;
     let file = result.fedora_id.replace(ocflId, '');
+
+    
 
     if( opts.isBinary || file.match(/\/fcr:metadata$/) ) {
       file += '~fcr-desc.nt';
@@ -257,12 +275,29 @@ class DirectAccess {
     }
     file = file.replace(/^\//, '');
 
+    console.log({ocflId, file}, opts);
+
     let object = await storage.object(ocflId);
+    console.log(object);
+
+    // console.log(await object.files());
+    // for await( let f of object.files()) {
+    //   console.log(' - ', f);
+    // }
+
     let fileContent = await object.getFile(file).asString();
-    let doc = await jsonld.fromRDF(fileContent, {format: 'application/n-quads'});
-    
-    if( !Array.isArray(doc) ) {
-      doc = [doc];
+    console.log(fileContent);
+
+    let doc;
+
+    if( opts.format === 'n-quads' ) {
+      doc = this.quadParser.parse(fileContent);
+    } else {
+      doc = await jsonld.fromRDF(fileContent, {format: 'application/n-quads'});
+      
+      if( !Array.isArray(doc) ) {
+        doc = [doc];
+      }
     }
     return doc;
   }
@@ -295,34 +330,25 @@ class DirectAccess {
     });
 
     // set types 
-    result = await pg.query(`
+    node['@type'] = await this.getTypes(fcPath);
+
+    let graph = [node];
+
+    return graph;
+  }
+
+  async getTypes(fcPath) {
+    fcPath = this.cleanPath(fcPath);
+
+    let result = await pg.query(`
       SELECT distinct rdf_type_uri
       FROM simple_search ss
       LEFT JOIN search_resource_rdf_type srrt ON ss.id = srrt.resource_id
       LEFT JOIN search_rdf_type srt ON srrt.rdf_type_id = srt.id
       WHERE fedora_id = $1;
     `, [fcPath]);
-    node['@type'] = result.rows.map(row => row.rdf_type_uri);
 
-    // set fin tags
-    let tagNode = null;
-    let finPath = fcPath.replace(/^info:fedora/, '');
-    let tags = await finTags.get(finPath);
-    if( Object.keys(tags).length ) {
-      tagNode = {
-        '@id' : fcPath+'#fin-tags',
-      }
-      for( let key in tags ) {
-        tagNode['http://digital.ucdavis.edu/schema#'+key] = {'@value': tags[key]};
-      }
-    }
-
-    let graph = [node];
-    if( tagNode ) {
-      graph.push(tagNode);
-    }
-
-    return graph;
+    return result.rows.map(row => row.rdf_type_uri);
   }
 
   cleanPath(fcPath) {

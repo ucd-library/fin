@@ -22,6 +22,13 @@ class FinIoImport {
     }
   }
 
+  /**
+   * @method addSigIntCallback
+   * @description add a callback to the SIGINT signal to allow for graceful shutdown.
+   * Waits for any write operations to finish, cancels open transaction, then exits process.
+   * 
+   * @returns 
+   */
   addSigIntCallback() { 
     if( this.sigIntCallbackSet ) return;
     this.sigIntCallbackSet = true;
@@ -149,7 +156,7 @@ class FinIoImport {
     // TODO: implement this!!
     // let collections = rootDir.archivalGroups.filter(item => item.isCollection);
     // if( collections.length > 1 ) {
-    //   throw new Error('More than one collection found: ', collections.map(item => item.localpath).join(', '));
+    //   throw new Error('More than one collection found: ', collections.map(item => item.fsfull).join(', '));
     // }
 
     let agUpdates = 0;
@@ -247,20 +254,26 @@ class FinIoImport {
       }
 
       let response = null;
+      console.log(agHash, newAgHash);
       if( agHash === newAgHash ) {
         response = {equal:true, message: 'No changes archivalgroup detected: '+dir.fcrepoPath};
       } else {
         response = {equal:false, message: 'Changes detected: '+dir.fcrepoPath};
       }
 
+      // sha match, no changes, no force flag, ignore
       if( response.equal === true && this.options.forceMetadataUpdate !== true ) {
         console.log(' -> no changes found, ignoring');
         this.diskLog({verb: 'ignore', path: dir.fcrepoPath, file: dir.fsfull, message : 'no changes found'});
         return false;
+
+      // run delete import strategy
       } else if( this.options.agImportStrategy === 'delete' ) {
         console.log(' -> changes found, removing and reimporting: '+response.message);
         let resp = await this.write('delete', {path: dir.fcrepoPath, permanent: true}, dir.fsfull);
         console.log(' -> delete response: '+(resp.httpStack.map(item => item.statusCode+' '+item.body).join(', ')));
+      
+      // run transaction import strategy
       } else if( this.options.agImportStrategy === 'transaction' ) {
         this.currentOp = api.startTransaction({timeout: this.DEFAULT_TIMEOUT});
         let tResp = await this.currentOp;
@@ -271,6 +284,9 @@ class FinIoImport {
           return;
         }
         console.log(' -> changes found, running transaction based update ('+api.getConfig().transactionToken+'): '+response.message);
+      
+      // run version import strategy
+      // TODO: need to actually version here 
       } else if( this.options.agImportStrategy === 'version-all' ) {
         console.log(' -> changes found, WARNING versioning every change: '+response.message);
       } else {
@@ -283,28 +299,13 @@ class FinIoImport {
     }
 
     // does the archive group need a container?
-    if( isArchivalGroup || dir.containerGraph) {
-      if( !dir.finTag ) dir.finTag = {};
-      dir.finTag[this.FIN_TAGS.AG_HASH] = newAgHash;
-      await this.putContainer(dir, forceRootUpdate);
-    }
+    // if( isArchivalGroup || dir.containerGraph) {
+    //   if( !dir.finTag ) dir.finTag = {};
+    //   dir.finTag[this.FIN_TAGS.AG_HASH] = newAgHash;
+    //   await this.putContainer(dir, forceRootUpdate);
+    // }
 
-    // if this is an archival group collection, add all 'virtual'
-    // indirect container references
-    if( isArchivalGroup && dir.typeConfig && dir.typeConfig.virtualIndirectContainers ) {
-      // add all indirect containers
-      for( let container of indirectContainers ) {
-        await this.putContainer(container, rootDir);
-      }
 
-      // where there hardcoded collection hasRelations?
-      if( dir.hasRelations ) {
-        for( let container of dir.hasRelations ) {
-          await this.putContainer(container);
-        }
-      }
-    }
-    
     // are we a directory?
     // if not quit, otherwise add dir containers and binary files
     if( !dir.getFiles ) {
@@ -322,6 +323,22 @@ class FinIoImport {
       await this.putContainer(container);
     }
 
+    // if this is an archival group collection, add all 'virtual'
+    // indirect container references
+    if( isArchivalGroup && dir.typeConfig && dir.typeConfig.virtualIndirectContainers ) {
+      // add all indirect containers
+      for( let container of indirectContainers ) {
+        await this.putContainer(container, rootDir);
+      }
+
+      // where there hardcoded collection hasRelations?
+      if( dir.hasRelations ) {
+        for( let container of dir.hasRelations ) {
+          await this.putContainer(container);
+        }
+      }
+    }
+  
     for( let binary of files.binaries ) {
       await this.putBinary(binary);
       await this.putBinaryMetadata(binary);
@@ -353,9 +370,9 @@ class FinIoImport {
     if( this.sigInt ) return;
 
     let containerPath = container.fcrepoPath;
-    let localpath = container.localpath || container.containerFile;
+    let fsfull = container.containerFile || container.fsfull;
 
-    console.log(`PUT CONTAINER: ${containerPath}\n -> ${localpath}`);      
+    console.log(`PUT CONTAINER: ${containerPath}\n -> ${fsfull}`);      
 
     let headers = {
       'content-type' : api.RDF_FORMATS.JSON_LD,
@@ -387,23 +404,25 @@ class FinIoImport {
     // check if d exists and if there is the ucd metadata sha.
     let forceUpdate = this.options.forceMetadataUpdate || force;
     if( !forceUpdate && 
-        response.last.statusCode === 200 && localpath !== '_virtual_' ) {
+        response.last.statusCode === 200 && fsfull !== '_virtual_' ) {
       
       let tags = this.getFinTags(response.last);
-      if( await this.isMetaShaMatch(tags, finIoNode, localpath ) ) {
+      if( await this.isMetaShaMatch(tags, finIoNode, fsfull ) ) {
         console.log(` -> IGNORING (sha match)`);
-        this.diskLog({verb: 'ignore', path: containerPath, file: localpath, message : 'sha match'});
+        this.diskLog({verb: 'ignore', path: containerPath, file: fsfull, message : 'sha match'});
         return;
       }
       // isMetadataShaMatch sets the hash
       finTag[this.FIN_TAGS.METADATA_HASH] = tags[this.FIN_TAGS.METADATA_HASH];
-    } else if ( localpath !== '_virtual_' ) {
-      let hash = await api.hash(localpath);
+    } else if ( fsfull !== '_virtual_' ) {
+      console.log(3);
+      let hash = await api.hash(fsfull);
       finIoNode[utils.PROPERTIES.FIN_IO.METADATA_SHA] = [{'@value': hash.sha}];
       finIoNode[utils.PROPERTIES.FIN_IO.METADATA_MD5] = [{'@value': hash.md5}];
       finTag[this.FIN_TAGS.METADATA_HASH] = hash.sha;
     }
 
+    console.log(4);
     if( finIoNode.indirectContainerSha ) {
       finTag[this.FIN_TAGS.METADATA_HASH] = finIoNode.indirectContainerSha;
       delete finIoNode.indirectContainerSha;
@@ -428,7 +447,7 @@ class FinIoImport {
         content : this.replaceBaseContext(container.containerGraph, containerPath),
         partial : true,
         headers
-      }, localpath);
+      }, fsfull);
 
       if( response.error ) {
         throw new Error(response.error);
@@ -441,15 +460,18 @@ class FinIoImport {
     if( this.sigInt ) return;
 
     let fullfcpath = binary.fcrepoPath;
-    console.log(`PUT BINARY: ${fullfcpath}\n -> ${binary.localpath}`);
+    console.log(`PUT BINARY: ${fullfcpath}\n -> ${binary.fsfull}`);
     
     let response = await api.head({
       path: pathutils.joinUrlPath(fullfcpath, 'fcr:metadata'),
     });
 
+    let customHeaders = {};
+
     if( response.last.statusCode === 200 ) {
       response = this.getFinTags(response.last);
-      if( response[this.FIN_TAGS.BINARY_HASH] ) {
+
+      // if( response[this.FIN_TAGS.BINARY_HASH] ) {
         // let shas = response[utils.PROPERTIES.PREMIS.HAS_MESSAGE_DIGEST]
         //   .map(item => {
         //     let [urn, sha, hash] = item['@id'].split(':')
@@ -462,29 +484,33 @@ class FinIoImport {
         //   shas.find(item => item[0].match(/^sha-/));
         // }
         let sha = response[this.FIN_TAGS.BINARY_HASH];
+        let localSha = await api.sha(binary.fsfull, '256');
 
-        if( sha ) {
-          let localSha = await api.sha(binary.localpath, '256');
-          if( localSha === sha ) {
-            console.log(' -> IGNORING (sha match)');
-            this.diskLog({verb: 'ignore', path: fullfcpath, file: binary.localpath, message : 'sha match'});
-            return false;
-          }
-
-          // let localSha = await api.sha(binary.localpath, sha[0].replace('sha-', ''));
-          // if( localSha === sha[1] ) {
-          //   console.log(' -> IGNORING (sha match)');
-          //   this.diskLog({verb: 'ignore', path: fullfcpath, file: binary.localpath, message : 'sha match'});
-          //   return false;
-          // }
+          
+        if( localSha === sha ) {
+          console.log(' -> IGNORING (sha match)');
+          this.diskLog({verb: 'ignore', path: fullfcpath, file: binary.fsfull, message : 'sha match'});
+          return false;
         }
 
-      }
+        // let localSha = await api.sha(binary.fsfull, sha[0].replace('sha-', ''));
+        // if( localSha === sha[1] ) {
+        //   console.log(' -> IGNORING (sha match)');
+        //   this.diskLog({verb: 'ignore', path: fullfcpath, file: binary.fsfull, message : 'sha match'});
+        //   return false;
+        // }
+      
+
+        customHeaders[`fin-tag`] = JSON.stringify({
+          [this.FIN_TAGS.BINARY_HASH]: localSha
+        });
+
+      // }
     }
     
     // attempt to set mime type
-    let customHeaders = {};
-    let ext = path.parse(binary.localpath).ext.replace(/^\./, '');
+    
+    let ext = path.parse(binary.fsfull).ext.replace(/^\./, '');
     let mimeLibType = mime.getType(ext);
     if( mimeLibType ) {
       customHeaders['content-type'] = mimeLibType;
@@ -493,12 +519,13 @@ class FinIoImport {
     }
 
     if( this.options.dryRun !== true ) {
+      console.log(customHeaders);
       response = await this.write('put', {
         path : fullfcpath,
-        file : binary.localpath,
+        file : binary.fsfull,
         partial : true,
         headers : customHeaders
-      }, binary.localpath);
+      }, binary.fsfull);
 
       // tombstone found, attempt removal
       if( response.last.statusCode === 410 ) {
@@ -506,14 +533,14 @@ class FinIoImport {
         response = await this.write('delete', {
           path: fullfcpath, 
           permanent: true
-        }, binary.localpath);
+        }, binary.fsfull);
 
         response = await this.write('put', {
           path : fullfcpath,
-          file : binary.localpath,
+          file : binary.fsfull,
           partial : true,
           headers : customHeaders
-        }, binary.localpath);
+        }, binary.fsfull);
       }
 
       if( response.error ) {
@@ -546,6 +573,7 @@ class FinIoImport {
       // check if d exists and if there is the ucd metadata sha.
       if( this.options.forceMetadataUpdate !== true && response.last.statusCode === 200 ) {
         let tags = this.getFinTags(response.last);
+        console.log(tags)
         if( await this.isMetaShaMatch(tags, finIoContainer, binary.containerFile) ) {
           console.log(` -> IGNORING (sha match)`);
           this.diskLog({verb: 'ignore', path: containerPath, file: binary.containerFile, message : 'sha match'});
@@ -620,7 +648,7 @@ class FinIoImport {
     // root has relaction (ex: hasPart)
     containers.push({
       fcrepoPath : pathutils.joinUrlPath(ag.fcrepoPath, vIdCConfig.hasFolder),
-      localpath : '_virtual_',
+      fsfull : '_virtual_',
       mainGraphNode : {
         '@id' : '',
         '@type' : [utils.TYPES.INDIRECT_CONTAINER],
@@ -639,7 +667,7 @@ class FinIoImport {
     // root is relation (ex: isPartOf)
     containers.push({
       fcrepoPath : pathutils.joinUrlPath(ag.fcrepoPath, vIdCConfig.isFolder),
-      localpath : '_virtual_',
+      fsfull : '_virtual_',
       mainGraphNode : {
         '@id' : '',
         '@type' : [utils.TYPES.INDIRECT_CONTAINER],
@@ -661,7 +689,7 @@ class FinIoImport {
 
       containers.push({
         fcrepoPath : pathutils.joinUrlPath(ag.fcrepoPath, vIdCConfig.isFolder, item.id),
-        localpath : '_virtual_',
+        fsfull : '_virtual_',
         mainGraphNode : {
           '@id' : '',
           [isRelation] : [{
@@ -672,7 +700,7 @@ class FinIoImport {
 
       containers.push({
         fcrepoPath : pathutils.joinUrlPath(ag.fcrepoPath, vIdCConfig.hasFolder, item.id),
-        localpath : '_virtual_',
+        fsfull : '_virtual_',
         mainGraphNode : {
           '@id' : '',
           [hasRelation] : [{
@@ -870,7 +898,7 @@ class FinIoImport {
 
     for( let binary of files.binaries ) {
       manifest[binary.fcrepoPath] = {
-        binarySha : await api.sha(binary.localpath || binary.containerFile),
+        binarySha : await api.sha(binary.fsfull || binary.containerFile),
       }
 
       if( binary.containerFile ) {
@@ -913,7 +941,7 @@ class FinIoImport {
     // newJsonLd might not be a graph, but the node itself
     // if( !Array.isArray(newJsonld) ) newJsonld = [newJsonld];
 
-    let currentSha = tags[this.FIN_TAGS.BINARY_HASH] || tags[this.FIN_TAGS.METADATA_HASH];
+    let currentSha = isBinary ? tags[this.FIN_TAGS.BINARY_HASH] : tags[this.FIN_TAGS.METADATA_HASH];
     // let currentSha = utils.getGraphValue(currentJsonLd, utils.PROPERTIES.FIN_IO.METADATA_SHA);
 
     // check sha match

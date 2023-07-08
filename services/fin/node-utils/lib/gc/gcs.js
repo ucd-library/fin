@@ -7,8 +7,8 @@ const crypto = require('crypto');
 const path = require('path');
 const pg = require('./gcs-postgres.js');
 const keycloak = require('../keycloak.js');
-const FinTag = require('../fin-tag.js');
-const finTag = new FinTag();
+const FinSearch = require('../fin-search.js');
+const finSearch = new FinSearch();
 
 // For more information on ways to initialize Storage, please see
 // https://googleapis.dev/nodejs/storage/latest/Storage.html
@@ -34,30 +34,14 @@ class GcsWrapper {
       'http://fedora.info/definitions/fcrepo#ServerManaged'
     ]
 
-    this.TAGS = {
-      GCS_METADATA_MD5 : 'gcs-metadata-md5',
-      GCS_BINARY_MD5 : 'gcs-binary-md5'
+    this.METADATA_PREFIX = {
+      GCS_METADATA_MD5 : 'http://digital.ucdavis.edu/schema#gcs-metadata-md5',
+      GCS_BINARY_MD5 : 'http://digital.ucdavis.edu/schema#gcs-binary-md5'
     }
 
     this.SYNC_BATCH_SIZE = 250;
 
-    this.resetStats();
     pg.connect();
-  }
-
-  resetStats() {
-    this.stats = {
-      toFcrepo : {
-        containers : 0,
-        binaries : 0,
-        archivalGroups : 0,
-      },
-      toGcs : {
-        containers : 0,
-        binaries : 0,
-        archivalGroups : 0,
-      }
-    }
   }
 
   /**
@@ -99,59 +83,6 @@ class GcsWrapper {
       opts.ensurePathCache = new Set();
     }
 
-    // this is just for the start of the sync
-    // if( opts.ignoreRootFile !== true ) {
-    //   let queryPath = finPath.replace(/\/$/, '');
-    //   let file, metadata, isContainer = false;
-
-    //   // look up root binary or container
-    //   if( queryPath ) {
-    //     file = await this.getGcsFile('gs://'+gcsBucket+queryPath);
-    //     if( file ) {
-    //       if( file.metadata.contentType !== 'application/ld+json' ) {
-    //         metadata = await this.getGcsFile('gs://'+gcsBucket+queryPath+this.JSON_LD_EXTENTION);
-    //       } else if( file.metadata.contentType === 'application/ld+json' ) {
-    //         isContainer = true;
-    //       }
-    //     }
-    //   }
-
-    //   // sync root binary or container
-    //   if( isContainer ) {
-    //     await this.syncContainerToFcrepo({
-    //       path : queryPath,
-    //       dir: true,
-    //       metadata : file
-    //     }, opts);
-    //   } else if( file ) {
-    //     await this.syncBinaryToFcrepo({
-    //       path : queryPath,
-    //       file : file,
-    //       metadata : metadata
-    //     }, opts);
-
-    //     // there are no sub files in this folder
-    //     // we are done.
-    //     // return;
-    //   } else {
-
-    //     // no gcs file found, so we are done
-    //     await pg.updateStatus({
-    //       path : finPath,
-    //       gcsFile : gcsPath,
-    //       direction : 'gcs-to-fcrepo',
-    //       event : opts.event,
-    //       error : 'gcs file not found',
-    //       message : 'error'
-    //     });
-    //     logger.info('root gcs metadat file not found', gcsPath)
-
-    //     // return;
-    //   }
-
-    //   if( opts.crawlChildren === false ) return;
-    // }
-
     let count = {binary: 0, container: 0};
     await this.getFiles(gcsPath, async batch => {
       for( let file of batch ) {
@@ -162,74 +93,10 @@ class GcsWrapper {
           count.binary++;
           await this.syncBinaryToFcrepo(file, opts);
         }
-
-        // console.log('file', file.name, Date.now()-t, type);
       }
     });
 
     return count;
-
-    // let {files, folders} = await this.getGcsFilesInFolder(gcsPath);
-
-    // group together files and folders with there metadata
-    let grouping = {};
-
-    // // set all folders first
-    // for( let folder of folders ) {
-    //   let name = folder.replace(/\/$/, '').split('/').pop();
-    //   grouping[name] = {
-    //     path : '/'+folder,
-    //     dir: true
-    //   }
-    // }
-
-    // // find a files that are not metadata and match to files/folders.
-    // for( let file of files ) {
-    //   if( file.name.endsWith(this.JSON_LD_EXTENTION) ) continue;
-    //   let name = file.name.split('/').pop();
-
-    //   if( grouping[name] && this.isJsonLdFile(file) ) {
-    //     grouping[name].metadata = file;
-    //   } else {
-    //     // check to see if there is a jsonld file for this file
-    //     let metadataFilename = name+this.JSON_LD_EXTENTION;
-    //     let metadataFile = files.find(file => file.name.endsWith('/'+metadataFilename));
-
-    //     if( metadataFile) {
-    //       grouping[name] = {
-    //         path : '/'+file.name,
-    //         file : file,
-    //         metadata : metadataFile
-    //       }
-    //     } else {
-    //       grouping[name] = {
-    //         path : '/'+file.name,
-    //         file : file
-    //       }
-    //     }
-    //   }
-    // }
-
-    // // now put all files
-    // for( let item in grouping ) {
-    //   if( grouping[item].dir === true ) continue;
-      
-    //   await this.syncBinaryToFcrepo(grouping[item], opts);
-    // }
-
-    // // finally loop through all folders
-    // for( let item in grouping ) {
-    //   if( grouping[item].dir !== true ) continue;
-      
-    //   if( grouping[item].metadata ) {
-    //     await this.syncContainerToFcrepo(grouping[item], opts);
-    //   }
-
-    //   opts.ignoreRootFile = true; 
-    //   await this.syncToFcrepo(grouping[item].path, gcsBucket, opts);
-    // }
-
-
   }
 
   /**
@@ -314,8 +181,6 @@ class GcsWrapper {
         event : opts.event,
         message : 'binary synced'
       });
-
-      this.stats.toGcs.binaries++;
     }
 
     // // no remove the binary node from the fcrepo container
@@ -339,11 +204,11 @@ class GcsWrapper {
       // fcrepoContainer = container;
       // binaryNode = fcrepoContainer.find(node => node['@type'].includes(RDF_URIS.TYPES.BINARY));
     // } catch(e) {}
-    let finTags = await this.getFcrepoFinTags(finPath);
+    let finQuads = await finSearch.get(finPath);
     
 
     // if( !this.isBinaryMd5Match(binaryNode, item.file.metadata) ) {
-    if( !this.isBinaryTagMatch(finTags, file.metadata) ) {
+    if( !this.isBinaryTagMatch(finQuads, file.metadata) ) {
       logger.info('syncing binary from gcs to fcrepo'+(opts.proxyBinary === true ? ' as proxy' : ''), gcsFile, finPath);
       let result;
 
@@ -374,9 +239,6 @@ class GcsWrapper {
             'Content-Type' : file.metadata.contentType,
             'Content-Disposition' : file.metadata.contentDisposition,
             digest : 'md5='+Buffer.from(file.metadata.md5Hash, 'base64').toString('hex'),
-            [config.finTag.header] : JSON.stringify({
-              [this.TAGS.GCS_BINARY_MD5] : file.metadata.md5Hash
-            })
           },
           partial : true
         });
@@ -402,7 +264,6 @@ class GcsWrapper {
         message : 'syned binary'
       });
 
-      this.stats.toFcrepo.binaries++;
     } else {
       await pg.updateStatus({
         path : finPath,
@@ -413,66 +274,6 @@ class GcsWrapper {
       });
       logger.debug('md5 match, ignoring gcs to fcrepo sync', gcsFile, finPath)
     }
-
-    return;
-
-    
-    if( !item.metadata ) return;
-
-    gcsFile = 'gs://'+item.metadata.metadata.bucket+'/'+item.metadata.name;
-    // fcrepoContainer = null;
-
-    finTags = await this.getFcrepoFinTags(item.path);
-    // try {
-    //   let {container} = await this.getFcrepoContainer(item.path+'/fcr:metadata', true);
-    //   fcrepoContainer = JSON.stringify(container);
-    // } catch(e) {}
-
-    if( !this.isMetadataTagMatch(finTags, item.metadata.metadata) ) {
-      logger.info('syncing binary metadata from gcs to fcrepo', gcsFile, item.path+'/fcr:metadata');
-
-      let jsonld = JSON.parse(await this.loadFileIntoMemory(gcsFile));
-      this.addGcsMetadataNode(jsonld, {
-        md5 : item.metadata.metadata.md5Hash,
-        gcsFile : gcsFile
-      });
-
-      let result = await this.fcrepoPut({
-        path : item.path+'/fcr:metadata',
-        body : JSON.stringify(jsonld),
-        partial : true,
-        headers : {
-          'Content-Type' : api.RDF_FORMATS.JSON_LD,
-          [config.finTag.header] : JSON.stringify({
-            [this.TAGS.GCS_METADATA_MD5] : item.metadata.metadata.md5Hash
-          })
-        }
-      });
-
-      if( result.last.statusCode >= 400 ) {
-        await pg.updateStatus({
-          path : item.path+'/fcr:metadata',
-          gcsFile,
-          direction : 'gcs-to-fcrepo',
-          event : opts.event,
-          error: result.last.statusCode+' '+result.last.body,
-          message : 'error'
-        });
-        throw new Error('Error streaming upload to fcrepo: '+result.last.statusCode);
-      }
-
-      this.stats.toFcrepo.containers++;
-    } else {
-      logger.debug('md5 match, ignoring gcs to fcrepo sync', gcsFile, item.path+'/fcr:metadata');
-    
-      await pg.updateStatus({
-        path : item.path+'/fcr:metadata',
-        gcsFile,
-        direction : 'gcs-to-fcrepo',
-        event : opts.event,
-        message : 'md5 match'
-      });
-    }
   }
 
   async syncContainerToFcrepo(file, opts={}) {
@@ -480,9 +281,9 @@ class GcsWrapper {
     let finPath = file.name;
     if( !finPath.startsWith('/') ) finPath = '/'+finPath;
 
-    let finTags = await this.getFcrepoFinTags(finPath);
+    let finQuads = await finSearch.get(finPath);
 
-    if( !this.isMetadataTagMatch(finTags, file.metadata) ) {
+    if( !this.isMetadataTagMatch(finQuads, file.metadata) ) {
       logger.info('syncing container from gcs to fcrepo', gcsFile, finPath);
 
       await this.ensureRootPaths(finPath, opts.ensurePathCache);
@@ -494,16 +295,21 @@ class GcsWrapper {
       });
 
       let headers = {
-        'Content-Type' : api.RDF_FORMATS.JSON_LD,
-        [config.finTag.header] : JSON.stringify({
-          [this.TAGS.GCS_METADATA_MD5] : file.metadata.md5Hash
-        })
+        'Content-Type' : api.RDF_FORMATS.JSON_LD
       };
 
-      if( file.metadata.metadata.isArchivalGroup === 'true' ) {
-        headers.link = '<'+RDF_URIS.TYPES.ARCHIVAL_GROUP+'>; rel="type"';
-        this.stats.toFcrepo.archivalGroups++;
-      }
+      // get root node
+      let rootNode = api.io.utils.getMainGraphNode(jsonld, finPath);
+
+      let current = api.head({
+        path: finPath, 
+        host: config.fcrepo.host, 
+        superuser: true, 
+        directAccess: true
+      });
+
+      // strips types that must be provided as a Link headers, adds them to headers
+      api.io.utils.cleanupContainerNode(rootNode, headers, current);
 
       let result = await this.fcrepoPut({
         path : finPath,
@@ -522,8 +328,6 @@ class GcsWrapper {
         event : opts.event,
         message : 'synced container'
       });
-
-      this.stats.toFcrepo.containers++;
     } else {
       logger.debug('md5 match, ignoring gcs to fcrepo sync', gcsFile, finPath)
 
@@ -590,8 +394,6 @@ class GcsWrapper {
       message : 'synced container'
     });
 
-    this.stats.toGcs.containers++;
-    if( isArchivalGroup ) this.stats.toGcs.archivalGroups++;
   }
 
   /**
@@ -751,43 +553,27 @@ class GcsWrapper {
       }
     }
 
+    // append container types
+    container.push({
+
+    });
+
     let links = api.parseLinkHeader(response.last.headers.link);
     let isArchivalGroup = links.type.find(item => item.url === RDF_URIS.TYPES.ARCHIVAL_GROUP) ? true : false;
 
     return {isArchivalGroup, container};
   }
 
-  /**
-   * @method getFcrepoFinTags
-   * @description get fin tags from fcrepo container
-   * 
-   * @param {String} finPath 
-   * 
-   * @returns {Promise} resolves to fin tags object
-   */
-  async getFcrepoFinTags(finPath) {
-    let tags = await finTag.get(finPath);
-    return tags || {};
-    // let resp = await api.head({
-    //   path : finPath,
-    //   host : config.gateway.host,
-    //   jwt : await keycloak.getServiceAccountToken()
-    // });
-
-    // if( resp.last.statusCode !== 200 ) {
-    //   return {};
-    // }
-
-    // if( !resp.last.headers[config.finTag.header] ) return {};
-    // return JSON.parse(resp.last.headers[config.finTag.header]);
+  isBinaryTagMatch(finQuads, gcsFile) {
+    finQuads = finSearch.getPropertyValues(finQuads, 'prefix', this.METADATA_PREFIX.GCS_BINARY_MD5);
+    if( finQuads.length === 0 ) return false;
+    return (finQuads[0] === gcsFile.md5Hash);
   }
 
-  isBinaryTagMatch(tags, gcsFile) {
-    return (tags[this.TAGS.GCS_BINARY_MD5] === gcsFile.md5Hash);
-  }
-
-  isMetadataTagMatch(tags, gcsFile) {
-    return (tags[this.TAGS.GCS_METADATA_MD5] === gcsFile.md5Hash);
+  isMetadataTagMatch(finQuads, gcsFile) {
+    finQuads = finSearch.getPropertyValues(finQuads, 'prefix', this.METADATA_PREFIX.GCS_METADATA_MD5);
+    if( finQuads.length === 0 ) return false;
+    return (finQuads[0] === gcsFile.md5Hash);
   }
 
   isBinaryMd5Match(fcrepoContainer, gcsFile) {

@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const {keycloak, models, config, logger, jwt, tests, directAccess} = require('@ucd-lib/fin-service-utils');
+const {keycloak, models, config, logger, jwt, tests, directAccess, FinSearch} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('../models/services.js');
 const httpProxy = require('http-proxy');
 const fetch = require('node-fetch');
@@ -8,6 +8,7 @@ const archive = require('../lib/archive.js');
 const transactionHelper = require('../lib/transactions.js');
 const gcsConfig = require('../../gcs/lib/config.js');
 const {ActiveMqTests} = tests;
+const finSearch = new FinSearch();
 
 let activeMqTest = new ActiveMqTests({
   active: true,
@@ -179,32 +180,67 @@ router.post('/archive', async (req, res) => {
   }
 });
 
+router.head(/\/rest\/.*/, async (req, res) => {
+  let finPath = req.originalUrl.replace('/fin/rest', '');
+
+  try {
+    let t = Date.now();
+
+    let exists = await finSearch.exists(finPath);
+    if( !exists ) throw new Error('Not Found');
+
+    await directAccess.checkAccess(finPath, req?.user?.roles);
+
+    res.set('x-child-count', (await directAccess.getChildCount(finPath)));
+    res.set('link', (await directAccess.getTypes(finPath))
+      .map(type => `<${type}>; rel="type"`));
+      
+    logger.info('head getContainer', finPath, Date.now()-t);
+    res.send();
+  } catch(e) {
+    handleFinRestError(res, e, finPath);
+  }
+});
+
 router.get(/\/rest\/.*/, async (req, res) => {
   let finPath = req.originalUrl.replace('/fin/rest', '');
   try {
     let t = Date.now();
-    let container = await directAccess.getContainer(finPath);
-    logger.info('getContainer', finPath, Date.now()-t);
-    res.json(container);
-  } catch(e) {
-    if( e.message === 'Not Found' ) {
-      return res.status(404).json({
-        error : true,
-        message : 'Not Found'
-      });
-    } else if ( e.message === 'Forbidden' ) {
-      return res.status(403).json({
-        error : true,
-        message : 'Forbidden'
-      });
+    let response;
+
+    if( req.get('Accept') === 'application/fin-quads' ) {
+      await directAccess.checkAccess(finPath, req?.user?.roles);
+      response = await finSearch.get(finPath);
+    } else {
+      response = await directAccess.getContainer(finPath, req?.user?.roles);
     }
 
-    logger.error('Error getting container', finPath, e);
-    return res.status(500).json({
-      error : true,
-      message : e.message
-    });
+    logger.info('getContainer', finPath, Date.now()-t);
+    
+    res.json(response);
+  } catch(e) {
+    handleFinRestError(res, e, finPath);
   }
 });
+
+function handleFinRestError(res, e, finPath) {
+  if( e.message === 'Not Found' ) {
+    return res.status(404).json({
+      error : true,
+      message : 'Not Found'
+    });
+  } else if ( e.message === 'Forbidden' ) {
+    return res.status(403).json({
+      error : true,
+      message : 'Forbidden'
+    });
+  }
+
+  logger.error('Error getting container', finPath, e);
+  return res.status(500).json({
+    error : true,
+    message : e.message
+  });
+}
 
 module.exports = router;

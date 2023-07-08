@@ -1,5 +1,6 @@
-const fs = require('fs');
+const fs = require('fs-extra');
 const path = require('path');
+const jsonld = require('jsonld');
 const transform = require('../utils/transform');
 class IoUtils {
 
@@ -12,12 +13,8 @@ class IoUtils {
     this.CONTAINER_FILE_EXTS_REGEX = /(\.ttl|\.jsonld\.json)$/;
 
     this.GIT_SOURCE_PROPERTY_BASE = 'http://digital.ucdavis.edu/schema#git-';
-    this.LDP_SCHEMA = ['http://www.w3.org/ns/ldp#', 'ldp:'];
-    this.FEDORA_SCHEMA = ['http://fedora.info/definitions/v4/repository#', 'fedora:'];
-    this.KNOWN_PREFIX = {
-      'ldp:' : 'http://www.w3.org/ns/ldp#',
-      'fedora:' : 'http://fedora.info/definitions/v4/repository#'
-    };
+    this.LDP_SCHEMA = 'http://www.w3.org/ns/ldp#';
+    this.FEDORA_SCHEMA = 'http://fedora.info/definitions/v4/repository#';
 
     this.TYPES = {
       BINARY : 'http://fedora.info/definitions/v4/repository#Binary',
@@ -47,9 +44,7 @@ class IoUtils {
         CONTAINS : 'http://www.w3.org/ns/ldp#contains',
         MEMBERSHIP_RESOURCE : 'http://www.w3.org/ns/ldp#membershipResource',
         IS_MEMBER_OF_RELATION : 'http://www.w3.org/ns/ldp#isMemberOfRelation',
-        IS_MEMBER_OF_RELATION_SHORT : 'ldp:isMemberOfRelation',
         HAS_MEMBER_RELATION : 'http://www.w3.org/ns/ldp#hasMemberRelation',
-        HAS_MEMBER_RELATION_SHORT : 'ldp:hasMemberRelation',
         INSERTED_CONTENT_RELATION : 'http://www.w3.org/ns/ldp#insertedContentRelation'
       }
     }
@@ -78,16 +73,24 @@ class IoUtils {
    * @returns {Object|null} 
    */
   async parseContainerGraphFile(filePath) {
-    let content = fs.readFileSync(filePath, 'utf-8');
-    let jsonld = null;
+    let content = await fs.readFile(filePath, 'utf-8');
+    let graph = null;
 
     if( path.parse(filePath).ext === '.ttl' ) {
-      jsonld = await transform.turtleToJsonLd(content);
+      graph = await transform.turtleToJsonLd(content);
     } else if( filePath.match(/\.jsonld\.json$/) ) {
-      jsonld = JSON.parse(content);
+      graph = JSON.parse(content);
     }
 
-    return jsonld
+    graph = await jsonld.expand(graph);
+    graph = this.graphAsArray(graph);
+
+    graph.forEach(node => {
+      if( node['@id'] === './' ) node['@id'] = '';
+      if( node['@id'] === '.' ) node['@id'] = '';
+    });
+
+    return graph;
   }
 
   /**
@@ -102,7 +105,7 @@ class IoUtils {
       if( !Array.isArray(node['@type']) ) node['@type'] = [node['@type']];
       console.log(` -> @type: ${node['@type'].join(', ')}`);
       this.TO_HEADER_TYPES.forEach(type => {
-        let typeName = this.isNodeOfType(node, type, node['@context'], {returnExpanded: true});
+        let typeName = this.isNodeOfType(node, type);
         if( !typeName ) return;
 
         node['@type'] = node['@type'].filter(item => item !== typeName);
@@ -116,10 +119,8 @@ class IoUtils {
 
       // strip all ldp (and possibly fedora properties)
       let prefixes = [this.LDP_SCHEMA, this.FEDORA_SCHEMA];
-      prefixes.forEach(types => {
-        types.forEach(type => 
-          node['@type'] = node['@type'].filter(item => !item.startsWith(type))
-        );
+      prefixes.forEach(prefix => {
+        node['@type'] = node['@type'].filter(item => !item.startsWith(prefix))
       });
       
     }
@@ -128,17 +129,6 @@ class IoUtils {
     // Just keeping down direction required by fin UI for now.
     if( node[this.PROPERTIES.LDP.HAS_MEMBER_RELATION] && node[this.PROPERTIES.LDP.IS_MEMBER_OF_RELATION] ) {
       delete node[this.PROPERTIES.LDP.IS_MEMBER_OF_RELATION];
-    }
-
-    let hasMemberRelation = this.PROPERTIES.LDP.HAS_MEMBER_RELATION_SHORT.replace(/^.*:/, '');
-    let isMemberOfRelation = this.PROPERTIES.LDP.IS_MEMBER_OF_RELATION_SHORT.replace(/^.*:/, '');
-    if( node[hasMemberRelation] && node[isMemberOfRelation] ) {
-      delete node[isMemberOfRelation];
-    }
-
-    if( node[this.PROPERTIES.LDP.HAS_MEMBER_RELATION_SHORT] && 
-        node[this.PROPERTIES.LDP.IS_MEMBER_OF_RELATION_SHORT] ) {
-      delete node[this.PROPERTIES.LDP.IS_MEMBER_OF_RELATION_SHORT];
     }
   }
 
@@ -150,8 +140,7 @@ class IoUtils {
    * @param {*} id 
    */
   getMainGraphNode(graph, id) {
-    if( graph['@graph'] ) graph = graph['@graph'];
-    if( !Array.isArray(graph) ) graph = [graph];
+    graph = this.graphAsArray(graph);
 
     let mainNode = null;
 
@@ -170,13 +159,8 @@ class IoUtils {
   }
 
 
-  getGraphNode(jsonld, id, context) {
-    if( jsonld['@graph'] ) {
-      jsonld = jsonld['@graph'];
-    }
-    if( !Array.isArray(jsonld) ) {
-      jsonld = [jsonld];
-    }
+  getGraphNode(jsonld, id) {
+    jsonld = this.graphAsArray(jsonld);
 
     let isRe = false;
     if( id instanceof RegExp ) {
@@ -188,7 +172,7 @@ class IoUtils {
         return node;
       } else if( !isRe ) {
         if( node['@id'] === id ) return node;
-        if( this.isNodeOfType(node, id, context) ) return node;
+        if( this.isNodeOfType(node, id) ) return node;
       }
     }
 
@@ -197,8 +181,7 @@ class IoUtils {
 
 
   removeGraphNode(graph, typeOrId) {
-    if( graph['@graph'] ) graph = graph['@graph'];
-    if( !Array.isArray(graph) ) graph = [graph];
+    graph = this.graphAsArray(graph);
 
     let index = graph.findIndex(item => item['@type'] && item['@type'].includes(typeOrId));
     if( index > -1 ) {
@@ -209,7 +192,7 @@ class IoUtils {
 
 
   /**
-   * @method getGraphNode
+   * @method getGraphValue
    * @descript this is a hack function.  use with caution.  Given
    * a graph return the first property value for the first node the
    * property is found in.  Purpose.  Binary containers graph only 
@@ -239,30 +222,32 @@ class IoUtils {
     node['@type'] = types; 
   }
 
-  isNodeOfType(node, type, context, opts={}) {
+  /**
+   * @method isNodeOfType
+   * @description given a node, check if it is of a given type.  Expects
+   * expanded graph/node
+   * 
+   * @param {Object} node 
+   * @param {String} type full uri
+   * @returns 
+   */
+  isNodeOfType(node, type) {
     let types = node['@type'] || [];
-    if( !Array.isArray(types) ) types = [types];
     if( types.includes(type) ) return type;
-
-    if( !context ) return false;
-
-    for( let t of types ) {      
-      let prefix = t.split(':')[0];
-
-      if( !context[prefix] ) continue;
-      if( context[prefix]+t.split(':')[1] === type ) {
-        if( opts.returnExpanded ) {
-          return context[prefix]+t.split(':')[1];
-        }
-        return t;
-      }
-    }
-
     return false;
   }
 
-  getPropAsString(metadata, prop, context) {
-    prop = this.getProp(metadata, prop, context);
+  /**
+   * @method getPropAsString
+   * @description given a node, get the property as a string regardless
+   * of it's type.
+   * 
+   * @param {Object} node expanded node
+   * @param {String} prop property to get 
+   * @returns 
+   */
+  getPropAsString(node, prop) {
+    prop = this.getProp(node, prop);
     if( !prop ) return '';
     if( Array.isArray(prop) ) {
       return prop.map(item => this._getPropValueAsString(item));
@@ -270,31 +255,59 @@ class IoUtils {
     return this._getPropValueAsString(prop);
   }
 
+  /**
+   * @method _getPropValueAsString
+   * @description given a property value, return it as a string.  If it's
+   * a string, return it.  If it's an object, return the @id or @value
+   * 
+   * @param {Object|String} value 
+   * @returns {String}
+   */
   _getPropValueAsString(value) {
     if( typeof value === 'string' ) return value;
     return value['@id'] || value['@value'];
   }
 
-  getProp(metadata, prop, context) {
-    let compacted = prop.split(/#|\//).pop();
-    let v = metadata[prop] || metadata[compacted];
-    if( v ) return v;
-
-    if( context ) {
-      for( let key in context ) {
-        let contextValue = context[key];
-        if( typeof contextValue === 'string' && metadata[key+':'+compacted] ) {
-          return metadata[key+':'+compacted];
-        }
-
-        if( typeof contextValue !== 'object' ) continue;
-        if( contextValue['@id'] === prop ) {
-          return metadata[key];
-        }
-      }
-    }
+  getProp(node, prop) {
+    return node[prop];
   }
 
+  /**
+   * @method graphAsArray
+   * @description given a graph, return the array of nodes.  If single node
+   * is passed, it will be wrapped in an array.
+   * 
+   * @param {Object|Array} graph 
+   * @returns {Array}
+   */
+  graphAsArray(graph) {
+    if( graph['@graph'] ) graph = graph['@graph'];
+    if( !Array.isArray(graph) ) graph = [graph];
+    return graph;
+  }
+
+  /**
+   * @method isMetadataFile
+   * @description given a file path, return true if it is a metadata file
+   * (.ttl or .jsonld.json)
+   * 
+   * @param {String} filePath 
+   * @returns 
+   */
+  isMetadataFile(filePath='') {
+    return filePath.match(this.CONTAINER_FILE_EXTS_REGEX) ? true : false;
+  }
+
+  /**
+   * @method getMetadataFileFor
+   * @description strip metadata (.ttl or .jsonld.json) from a file path
+   * 
+   * @param {String} filePath 
+   * @returns {String}
+   */
+  getMetadataFileFor(filePath) {
+    return filePath.replace(this.CONTAINER_FILE_EXTS_REGEX, '');
+  }
 }
 
 module.exports = new IoUtils();

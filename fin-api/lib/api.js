@@ -124,6 +124,11 @@ class FinApi {
       MINIMAL : 'handling=lenient; received="minimal"'
     }
 
+    this.FIN = {
+      REST_PATH : '/fin/rest',
+      ACCEPT_QUADS : 'application/fin-quads',
+    }
+
     /**
      * @name service
      * @type {class}

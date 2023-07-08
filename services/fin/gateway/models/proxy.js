@@ -1,6 +1,6 @@
 const {URL} = require('url');
 const api = require('@ucd-lib/fin-api');
-const {logger, config, jwt, workflow, FinAC, pg, FinTag, RDF_URIS} = require('@ucd-lib/fin-service-utils');
+const {logger, config, jwt, workflow} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('./services');
 const proxy = require('../lib/http-proxy');
 const serviceProxy = require('./service-proxy');
@@ -9,7 +9,6 @@ const authenticationServiceProxy = require('./service-proxy/authentication-servi
 const clientServiceProxy = require('./service-proxy/client-service');
 const transactionHelper = require('../lib/transactions.js');
 const finDelete = require('../lib/delete.js');
-const finTag = new FinTag();
 
 // TODO: uncomment to enable finGroups
 // const finGroups = new FinGroups();
@@ -112,9 +111,9 @@ class ProxyModel {
     this._appendServiceLinkHeaders(req, proxyRes);
 
     // append fin tag header
-    if( req.finTag && Object.keys(req.finTag).length ) {
-      proxyRes.headers[finTag.HEADER] = JSON.stringify(req.finTag);
-    }
+    // if( req.finTag && Object.keys(req.finTag).length ) {
+    //   proxyRes.headers[finTag.HEADER] = JSON.stringify(req.finTag);
+    // }
 
     // this is a hack for browser caching, see method details
     this._setNoCacheHeaders(proxyRes);
@@ -240,7 +239,7 @@ class ProxyModel {
     }
 
     // handle fin tag in request
-    await finTag.onFcrepoRequest(req);
+    // await finTag.onFcrepoRequest(req);
 
     // set base user auth
     let fcrepoApiConfig = api.getConfig();
