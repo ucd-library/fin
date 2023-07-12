@@ -7,8 +7,8 @@ const crypto = require('crypto');
 const path = require('path');
 const pg = require('./gcs-postgres.js');
 const keycloak = require('../keycloak.js');
-const FinSearch = require('../fin-search.js');
-const finSearch = new FinSearch();
+const FinCache = require('../fin-cache.js');
+const finCache = new FinCache();
 
 // For more information on ways to initialize Storage, please see
 // https://googleapis.dev/nodejs/storage/latest/Storage.html
@@ -204,7 +204,7 @@ class GcsWrapper {
       // fcrepoContainer = container;
       // binaryNode = fcrepoContainer.find(node => node['@type'].includes(RDF_URIS.TYPES.BINARY));
     // } catch(e) {}
-    let finQuads = await finSearch.get(finPath);
+    let finQuads = await finCache.get(finPath);
     
 
     // if( !this.isBinaryMd5Match(binaryNode, item.file.metadata) ) {
@@ -281,7 +281,7 @@ class GcsWrapper {
     let finPath = file.name;
     if( !finPath.startsWith('/') ) finPath = '/'+finPath;
 
-    let finQuads = await finSearch.get(finPath);
+    let finQuads = await finCache.get(finPath);
 
     if( !this.isMetadataTagMatch(finQuads, file.metadata) ) {
       logger.info('syncing container from gcs to fcrepo', gcsFile, finPath);
@@ -565,13 +565,13 @@ class GcsWrapper {
   }
 
   isBinaryTagMatch(finQuads, gcsFile) {
-    finQuads = finSearch.getPropertyValues(finQuads, 'prefix', this.METADATA_PREFIX.GCS_BINARY_MD5);
+    finQuads = finCache.getPropertyValues(finQuads, 'prefix', this.METADATA_PREFIX.GCS_BINARY_MD5);
     if( finQuads.length === 0 ) return false;
     return (finQuads[0] === gcsFile.md5Hash);
   }
 
   isMetadataTagMatch(finQuads, gcsFile) {
-    finQuads = finSearch.getPropertyValues(finQuads, 'prefix', this.METADATA_PREFIX.GCS_METADATA_MD5);
+    finQuads = finCache.getPropertyValues(finQuads, 'prefix', this.METADATA_PREFIX.GCS_METADATA_MD5);
     if( finQuads.length === 0 ) return false;
     return (finQuads[0] === gcsFile.md5Hash);
   }

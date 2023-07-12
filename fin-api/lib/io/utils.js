@@ -99,7 +99,7 @@ class IoUtils {
    * must be set in the header.  Additionally hads some hacks for w3c spec
    * badness
    */
-  cleanupContainerNode(node={}, headers={}, current) {
+  cleanupContainerNode(node={}, headers={}, currentContainerExists=false) {
     // strip @types that must be provided as a Link headers
     if( node['@type'] ) {
       if( !Array.isArray(node['@type']) ) node['@type'] = [node['@type']];
@@ -109,8 +109,8 @@ class IoUtils {
         if( !typeName ) return;
 
         node['@type'] = node['@type'].filter(item => item !== typeName);
-        console.log(` -> current container status: ${current ? current.last.statusCode : 'unknown'}`);
-        if( current && current.last.statusCode !== 200 ) {
+        console.log(` -> current container exists: ${currentContainerExists}`);
+        if( currentContainerExists === false ) {
           if( !headers.link ) headers.link = [];
           headers.link.push(`<${type}>;rel="type"`)
           console.log(` -> creating ${type.replace(/.*#/, '')}`);

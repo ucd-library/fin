@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const {keycloak, models, config, logger, jwt, tests, directAccess, FinSearch} = require('@ucd-lib/fin-service-utils');
+const {keycloak, models, config, logger, jwt, tests, directAccess, FinCache} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('../models/services.js');
 const httpProxy = require('http-proxy');
 const fetch = require('node-fetch');
@@ -8,7 +8,7 @@ const archive = require('../lib/archive.js');
 const transactionHelper = require('../lib/transactions.js');
 const gcsConfig = require('../../gcs/lib/config.js');
 const {ActiveMqTests} = tests;
-const finSearch = new FinSearch();
+const finCache = new FinCache();
 
 let activeMqTest = new ActiveMqTests({
   active: true,
@@ -186,14 +186,14 @@ router.head(/\/rest\/.*/, async (req, res) => {
   try {
     let t = Date.now();
 
-    let exists = await finSearch.exists(finPath);
+    let exists = await finCache.exists(finPath);
     if( !exists ) throw new Error('Not Found');
 
     await directAccess.checkAccess(finPath, req?.user?.roles);
 
-    res.set('x-child-count', (await directAccess.getChildCount(finPath)));
+    res.set('x-child-count', (await finCache.getChildCount(finPath)));
     res.set('link', (await directAccess.getTypes(finPath))
-      .map(type => `<${type}>; rel="type"`));
+      .map(type => `<${type}>; rel="type"`).join(', '));
       
     logger.info('head getContainer', finPath, Date.now()-t);
     res.send();
@@ -208,9 +208,9 @@ router.get(/\/rest\/.*/, async (req, res) => {
     let t = Date.now();
     let response;
 
-    if( req.get('Accept') === 'application/fin-quads' ) {
+    if( req.get('Accept') === 'application/fin-cache' ) {
       await directAccess.checkAccess(finPath, req?.user?.roles);
-      response = await finSearch.get(finPath);
+      response = await finCache.get(finPath);
     } else {
       response = await directAccess.getContainer(finPath, req?.user?.roles);
     }

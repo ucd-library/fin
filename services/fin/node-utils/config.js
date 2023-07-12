@@ -39,6 +39,22 @@ let disableServices = processArray(process.env.DISABLE_FIN_SERVICES);
 if( !env.GCS_BUCKET_ENV ) env.GCS_BUCKET_ENV = 'local-dev';
 if( !env.WORKFLOW_ENV ) env.WORKFLOW_ENV = 'local-dev';
 
+let finCachePredicates = (processArray(process.env.FIN_CACHE_PREDICATES) || [])
+  .map(predicate => {
+    if( predicate.match(/^\/.*\/(i|g)?$/) ) {
+      return predicate;
+    } else {
+      return new RegExp(predicate);
+    }
+  });
+if( finCachePredicates.length === 0 ) {
+  finCachePredicates = [
+    new RegExp('^http://digital.ucdavis.edu/schema#'),
+    'http://www.loc.gov/premis/rdf/v1#hasMessageDigest'
+  ];
+}
+
+
 module.exports = {
 
   projectName : env.PROJECT_NAME || 'fin',
@@ -130,6 +146,10 @@ module.exports = {
       "view-profile",
       "offline_access"
     ]
+  },
+
+  finCache : {
+    predicates : finCachePredicates
   },
 
   finac : {

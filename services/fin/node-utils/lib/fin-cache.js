@@ -3,7 +3,7 @@ const logger = require('./logger');
 const directAccess = require('./direct-access');
 const URIS = require('./common-rdf-uris.js');
 const config = require('../config.js');
-const SCHEMA = 'public';
+const SCHEMA = 'fin_cache';
 
 const ACTIVE_MQ_HEADER_ID = 'org.fcrepo.jms.identifier';
 const ACTIVE_MQ_HEADER_TYPES = 'org.fcrepo.jms.resourceType';
@@ -36,20 +36,19 @@ class FinSearch {
       .map(item => item.trim())
       .filter(item => item)
 
-    let finPath = this._formatFedoraId(id);
-
     let updateType = event.body.type || '';
     if( !Array.isArray(updateType) ) {
       updateType = [updateType];
     }
 
+    // make sure to pass the id that includes /fcr:metadata
     for( let ut of updateType ) {
       if( this.UPDATE_TYPES.DELETE.includes(ut) ) {
-        await this.delete(finPath);
+        await this.delete(id);
       } else if( this.UPDATE_TYPES.CREATE === ut || this.UPDATE_TYPES.UPDATE === ut ) {
-        await this.update(finPath, types);
+        await this.update(id, types);
       } else if( this.UPDATE_TYPES.REINDEX === ut ) {
-        await this.reindex(finPath);
+        await this.reindex(id);
       }
     }
   }
@@ -111,7 +110,7 @@ class FinSearch {
     subject = this._formatFedoraId(subject);
 
     let resp = await pg.query(`
-      select fedora_id from containment where parent = $1
+      select count(*) from containment where parent = $1
       `, [subject]);
     if( !resp.rows.length ) return 0;
     return parseInt(resp.rows[0].count);
@@ -127,15 +126,14 @@ class FinSearch {
     return true;
   }
 
-  async update(graph, types) {
-    console.log(graph)
-    graph = this._formatFedoraId(graph);
-    console.log(graph);
+  async update(finPath, types) {
+    
+    let fedoraId = this._formatFedoraId(finPath);
 
     let opts = {format: 'n-quads'};
 
     if( !types ) {
-      types = await directAccess.getTypes(graph);
+      types = await directAccess.getTypes(finPath);
     }
 
     if( types.includes(URIS.TYPES.BINARY) ) {
@@ -144,19 +142,43 @@ class FinSearch {
       opts.isAcl = true;
     }
 
-    let quads = await directAccess.readOcfl(graph, opts);
+    let quads = await directAccess.readOcfl(finPath, opts);
     
-    await this.delete(graph);
+    await this.delete(fedoraId);
+
+    if( !quads ) return;
+
+    quads = this.filterQuads(quads);
 
     for( let quad of quads ) {
       await this.set(
-        graph, 
+        fedoraId, 
         quad.subject.id, 
         quad.predicate.id, 
         quad.object.value,
         quad.object.datatypeString
       );
     }
+  }
+
+  filterQuads(quads) {
+    let predicateFilters = config.finCache.predicates;
+    return quads.filter(quad => {
+      for( let filter of predicateFilters ) {
+        if( filter instanceof RegExp ) {
+          if( quad.predicate.id.match(filter) ) {
+            return true;
+          } else {
+            continue;
+          }
+        }
+
+        if( quad.predicate.id === filter ) {
+          return true;
+        }
+      }
+      return false;
+    });
   }
 
   /**
@@ -176,10 +198,10 @@ class FinSearch {
     return resp;
   }
 
-  async reindex(graph) {
-    let exists = await this.exists(graph);
-    if( exists ) await this.update(graph);
-    else await this.delete(graph);
+  async reindex(finPath) {
+    let exists = await this.exists(finPath);
+    if( exists ) await this.update(finPath);
+    else await this.delete(finPath);
   }
 
   _formatFedoraId(subject) {

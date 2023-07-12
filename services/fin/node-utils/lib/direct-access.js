@@ -7,12 +7,9 @@ const pg = require('./pg.js');
 const config = require('../config.js');
 const RDF_URIS = require('./common-rdf-uris.js');
 
-// ocfl.extensions['9999-local-test']
-
 const storage = ocfl.storage({
   root: '/data/ocfl-root', 
   layout: {
-	  // extensionName: '0004-hashed-n-tuple-storage-layout'
     extensionName: '0004-hashed-n-tuple-storage-layout'
   }
 });
@@ -52,7 +49,6 @@ class DirectAccess {
   }
 
   async getContainer(fcPath, roles=[], opts={}) {
-    console.log('getContainer', fcPath);
     fcPath = this.cleanPath(fcPath);
 
     // first we need to see if roles have access to this path
@@ -249,24 +245,25 @@ class DirectAccess {
   }
 
   async readOcfl(fcPath, opts={}) {
-    console.log('original', fcPath)
     fcPath = this.cleanPath(fcPath);
-    console.log('da clean', fcPath);
 
     let result = await pg.query(`select * from ocfl_id_map where fedora_id = $1`, [fcPath]);
     if( !result.rows.length ) {
-      console.lop('nope');
       return null;
     }
     result = result.rows[0];
 
     let ocflId = result.ocfl_id;
     let file = result.fedora_id.replace(ocflId, '');
+    let isBinary = false;
 
-    
-
-    if( opts.isBinary || file.match(/\/fcr:metadata$/) ) {
+    if( opts.isBinary || file.match(/\/?fcr:metadata$/) ) {
+      file = file.replace(/\/?fcr:metadata$/, '');
+      if( file === '' ) {
+        file = path.parse(ocflId).base;
+      }
       file += '~fcr-desc.nt';
+      isBinary = true;
     } else if ( opts.isAcl || file.match(/\/fcr:acl$/) ) {
       file = file.replace(/\/fcr:acl$/, '');
       file = path.join(file, 'fcr-container~fcr-acl.nt')
@@ -275,18 +272,23 @@ class DirectAccess {
     }
     file = file.replace(/^\//, '');
 
-    console.log({ocflId, file}, opts);
-
     let object = await storage.object(ocflId);
-    console.log(object);
-
-    // console.log(await object.files());
-    // for await( let f of object.files()) {
-    //   console.log(' - ', f);
-    // }
-
     let fileContent = await object.getFile(file).asString();
-    console.log(fileContent);
+    let fcrepoMetadata = null;
+
+    if( isBinary ) {
+      fcrepoMetadata = JSON.parse(await object.getFile('.fcrepo/fcr-root.json').asString());
+
+      if( fcrepoMetadata.digests ) {
+        let digests = fcrepoMetadata.digests;
+        if( !Array.isArray(digests) ) {
+          digests = [digests];
+        }
+        digests.forEach(digest => {
+          fileContent += `\n<${fcPath}> <http://www.loc.gov/premis/rdf/v1#hasMessageDigest> <${digest}> .`;
+        });
+      }
+    }
 
     let doc;
 
@@ -299,6 +301,7 @@ class DirectAccess {
         doc = [doc];
       }
     }
+
     return doc;
   }
 

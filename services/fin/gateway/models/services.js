@@ -1,5 +1,5 @@
 const api = require('@ucd-lib/fin-api');
-const {logger, config, models, ActiveMqClient, FinSearch} = require('@ucd-lib/fin-service-utils');
+const {logger, config, models, ActiveMqClient, FinCache} = require('@ucd-lib/fin-service-utils');
 const request = require('request');
 const {URL} = require('url');
 const jsonld = require('jsonld');
@@ -8,7 +8,7 @@ const util = require('util');
 const redis = require('../lib/redisClient')();
 const jwt = require('jsonwebtoken');
 const label = require('../models/label');
-const finSearch = new FinSearch();
+const finCache = new FinCache();
 
 jsonld.frame = util.promisify(jsonld.frame);
 
@@ -387,7 +387,7 @@ class ServiceModel {
 
     // let fin search see events
     try {
-      await finSearch.onFcrepoEvent(event);
+      await finCache.onFcrepoEvent(event);
     } catch(e) {
       logger.error(e);
     }
