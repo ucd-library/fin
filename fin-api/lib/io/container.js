@@ -10,8 +10,8 @@ const FIN_CACHE_PREDICATES = {
 
 class FinImportContainer {
 
-  constructor(typeConfig, startPath, api) {
-    this.api = api;
+  constructor(typeConfig, startPath) {
+    this.api = typeConfig.api;
     this.typeConfig = typeConfig;
     this.agTypeConfig = null;
 
@@ -27,26 +27,48 @@ class FinImportContainer {
     // path between start of crawl or archival group, depending on import type
     this.subPath = null;
 
+    // binary file information
     this.binary = {
       fsfull  : null,
       gitInfo : null
     }
-    this.graph = {
-      instance : null,
-      mainNode : null,
-    }
-    this.hasRelations = null;
-    this.archivalGroup = null;
-    this.isArchivalGroup = false;
+
+    // metadata file information
     this.metadata = {
       fsfull  : null,
       gitInfo : null
     }
 
+    // parsed metadata file graph
+    this.graph = {
+      instance : null,
+      mainNode : null,
+    }
+    
+    // reference to the archival group this container belongs to
+    // might be a self reference
+    this.archivalGroup = null;
+
+    // is this container an archival group
+    this.isArchivalGroup = false;
+
+    // the binary and metadata files sha from both
+    // the file system and the ldp are stored here
     this.shaManifest = null;
 
+    // this is a manifest of all the shaManifest for all
+    // the archival group.  Key is the fcrepo path, 
+    // value is the shaManifest for that container
+    this.agShaManifest = null;
   }
 
+  /**
+   * @method set
+   * @description set the container data. This method then reprocesses additional
+   * fields like id, fcrepoPath, etc based on current container state.
+   * 
+   * @param {Object} data key/value pairs of data to update
+   */
   async set(data) {
     Object.assign(this, data);
 
@@ -74,8 +96,6 @@ class FinImportContainer {
     this.subPath = this.getSubPath();
 
     this.fcrepoPath = this.getFcrepoPath();
-
-    await this.setHasRelation();
   }
 
   /**
@@ -90,7 +110,7 @@ class FinImportContainer {
    */
   getFcrepoPath() {
     // this is root archival group
-    if( this.archivalGroup ) {
+    if( this.isArchivalGroup ) {
       let agRoot = this.typeConfig?.basePath || '/';
 
       if( this.typeConfig.fcrepoPathType === 'id' ) {
@@ -99,6 +119,15 @@ class FinImportContainer {
         return pathutils.joinUrlPath(agRoot, this.subPath, this.filename);
       }
       return;
+    }
+
+    if( this.archivalGroup ) {
+      let agRoot = this.archivalGroup.fcrepoPath;
+      if( this.typeConfig.fcrepoPathType === 'id' ) {
+        return pathutils.joinUrlPath(agRoot, this.id);
+      } else if( this.typeConfig.fcrepoPathType === 'subpath' ) {
+        return pathutils.joinUrlPath(agRoot, this.subPath, this.filename);
+      }
     }
 
     // non-archival group import by id
@@ -110,6 +139,14 @@ class FinImportContainer {
     return pathutils.joinUrlPath(this.subPath, this.filename);
   }
 
+  /**
+   * @method getSubPath
+   * 
+   * @description get the subPath part of the container fcrepo path based on current
+   * container state
+   * 
+   * @returns {String}
+   */
   getSubPath() {
     if( !this.binary.fsfull && !this.metadata.fsfull ) {
       return '';
@@ -123,10 +160,9 @@ class FinImportContainer {
     } 
     
     // if archive group, sub path is from archival group to folder
-    return dir.replace(this.archivalGroup.metadata.fsfull, '');
+    let agDir = this.archivalGroup.metadata.fsfull.replace(utils.CONTAINER_FILE_EXTS_REGEX, '');
+    return dir.replace(agDir, '');
   }
-  
-  
 
   /**
    * @method getIdentifier
@@ -165,59 +201,12 @@ class FinImportContainer {
     return fileName ? fileName.replace(utils.CONTAINER_FILE_EXTS_REGEX, '') : null;
   }
 
-    /**
-   * @method setHasRelation
-   * @description given a path, create the 'virtual' fin io indirect
-   * reference has/is relation root containers
+  /**
+   * @method getAgShaManifest
+   * @description get the sha manifest for the archival group.
    * 
-   * @param {*} cPath 
+   * @returns {Promise<Object>}
    */
-  async setHasRelation() {
-    if( this.hasRelationProcessed === true ) return;
-
-    if( !this.graph.mainNode ) return;
-    if( !this.archivalGroup ) return;
-    if( !this.archivalGroup.agTypeConfig ) return;
-
-    let mainNode = this.graph.mainNode;
-
-    let vIdCConfig = this.archivalGroup.agTypeConfig.virtualIndirectContainers;
-    if( !vIdCConfig ) return;
-
-    let hasRelation = vIdCConfig.links[utils.PROPERTIES.LDP.HAS_MEMBER_RELATION];
-    let isRelation = vIdCConfig.links[utils.PROPERTIES.LDP.IS_MEMBER_OF_RELATION];
-
-    let ref = mainNode[hasRelation];
-    if( !ref ) ref = mainNode[isRelation];
-
-    let relationDef = {
-      id: this.id,
-      fcRepoPath : this.fcrepoPath
-    }
-
-    let has = Object.assign({}, relationDef);
-    has.fcrepoPath = this.archivalGroup.fcrepoPath +'/'+vIdCConfig.hasFolder+'/'+this.id,
-    has.mainGraphNode = {
-      '@id' : '',
-      [hasRelation] : ref
-    };
-    has.containerGraph = [has.mainGraphNode];
-    this.archivalGroup.hasRelations.push(has);
-
-    let is = Object.assign({}, relationDef);
-    is.fcrepoPath = this.archivalGroup.fcrepoPath +'/'+vIdCConfig.isFolder+'/'+this.id,
-    is.mainGraphNode = {
-      '@id' : '',
-      '@type' : [utils.TYPES.FIN_IO_INDIRECT_REFERENCE],
-      [isRelation] : ref
-    };
-    is.containerGraph = [is.mainGraphNode];
-
-    this.archivalGroup.hasRelations.push(is);
-
-    this.hasRelationProcessed = true;
-  }
-
   async getAgShaManifest() {
     if( !this.archivalGroup ) {
       throw new Error('Cannot get sha manifest for non-archival group container');
@@ -239,6 +228,16 @@ class FinImportContainer {
     return agShaManifest;
   }
 
+  /**
+   * @method addDirShaManifest
+   * @description called by getAgShaManifest to recursively add the sha manifests for
+   * nested directory containers
+   * 
+   * @param {Object} manifest 
+   * @param {IoDir} dir
+   * 
+   * @returns {Promise} 
+   */
   async addDirShaManifest(manifest, dir) {
     for( let id in dir.containers ) {
       let container = dir.containers[id];
@@ -254,7 +253,7 @@ class FinImportContainer {
    * @method getShaManifest
    * @description get the sha manifest for the container.
    * 
-   * @returns <Promise<Object>>
+   * @returns {Promise<Object>}
    */
   async getShaManifest() {
     if( this.shaManifest ) {
@@ -267,10 +266,10 @@ class FinImportContainer {
     let manifest = {};
     
     if( this.binary.fsfull ) {
-      localBinarySha = this.api.sha(container.binary.fsfull, '256');
+      localBinarySha = this.api.sha(this.binary.fsfull, '256');
     }
     if( this.metadata.fsfull ) {
-      localMetadataSha = this.api.sha(container.metadata.fsfull, '256');
+      localMetadataSha = this.api.sha(this.metadata.fsfull, '256');
     }
 
     await quadRequest;
@@ -280,11 +279,17 @@ class FinImportContainer {
         fs : await localBinarySha,
         ldp : await this.getBinarySha256()
       }
+      if( manifest.binary.ldp === manifest.binary.fs ) {
+        manifest.binary.match = true;
+      }
     }
     if( localMetadataSha !== null ) {
       manifest.metadata = {
         fs : await localMetadataSha,
-        ldp : await his.getQuadCachePredicate(FIN_CACHE_PREDICATES.METADATA_HASH)
+        ldp : await this.getQuadCachePredicate(FIN_CACHE_PREDICATES.METADATA_HASH)
+      }
+      if( manifest.metadata.ldp === manifest.metadata.fs ) {
+        manifest.metadata.match = true;
       }
     }
 
@@ -313,12 +318,19 @@ class FinImportContainer {
     return quads[0];
   }
 
+  /**
+   * @method getBinarySha256
+   * @description get the binary sha256 from the fin quads.  Helper method for
+   * getQuadCachePredicate filtering for urn:sha-256: prefix
+   * 
+   * @returns {Promise<String>}
+   */
   async getBinarySha256() {
     let quads = await this.getFinQuadCache();
     if( !quads ) return null;
 
     quads = quads
-      .filter(quad => quad.predicate === this.FIN_CACHE_PREDICATES.BINARY_HASH)
+      .filter(quad => quad.predicate === FIN_CACHE_PREDICATES.BINARY_HASH)
       .filter(quad => quad.object.match(/^urn:sha-256:/))
       .map(quad => quad.object.replace(/^urn:sha-256:/, ''));
 
@@ -344,6 +356,7 @@ class FinImportContainer {
       fcBasePath : '/fin/rest',
       headers : {accept: 'application/fin-cache'}
     });
+
     if( resp.last.statusCode !== 200 ) {
       return null;
     }

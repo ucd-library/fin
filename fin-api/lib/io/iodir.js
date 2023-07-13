@@ -19,10 +19,10 @@ class IoDir {
    */
   constructor(fsroot, subPath='', config={}, archivalGroup=null, archivalGroups=[]) {
     if( process.stdout && process.stdout.clearLine ) {
-      // process.stdout.clearLine();
-      // process.stdout.cursorTo(0); 
-      // process.stdout.write('Crawling: '+subPath);
-      console.log('Crawling: '+subPath);
+      process.stdout.clearLine();
+      process.stdout.cursorTo(0); 
+      process.stdout.write('Crawling: '+subPath);
+      // console.log('Crawling: '+subPath);
     }
 
     if( !subPath.match(/^\//) ) {
@@ -33,7 +33,6 @@ class IoDir {
 
     this.archivalGroup = archivalGroup;
     this.archivalGroups = archivalGroups;
-    this.hasRelations = []; // virtualIndirectContainers defined on disk
     this.fsroot = fsroot;
     this.subPath = subPath;
 
@@ -153,16 +152,7 @@ class IoDir {
     // check for archival group node
     if( node['@type'] && node['@type'].includes(utils.TYPES.ARCHIVAL_GROUP) ) {
 
-      // set archival group
-      if( !container.archivalGroup ) {
-        await container.set({
-          archivalGroup: container, 
-          isArchivalGroup: true,
-          hasRelations : []
-        });
 
-        this.archivalGroups.push(container);
-      }
 
       // handle fin io import instance config if provided by the server
       if( this.config.instanceConfig ) {
@@ -179,6 +169,17 @@ class IoDir {
         if( !container.agTypeConfig && this.config.instanceConfig.default ) {
           container.agTypeConfig = this.config.instanceConfig.default;
         }
+      }
+
+      // set archival group
+      // must be done after agTypeConfig is set
+      if( !container.archivalGroup ) {
+        await container.set({
+          archivalGroup: container, 
+          isArchivalGroup: true
+        });
+
+        this.archivalGroups.push(container);
       }
 
 
