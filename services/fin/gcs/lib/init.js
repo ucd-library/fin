@@ -49,7 +49,11 @@ class GcsSyncDataHydration {
       }
     });
 
-    logger.info('Hydration complete from gcssync, files='+JSON.stringify(fileCounts)+' time='+Math.round((Date.now()-timestamp)/1000)+'s', syncConfig);
+    logger.info('Hydration complete from gcssync, files='+
+      ' binary='+fileCounts.binary+' container='+fileCounts.container+
+      ' time='+Math.round((Date.now()-timestamp)/1000)+'s', 
+      syncConfig
+    );
 
     return;
 
