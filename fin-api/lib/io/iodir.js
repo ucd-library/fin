@@ -120,7 +120,6 @@ class IoDir {
 
       
       if( container ) {
-        console.log(container.fcrepoPath)
         await container.set({dir: child});
       }
 

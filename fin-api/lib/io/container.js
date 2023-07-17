@@ -111,32 +111,28 @@ class FinImportContainer {
   getFcrepoPath() {
     // this is root archival group
     if( this.isArchivalGroup ) {
-      let agRoot = this.typeConfig?.basePath || '/';
+      let agRoot = this.agTypeConfig?.basePath || '/';
 
       if( this.typeConfig.fcrepoPathType === 'id' ) {
         return pathutils.joinUrlPath(agRoot, this.id);
       } else if( this.typeConfig.fcrepoPathType === 'subpath' ) {
-        return pathutils.joinUrlPath(agRoot, this.subPath, this.filename);
+        return pathutils.joinUrlPath(agRoot, this.subPath, this.id);
       }
       return;
     }
 
     if( this.archivalGroup ) {
-      let agRoot = this.archivalGroup.fcrepoPath;
       if( this.typeConfig.fcrepoPathType === 'id' ) {
+        let agRoot = this.archivalGroup.fcrepoPath || '/';
         return pathutils.joinUrlPath(agRoot, this.id);
-      } else if( this.typeConfig.fcrepoPathType === 'subpath' ) {
-        return pathutils.joinUrlPath(agRoot, this.subPath, this.filename);
-      }
-    }
-
-    // non-archival group import by id
-    if( this.typeConfig.fcrepoPathType === 'id' ) {
-      return pathutils.joinUrlPath(this.subPath, this.id)
+      } 
+      // else if( this.typeConfig.fcrepoPathType === 'subpath' ) {
+      //   return pathutils.joinUrlPath(this.subPath, this.id);
+      // }
     }
 
     // non-archival group import by subpath
-    return pathutils.joinUrlPath(this.subPath, this.filename);
+    return pathutils.joinUrlPath(this.subPath || '/', this.id);
   }
 
   /**
@@ -155,10 +151,14 @@ class FinImportContainer {
     let dir = path.parse(this.binary.fsfull || this.metadata.fsfull).dir;
 
     // if not archive group, subpath is from start of crawl
-    if( this.archivalGroup === null ) {
+    if( this.archivalGroup === null || this.typeConfig.fcrepoPathType === 'subpath' ) {
       return dir.replace(this.startPath, '');
     } 
-    
+
+    if( this.archivalGroup === this ) {
+      return '';
+    }
+
     // if archive group, sub path is from archival group to folder
     let agDir = this.archivalGroup.metadata.fsfull.replace(utils.CONTAINER_FILE_EXTS_REGEX, '');
     return dir.replace(agDir, '');
@@ -177,6 +177,11 @@ class FinImportContainer {
    */
   getIdentifier() {
     let fileName = path.parse(this.binary.fsfull || this.metadata.fsfull || '').base;
+
+    if( this.typeConfig.fcrepoPathType === 'subpath' ) {
+      return fileName.replace(utils.CONTAINER_FILE_EXTS_REGEX, '');
+    }
+
     let graphNode = this.graph.mainNode;
 
     if( graphNode ) {
@@ -194,7 +199,7 @@ class FinImportContainer {
         if( ark ) return ark;
 
         // if no ark return first
-        return ids[0];
+        return encodeURIComponent(ids[0]);
       }
     }
 

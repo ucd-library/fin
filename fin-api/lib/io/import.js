@@ -145,7 +145,7 @@ class FinIoImport {
 
     let counts = {};
     rootDir.archivalGroups.forEach(item => {
-      let typeConfig = item.typeConfig || {};
+      let typeConfig = item.agTypeConfig || {};
       if( !counts[typeConfig.id] ) counts[typeConfig.id] = 0;
       counts[typeConfig.id]++;
       // if there is more than one of a type defined with virtualIndirectContainers
@@ -164,6 +164,13 @@ class FinIoImport {
     let agUpdates = 0;
 
     if( options.importFromRoot ) {
+      // load all sha manifests
+
+      console.log(' -> crawling fcrepo and local fs for changes');
+      for( let container of rootDir.archivalGroups ) {  
+        await container.getAgShaManifest();
+      }
+
       await this.putAgDir(rootDir);
     } else {
       for( let container of rootDir.archivalGroups ) {  
@@ -226,7 +233,6 @@ class FinIoImport {
       if( agShaManifest._vIndirectContainers.metadata.local === agShaManifest._vIndirectContainers.metadata.ldp ) {
         agShaManifest._vIndirectContainers.metadata.match = true;
       }
-      console.log(agShaManifest._vIndirectContainers);
       
       let finIoNode = this.createFinIoNode();
       finIoNode['@id'] += '-virtual-indirect-containers';
@@ -238,10 +244,6 @@ class FinIoImport {
     for( let id in agShaManifest ) {
       for( let type in agShaManifest[id] ) {
         if( agShaManifest[id][type].match !== true ) {
-          console.log(id, type );
-          console.log(
-            agShaManifest[id]
-          )
           foundChanges = true;
           break;
         }
@@ -313,7 +315,7 @@ class FinIoImport {
     //   return true;
     // }  
 
-    let forceUpdate = agShaManifest._vIndirectContainers.match !== true;
+    let forceUpdate = agShaManifest?._vIndirectContainers?.match !== true;
     await this.putContainer(container, forceUpdate);
 
     if( container.dir ) {
@@ -350,6 +352,10 @@ class FinIoImport {
     for( let id in dir.containers ) {
       let container = dir.containers[id];
 
+      if( !container.shaManifest ) {
+        await container.getShaManifest();
+      }
+
       // add binary
       if( container.isBinary ) {
         await this.putBinary(container);
@@ -358,13 +364,13 @@ class FinIoImport {
       } else {
         // add container
         await this.putContainer(container);
-      }
-
-      // loop children
-      for( let childDir of dir.children ) {
-        await this.putAgDir(childDir, level);
-      }  
+      } 
     }
+
+    // loop children
+    for( let childDir of dir.children ) {
+      await this.putAgDir(childDir);
+    } 
   }
 
   /**
@@ -414,7 +420,7 @@ class FinIoImport {
         return;
       }
 
-      finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.local}];
+      finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.fs}];
     }
 
     // set ldp headers for types that must be specified there and not in @type
@@ -455,7 +461,7 @@ class FinIoImport {
 
     let customHeaders = {};
 
-    if( container.binary.shaManifest.binary.match ) {
+    if( container.shaManifest.binary.match ) {
       console.log(' -> IGNORING (sha match)');
       this.diskLog({verb: 'ignore', path: container.fcrepoPath, file: container.binary.fsfull, message : 'sha match'});
       return false;
@@ -528,7 +534,7 @@ class FinIoImport {
       }
     }
 
-    finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': localHash}];
+    finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.fs}];
 
     utils.cleanupContainerNode(container.graph.mainNode);
 

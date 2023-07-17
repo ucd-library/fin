@@ -6,8 +6,8 @@
   "@graph" : [{
     "@id" : "#authz",
     "@type" : ["acl:Authorization"],
-    "acl:accessTo" : [{"@id": "."}],
-    "acl:default" : [{"@id": "."}],
+    "acl:accessTo" : [{"@id": ""}],
+    "acl:default" : [{"@id": ""}],
     "acl:mode" : [{"@id": "acl:Read"}],
     "acl:agentClass" : [{"@id": "foaf:Agent"}]
   }]

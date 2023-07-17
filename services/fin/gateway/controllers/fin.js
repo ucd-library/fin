@@ -182,6 +182,7 @@ router.post('/archive', async (req, res) => {
 
 router.head(/\/rest\/.*/, async (req, res) => {
   let finPath = req.originalUrl.replace('/fin/rest', '');
+  let roles = getRoles(req);
 
   try {
     let t = Date.now();
@@ -189,7 +190,7 @@ router.head(/\/rest\/.*/, async (req, res) => {
     let exists = await finCache.exists(finPath);
     if( !exists ) throw new Error('Not Found');
 
-    await directAccess.checkAccess(finPath, req?.user?.roles);
+    await directAccess.checkAccess(finPath, roles);
 
     res.set('x-child-count', (await finCache.getChildCount(finPath)));
     res.set('link', (await directAccess.getTypes(finPath))
@@ -203,25 +204,39 @@ router.head(/\/rest\/.*/, async (req, res) => {
 });
 
 router.get(/\/rest\/.*/, async (req, res) => {
-  let finPath = req.originalUrl.replace('/fin/rest', '');
+  let finPath = decodeURIComponent(req.originalUrl.replace('/fin/rest', ''));
+
+  let roles = getRoles(req);
   try {
-    let t = Date.now();
+    // let t = Date.now();
     let response;
 
     if( req.get('Accept') === 'application/fin-cache' ) {
-      await directAccess.checkAccess(finPath, req?.user?.roles);
+      await directAccess.checkAccess(finPath, roles);
       response = await finCache.get(finPath);
     } else {
-      response = await directAccess.getContainer(finPath, req?.user?.roles);
+      response = await directAccess.getContainer(finPath, roles);
     }
 
-    logger.info('getContainer', finPath, Date.now()-t);
+    // logger.info('getContainer', finPath, Date.now()-t);
     
     res.json(response);
   } catch(e) {
     handleFinRestError(res, e, finPath);
   }
 });
+
+function getRoles(req) {
+  let roles = [];
+  if( req?.user?.roles ) roles = req.user.roles;
+  else roles = [];
+
+  if( !roles.includes(config.finac.agents.public) ) {
+    roles.push(config.finac.agents.public);
+  }
+
+  return roles;
+}
 
 function handleFinRestError(res, e, finPath) {
   if( e.message === 'Not Found' ) {
