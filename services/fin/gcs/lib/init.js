@@ -54,46 +54,6 @@ class GcsSyncDataHydration {
       ' time='+Math.round((Date.now()-timestamp)/1000)+'s', 
       syncConfig
     );
-
-    return;
-
-    // // now set the init flag
-    // let response = await api.get({
-    //   path : syncConfig.basePath,
-    //   headers : {
-    //     'accept' : 'application/ld+json',
-    //     Prefer : api.GET_PREFER.REPRESENTATION_OMIT_SERVER_MANAGED
-    //   },
-    //   host : config.fcrepo.host,
-    //   superuser : true,
-    //   directAccess : true
-    // });
-
-    // // sync failed, don't set init flag
-    // if( response.last.statusCode !== 200 ) {
-    //   return;
-    // }
-
-    // let graph = JSON.parse(response.last.body);
-    // if( graph['@graph'] ) graph = graph['@graph'];
-    // if( !Array.isArray(graph) ) graph = [graph];
-
-    // graph.push({
-    //   '@id' : this.NODE_URI_HASH,
-    //   '@type' : 'http://digital.ucdavis.edu/schema/FinInit',
-    //   'http://schema.org/name' : 'gcssync init flag'
-    // });
-
-    // await api.put({
-    //   path : syncConfig.basePath,
-    //   body : JSON.stringify(graph),
-    //   headers : {
-    //     'Content-Type' : 'application/ld+json'
-    //   },
-    //   host : config.fcrepo.host,
-    //   superuser : true,
-    //   directAccess : true
-    // });
   }
 
 }

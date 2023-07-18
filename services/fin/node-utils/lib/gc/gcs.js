@@ -84,18 +84,46 @@ class GcsWrapper {
     }
 
     let count = {binary: 0, container: 0};
-    await this.getFiles(gcsPath, async batch => {
-      for( let file of batch ) {
-        if( this.isJsonLdFile(file) ) {
-          count.container++;
-          await this.syncContainerToFcrepo(file, opts);
-        } else {
-          count.binary++;
-          await this.syncBinaryToFcrepo(file, opts);
-        }
-      }
-    });
+    let exists = null;
 
+    if( opts.crawlChildren === true ) {
+      await this.getFiles(gcsPath, async batch => {
+        if( exists === null ) {
+          exists = (batch.length > 0);
+        }
+
+        for( let file of batch ) {
+          await this._syncGcsFileToFcrepo(file, opts, count);
+        }
+      });
+    } else {
+      exists = await this.getGcsFileObjectFromPath(gcsPath).exists();
+      exists = exists[0];
+      if( exists ) {
+        let file = await this.getGcsFileObjectFromPath(gcsPath).get();
+        await this._syncGcsFileToFcrepo(file[0], opts, count);
+      } else {
+    //   let head = api.head({path: finPath});
+    //   if( head.last.statusCode === 200 ) {
+    //     await api.delete({})
+    //   }
+      }
+    }
+
+    return count;
+  }
+
+  async _syncGcsFileToFcrepo(file, opts={}, count={}) {
+    if( !count ) {
+      count = {binary: 0, container: 0};
+    }
+    if( this.isJsonLdFile(file) ) {
+      count.container++;
+      await this.syncContainerToFcrepo(file, opts);
+    } else {
+      count.binary++;
+      await this.syncBinaryToFcrepo(file, opts);
+    }
     return count;
   }
 
@@ -286,7 +314,7 @@ class GcsWrapper {
 
   async syncContainerToFcrepo(file, opts={}) {
     let gcsFile = 'gs://'+file.metadata.bucket+'/'+file.metadata.name;
-    let finPath = file.name;
+    let finPath = file.name.replace(this.JSON_LD_EXTENTION, '');
     if( !finPath.startsWith('/') ) finPath = '/'+finPath;
 
     try {
@@ -504,16 +532,20 @@ class GcsWrapper {
    * @param {String} md5 
    */
   addGcsMetadataNode(jsonld, metadata) {
-    let graph = jsonld['@graph'] ? jsonld['@graph'] : jsonld;
-    if( !Array.isArray(jsonld) ) jsonld = [jsonld];
+    if( !jsonld['@graph'] ) {
+      jsonld = {'@graph' : [jsonld]};
+    }
+    if( !Array.isArray(jsonld['@graph']) ) {
+      jsonld['@graph'] = [jsonld['@graph']];
+    }
 
-    let metadataNode = api.io.utils.getGraphNode(graph, RDF_URIS.PROPERTIES.FIN_IO_GCS_METADATA_MD5);
+    let metadataNode = api.io.utils.getGraphNode(jsonld, RDF_URIS.PROPERTIES.FIN_IO_GCS_METADATA_MD5);
     if( !metadataNode ) {
       metadataNode = {
         '@id' : RDF_URIS.NODE_HASH.FIN_IO_GCS_METADATA,
         '@type' : RDF_URIS.TYPES.FIN_IO_GCS_METADATA
       };
-      graph.push(metadataNode);
+      jsonld['@graph'].push(metadataNode);
     }
 
     metadataNode[RDF_URIS.PROPERTIES.FIN_IO_GCS_METADATA_MD5] = [{'@value': metadata.md5}];

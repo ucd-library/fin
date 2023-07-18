@@ -232,8 +232,8 @@ class FinGcWorkflowModel {
 
   getTmpGcsBucket(workflowName) {
     return this.definitions[workflowName]?.tmpGcsBucket ||
-      this.defaults.tmpGcsBucket ||
-      config.workflow.gcsBuckets.tmp;
+      this.defaults?.tmpGcsBucket ||
+      config.workflow?.gcsBuckets?.tmp;
   }
 
   getGoogleCloudProjectId(workflowName) {
@@ -322,7 +322,11 @@ class FinGcWorkflowModel {
 
     try {
       let data = this.getGcWorkflowDefinition(finWorkflowName);
-      data.tmpGcsPath = 'gs://'+data.tmpGcsBucket+'/'+finWorkflowId+'/'+path.parse(finPath).base;
+      if( data.uploadToTmpBucket === false ) {
+        delete data.tmpGcsBucket;
+      } else {
+        data.tmpGcsPath = 'gs://'+data.tmpGcsBucket+'/'+finWorkflowId+'/'+path.parse(finPath).base;
+      }
       data.finPath = finPath;
       data.finWorkflowId = finWorkflowId;
       data.options = opts;
@@ -377,8 +381,10 @@ class FinGcWorkflowModel {
 
       // if the workflow opts out of tmp bucket copy, then just start
       if( data.uploadToTmpBucket === false ) {
-        await gcs.getGcsFileObjectFromPath('gs://'+path.join(data.tmpGcsBucket, finWorkflowId, 'workflow.json'))
-          .save(JSON.stringify(workflowInfo, null, 2));  
+        if( data.tmpGcsBucket ) {
+          await gcs.getGcsFileObjectFromPath('gs://'+path.join(data.tmpGcsBucket, finWorkflowId, 'workflow.json'))
+            .save(JSON.stringify(workflowInfo, null, 2));
+        }
         this.startWorkflow(workflowInfo);
         return workflowInfo;
       }
@@ -556,6 +562,10 @@ class FinGcWorkflowModel {
 
   async cleanupWorkflowTmpFiles(workflowId) {
     let workflowInfo = await this.getWorkflowInfo(workflowId);
+    if( !workflowInfo.data.tmpGcsBucket ) {
+      logger.info('No tmp bucket, skipping cleanup for workflow: '+workflowId);
+      return;
+    }
     await gcs.cleanFolder(workflowInfo.data.tmpGcsBucket, workflowId);
   }
 

@@ -60,11 +60,13 @@ ${this.getGcWorkflowUrl(data.data.gcExecution)}
     // check to see if workflow has already been run on this container
     if( !args.options.force ) {
       let hasRunCheck = await http.get({path: args.finPath + '/svc:workflow', options: {}});
-      hasRunCheck = JSON.parse(hasRunCheck.response.data.body);
-      for( let workflow of hasRunCheck ) {
-        if( workflow.name === args.workflowName ) {
-          Logger.error(`Workflow ${args.workflowName} has already been run on this container. Use --force to run again.`);
-          return;
+      if( hasRunCheck.response.data.statusCode === 200 ) {
+        hasRunCheck = JSON.parse(hasRunCheck.response.data.body);
+        for( let workflow of hasRunCheck ) {
+          if( workflow.name === args.workflowName ) {
+            Logger.error(`Workflow ${args.workflowName} has already been run on this container. Use --force to run again.`);
+            return;
+          }
         }
       }
     }

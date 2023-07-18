@@ -217,7 +217,7 @@ module.exports = {
     serviceAcountEmail : env.GOOGLE_SERVICE_ACCOUNT_EMAIL || gcServiceAccount.client_email,
     project : env.GOOGLE_CLOUD_PROJECT || gcServiceAccount.project_id,
     location : env.GOOGLE_CLOUD_LOCATION || 'us-central1',
-    pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || env.GCS_BUCKET_ENV,
+    pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || env.GCS_BUCKET_ENV || 'local-dev',
     gcsBucketEnv : env.GCS_BUCKET_ENV,
 
     gcsfuse : {

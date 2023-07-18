@@ -1,10 +1,17 @@
 const config = require('../config.js');
+const logger = require('./logger.js');
+const fs = require('fs-extra');
+const path = require('path');
 
 /**
  * @class FinModelLoader
  * @description dynamically load Fin models from disk
  */
 class FinModelLoader {
+
+  constructor() {
+    this.models = null;
+  }
 
   /**
    * @method load
@@ -13,6 +20,13 @@ class FinModelLoader {
    */
   load() {
     if( this.models ) return;
+
+    if( !fs.existsSync(path.join(config.models.rootDir, 'index.js')) ) {
+      logger.warn('No models found at: '+config.models.rootDir);
+      this.models = {};
+      return;
+    }
+
     return new Promise((resolve, reject) => {
       setImmediate(() => {
         try {

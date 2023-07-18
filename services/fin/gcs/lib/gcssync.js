@@ -1,4 +1,4 @@
-const {gc, ActiveMqClient, config} = require('@ucd-lib/fin-service-utils');
+const {gc, ActiveMqClient, config, logger} = require('@ucd-lib/fin-service-utils');
 const gcsConfig = require('./config.js');
 const init = require('./init.js');
 
@@ -47,6 +47,7 @@ class GcsSync {
   }
 
   async runDataHydration() {
+    if( !this.config.containers ) return;
     for( let container of this.config.containers ) {
       if( container.initDataHydration !== true ) continue;
       await init.init(container);
@@ -99,21 +100,21 @@ class GcsSync {
       return false;
     });
 
-    console.log('container', container);
     if( container && container.direction === 'gcs-to-fcrepo' ) {
-      console.log('syncing to fcrepo');
       await gcs.syncToFcrepo('/'+message.data.name, container.bucket, {
         proxyBinary : container.proxyBinary,
         crawlChildren : false,
+        // syncDeletes : container.enabledDeletes,
         basePath : container.basePath,
         event : {
           data: message.data,
           attributes : message.attributes
         }
       });
+    } else {
+      logger.info('Ignoring pub/sub message, container not registered in config', message.attributes.bucketId, message.data.name);
     }
 
-    console.log('ack');
     message.ack();
   }
 
