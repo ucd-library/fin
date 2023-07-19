@@ -34,7 +34,7 @@ class FinGcWorkflowModel {
 
   async _onFcrepoEvent(event) {
     let id = event.headers[this.activemq.ACTIVE_MQ_HEADER_ID];
-    
+
     // check that a workflow container was updated
     if( !id ) return;
     if( !id.startsWith(this.GC_WORKFLOW_PATH) && !id.startsWith(this.CONFIG_PATH) ) return;

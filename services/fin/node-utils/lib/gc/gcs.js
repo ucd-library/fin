@@ -645,7 +645,6 @@ class GcsWrapper {
   }
 
   isBinaryMd5Match(fcrepoContainer, gcsFile) {
-    console.log('isBinaryMd5Match', fcrepoContainer, gcsFile)
     if( !fcrepoContainer || !gcsFile ) return false;
 
     if( !fcrepoContainer[RDF_URIS.PROPERTIES.HAS_MESSAGE_DIGEST] ) return false;
@@ -654,7 +653,6 @@ class GcsWrapper {
     
     let md5Base64 = Buffer.from(md5['@id'].replace(/^urn:md5:/, ''), 'hex').toString('base64');
 
-    console.log(md5Base64, gcsFile.md5Hash)
     if( md5Base64 === gcsFile.md5Hash ) {
       return true;
     }

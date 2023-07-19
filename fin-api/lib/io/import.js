@@ -413,7 +413,6 @@ class FinIoImport {
     // check if d exists and if there is the ucd metadata sha.
     let forceUpdate = this.options.forceMetadataUpdate || force;
     if( container.metadata.fsfull !== '_virtual_' ) {
-      
       if( container.shaManifest.metadata.match && !forceUpdate ) {
         console.log(` -> IGNORING (sha match)`);
         this.diskLog({verb: 'ignore', path: container.fcrepoPath, file: container.fsfull, message : 'sha match'});

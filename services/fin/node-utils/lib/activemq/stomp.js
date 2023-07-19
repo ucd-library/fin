@@ -234,6 +234,8 @@ class ActiveMqStompClient {
   constructor(name) {
     this.name = name;
     this.clientName = name+'-'+uuid.v4().split('-').shift();
+    this.ACTIVE_MQ_HEADER_ID = stompConnection.ACTIVE_MQ_HEADER_ID;
+    this.ACTIVE_MQ_HEADER_EVENT = stompConnection.ACTIVE_MQ_HEADER_EVENT;
   }
 
   connect() {
