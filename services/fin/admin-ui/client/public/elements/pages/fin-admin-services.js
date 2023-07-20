@@ -40,7 +40,7 @@ export default class FinAdminServices extends Mixin(LitElement)
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
 
-    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
+    this.baseDocsUrl = config.baseDocsUrl;
 
     let services = [];
 

@@ -45,7 +45,7 @@ export default class FinAdminDbsync extends Mixin(LitElement)
     let dataModels = Object.keys(e.payload.registeredModels || {});
     this.tableConfig.filters.model.options = dataModels;
 
-    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
+    this.baseDocsUrl = config.baseDocsUrl;
   }
 
   _onAppStateUpdate(e) {

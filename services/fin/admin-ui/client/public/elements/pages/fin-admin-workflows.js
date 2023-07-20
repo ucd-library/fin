@@ -69,7 +69,7 @@ export default class FinAdminWorkflows extends Mixin(LitElement)
     };
     ele.requestUpdate();
 
-    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
+    this.baseDocsUrl = config.baseDocsUrl;
   }
 
   _onAppStateUpdate(e) {

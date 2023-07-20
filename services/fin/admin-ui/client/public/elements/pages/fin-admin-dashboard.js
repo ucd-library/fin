@@ -115,7 +115,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
 
     this.openTransactions = e.payload.openTransactions || [];
 
-    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
+    this.baseDocsUrl = config.baseDocsUrl;
 
     this.dataModels = Object.values(e.payload.registeredModels || {});
     this.dataModels = clone(this.dataModels);

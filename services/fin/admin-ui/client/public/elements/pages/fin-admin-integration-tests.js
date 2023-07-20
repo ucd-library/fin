@@ -42,7 +42,7 @@ export default class FinAdminIntegrationTests extends Mixin(LitElement)
 
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
-    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/';
+    this.baseDocsUrl = config.baseDocsUrl;
   }
 
   async runTest() {

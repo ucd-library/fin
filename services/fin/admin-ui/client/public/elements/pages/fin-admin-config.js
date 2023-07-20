@@ -42,7 +42,7 @@ export default class FinAdminConfig extends Mixin(LitElement)
     this.config = e.payload.config;
     this.env = e.payload.env;
     this.env.REPO_URL = config.repoUrl;
-    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/';
+    this.baseDocsUrl = config.baseDocsUrl;
 
     let serviceAccount = e.payload.finServiceAccount;
 

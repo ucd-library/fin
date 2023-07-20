@@ -34,7 +34,7 @@ export default class FinAdminGcs extends Mixin(LitElement)
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
     this.config = e.payload.gcs || {};
-    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
+    this.baseDocsUrl = config.baseDocsUrl;
   }
 
   _renderConfig(json, arr=[], currentKey='', depth=0, highlightRoot=true) {

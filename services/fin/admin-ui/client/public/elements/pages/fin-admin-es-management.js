@@ -77,7 +77,7 @@ export default class FinAdminEsManagement extends Mixin(LitElement)
     this.dataModels = Object.values(e.payload.registeredModels || {})
       .map(model => model.props);
 
-    this.baseDocsUrl = config.repoUrl + '/tree/'+ e.payload.env.FIN_BRANCH_NAME + '/docs';
+    this.baseDocsUrl = config.baseDocsUrl;
   }
 
   async _onDataModelSelect(e) {
