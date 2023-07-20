@@ -739,9 +739,9 @@ class FinIoImport {
 
     finPath = finPath.replace(/\/fcr:metadata$/, '');
 
-    let matches = Array.from(content.match(/"@base:.*?"/g) || []);
+    let matches = Array.from(content.match(/"ucdlib__base__.*?"/g) || []);
     for( let match of matches ) {
-      let resolveTo = match.replace(/"@base:\/?/, '').replace(/"$/, '');
+      let resolveTo = match.replace(/"ucdlib__base__\/?/, '').replace(/"$/, '');
       let resolvedPath = path.resolve(finPath, resolveTo);
 
       // clean up path with hashs
@@ -750,6 +750,7 @@ class FinIoImport {
       }
 
       let url = 'info:fedora'+resolvedPath;
+      console.log(' -> resolving '+match.replace(/ucdlib__base__\/?/, '@base:')+' with '+url);
       content = content.replace(match, `"${url}"`);
     }
 

@@ -76,6 +76,9 @@ class IoUtils {
     let content = await fs.readFile(filePath, 'utf-8');
     let graph = null;
 
+    // support custom @base:
+    content = content.replace(/"@base:/g, '"ucdlib__base__');
+
     if( path.parse(filePath).ext === '.ttl' ) {
       graph = await transform.turtleToJsonLd(content);
     } else if( filePath.match(/\.jsonld\.json$/) ) {
