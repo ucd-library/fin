@@ -44,6 +44,12 @@ class FinImportContainer {
       instance : null,
       mainNode : null,
     }
+
+    this.pathDebug = {
+      fcrepoPath : null,
+      subPath : null,
+      id : null
+    };
     
     // reference to the archival group this container belongs to
     // might be a self reference
@@ -109,13 +115,16 @@ class FinImportContainer {
    * @returns 
    */
   getFcrepoPath() {
+    // console.log('\nfsfull', this.binary.fsfull ||  this.metadata.fsfull)
     // this is root archival group
     if( this.isArchivalGroup ) {
       let agRoot = this.agTypeConfig?.basePath || '/';
 
       if( this.typeConfig.fcrepoPathType === 'id' ) {
+        this.pathDebug.fcrepoPath = 1;
         return pathutils.joinUrlPath(agRoot, this.id);
       } else if( this.typeConfig.fcrepoPathType === 'subpath' ) {
+        this.pathDebug.fcrepoPath = 2;
         return pathutils.joinUrlPath(agRoot, this.subPath, this.id);
       }
       return;
@@ -124,14 +133,13 @@ class FinImportContainer {
     if( this.archivalGroup ) {
       if( this.typeConfig.fcrepoPathType === 'id' ) {
         let agRoot = this.archivalGroup.fcrepoPath || '/';
-        return pathutils.joinUrlPath(agRoot, this.id);
+        this.pathDebug.fcrepoPath = 3;
+        return pathutils.joinUrlPath(agRoot, this.subPath, this.id);
       } 
-      // else if( this.typeConfig.fcrepoPathType === 'subpath' ) {
-      //   return pathutils.joinUrlPath(this.subPath, this.id);
-      // }
     }
 
     // non-archival group import by subpath
+    this.pathDebug.fcrepoPath = 4;
     return pathutils.joinUrlPath(this.subPath || '/', this.id);
   }
 
@@ -144,7 +152,9 @@ class FinImportContainer {
    * @returns {String}
    */
   getSubPath() {
+    // console.log('\nfsfull', this.binary.fsfull ||  this.metadata.fsfull)
     if( !this.binary.fsfull && !this.metadata.fsfull ) {
+      this.pathDebug.subPath = 1;
       return '';
     }
 
@@ -152,15 +162,18 @@ class FinImportContainer {
 
     // if not archive group, subpath is from start of crawl
     if( this.archivalGroup === null || this.typeConfig.fcrepoPathType === 'subpath' ) {
+      this.pathDebug.subPath = 2;
       return dir.replace(this.startPath, '');
     } 
 
     if( this.archivalGroup === this ) {
+      this.pathDebug.subPath = 3;
       return '';
     }
 
     // if archive group, sub path is from archival group to folder
     let agDir = this.archivalGroup.metadata.fsfull.replace(utils.CONTAINER_FILE_EXTS_REGEX, '');
+    this.pathDebug.subPath = 4;
     return dir.replace(agDir, '');
   }
 
@@ -179,6 +192,7 @@ class FinImportContainer {
     let fileName = path.parse(this.binary.fsfull || this.metadata.fsfull || '').base;
 
     if( this.typeConfig.fcrepoPathType === 'subpath' ) {
+      this.pathDebug.id = 1;
       return fileName.replace(utils.CONTAINER_FILE_EXTS_REGEX, '');
     }
 
@@ -186,6 +200,7 @@ class FinImportContainer {
 
     if( graphNode ) {
       if( graphNode['@id'] ) {
+        this.pathDebug.id = 2;
         return graphNode['@id'];
       }
 
@@ -196,13 +211,18 @@ class FinImportContainer {
         // attempt to find ark
         let ark = ids
           .find(item => item.match(/^ark:\//));
-        if( ark ) return ark;
+        if( ark ) {
+          this.pathDebug.id = 3;
+          return ark;
+        }
 
         // if no ark return first
+        this.pathDebug.id = 4;
         return encodeURIComponent(ids[0]);
       }
     }
 
+    this.pathDebug.id = 5;
     return fileName ? fileName.replace(utils.CONTAINER_FILE_EXTS_REGEX, '') : null;
   }
 

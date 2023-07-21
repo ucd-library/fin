@@ -72,7 +72,7 @@ class ActiveMqStompConnection extends ActiveMqClient {
     this.client = null;
 
     if( this.connectingProm ) {
-      this.connectingReject();
+      this.connectingReject = null;
       this.connectingResolve = null;
       this.connectingProm = null;
     }

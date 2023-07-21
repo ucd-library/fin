@@ -1,3 +1,10 @@
+# 2.2.1
+
+  - fixes for fin io `@base:` handling
+  - fix for dbsync reindex endpoint
+  - fix for stomp disconnection
+  - adding force binary update flag to fin io
+
 # 2.2.0
 
   - `fin io` indirect reference restructure

@@ -10,6 +10,7 @@ class FileIOCli {
     let rootPath = location.makeAbsolutePath(args.rootFsPath || '.');
     let dryRun = args.options.dryRun || false;
     let forceMetadataUpdate = args.options.forceMetadataUpdate || false;
+    let forceBinaryUpdate = args.options.forceBinaryUpdate || false;
     let ignoreRemoval = args.options.syncDeletes ? false : true;
     let fcrepoPathType = args.options.fcrepoPathType;
     let importFromRoot = args.options.importFromRoot;
@@ -19,6 +20,7 @@ class FileIOCli {
       fsPath : rootPath, 
       dryRun,
       forceMetadataUpdate,
+      forceBinaryUpdate,
       ignoreRemoval,
       fcrepoPathType,
       importFromRoot,

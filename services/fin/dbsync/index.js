@@ -51,7 +51,6 @@ async function renderIndex(req, res) {
     .map(item => item.trim())
     .filter(item => item);
   let noCrawl = (req.query['no-crawl'] || '').toLowerCase() === 'true';
-  let noRedirect = (req.query['no-redirect'] || '').toLowerCase() === 'true';
   let writeIndex = req.query['write-index'] || null;
   let isBinary = (req.query['is-binary'] || '').toLowerCase() === 'true';
 
@@ -73,12 +72,12 @@ async function renderIndex(req, res) {
 
     crawler.reindex();
 
-    if( noRedirect === true ) {
+    // if( noRedirect === true ) {
       res.json({status: 'started'});
-      return;
-    }
+      // return;
+    // }
 
-    res.redirect(req.headers['x-fin-original-url'].replace(/\?.*/, '')+'?status=true');
+    // res.redirect(req.headers['x-fin-original-url'].replace(/\?.*/, '')+'?status=true');
   } catch(e) {
     onError(res, e);
   }

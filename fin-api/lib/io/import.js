@@ -428,7 +428,6 @@ class FinIoImport {
     // set ldp headers for types that must be specified there and not in @type
     let currentContainerExists = await this.existsInLdp(container.fcrepoPath);
     utils.cleanupContainerNode(container.graph.mainNode, headers, currentContainerExists);
-
     // TODO
     // if( finIoNode.indirectContainerSha ) {
     //   finTag[this.FIN_TAGS.METADATA_HASH] = finIoNode.indirectContainerSha;
@@ -459,11 +458,10 @@ class FinIoImport {
     if( this.sigInt ) return;
 
     console.log(`PUT BINARY: ${container.fcrepoPath}\n -> ${container.binary.fsfull}`);
-    
 
     let customHeaders = {};
 
-    if( container.shaManifest.binary.match ) {
+    if( container.shaManifest.binary.match && this.options.forceBinaryUpdate !== true ) {
       console.log(' -> IGNORING (sha match)');
       this.diskLog({verb: 'ignore', path: container.fcrepoPath, file: container.binary.fsfull, message : 'sha match'});
       return false;
@@ -751,23 +749,23 @@ class FinIoImport {
    */
   replaceBaseContext(content, finPath) {
     if( typeof content === 'object' ) {
-      content = JSON.stringify(content);
+      content = JSON.stringify(content, null, 2);
     }
 
     finPath = finPath.replace(/\/fcr:metadata$/, '');
 
-    let matches = Array.from(content.match(/"ucdlib__base__.*?"/g) || []);
+    let matches = Array.from(content.match(new RegExp(`"${utils.UCD_BASE_URI}.*?"`,'g')) || []);
     for( let match of matches ) {
-      let resolveTo = match.replace(/"ucdlib__base__\/?/, '').replace(/"$/, '');
+      let resolveTo = match.replace(new RegExp(`"${utils.UCD_BASE_URI}\/?`), '').replace(/"$/, '');
       let resolvedPath = path.resolve(finPath, resolveTo);
 
       // clean up path with hashs
-      if( resolveTo.match(/^#/) ) {
-        resolvedPath = resolvedPath.replace(new RegExp('/'+resolveTo+'$'), resolveTo);
-      }
+      // if( resolveTo.match(/^#/) ) {
+      //   resolvedPath = resolvedPath.replace(new RegExp('/'+resolveTo+'$'), resolveTo);
+      // }
 
       let url = 'info:fedora'+resolvedPath;
-      console.log(' -> resolving '+match.replace(/ucdlib__base__\/?/, '@base:')+' with '+url);
+      console.log(' -> resolving @base:'+resolveTo+' with '+url);
       content = content.replace(match, `"${url}"`);
     }
 

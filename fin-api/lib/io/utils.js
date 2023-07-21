@@ -49,6 +49,8 @@ class IoUtils {
       }
     }
 
+    this.UCD_BASE_URI = 'http://digital.ucdavis.edu/schema/baseContainerPath/';
+
     this.GRAPH_NODES = {
       GIT_SOURCE : '#gitsource',
       FIN_IO : '#finio'
@@ -77,7 +79,7 @@ class IoUtils {
     let graph = null;
 
     // support custom @base:
-    content = content.replace(/"@base:/g, '"ucdlib__base__');
+    content = content.replace(/"@base:/g, '"'+this.UCD_BASE_URI);
 
     if( path.parse(filePath).ext === '.ttl' ) {
       graph = await transform.turtleToJsonLd(content);
@@ -88,12 +90,35 @@ class IoUtils {
     graph = await jsonld.expand(graph);
     graph = this.graphAsArray(graph);
 
-    graph.forEach(node => {
-      if( node['@id'] === './' ) node['@id'] = '';
-      if( node['@id'] === '.' ) node['@id'] = '';
-    });
+    this.fixEmptyIds(graph);
+    // graph.forEach(node => {
+    //   if( node['@id'] === './' ) node['@id'] = '';
+    //   if( node['@id'] === '.' ) node['@id'] = '';
+    // });
 
     return graph;
+  }
+
+  fixEmptyIds(object) {
+    if( Array.isArray(object) ) {
+      return object.forEach(item => this.fixEmptyIds(item));
+    }
+
+    if( object['@id'] ) {
+      if( object['@id'] === './' || object['@id'] === '.' ) {
+        object['@id'] = '';
+      }
+    }
+    
+    if( object['graph'] ) {
+      return this.fixEmptyIds(object['graph']);
+    }
+
+    if( typeof object !== 'object' ) return;
+
+    for(let prop in object ) {
+      this.fixEmptyIds(object[prop]);
+    }
   }
 
   /**
