@@ -22,6 +22,8 @@ class FinIoImport {
       BINARY_HASH : 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest',
       METADATA_HASH : 'http://digital.ucdavis.edu/schema#finio-metadata-sha256'
     }
+
+    this.FIN_IO_INDIRECT_CONTAINER_ROOT = '/indirect-containers';
   }
 
   /**
@@ -242,12 +244,13 @@ class FinIoImport {
 
     let foundChanges = false;
     for( let id in agShaManifest ) {
-      for( let type in agShaManifest[id] ) {
+      for( let type in agShaManifest[id] ) {        
         if( agShaManifest[id][type].match !== true ) {
           foundChanges = true;
           break;
         }
       }
+      if( foundChanges ) break;
     }
 
     let response = null;
@@ -575,9 +578,23 @@ class FinIoImport {
     let hasRelation = vIdCConfig.links[utils.PROPERTIES.LDP.HAS_MEMBER_RELATION];
     let isRelation = vIdCConfig.links[utils.PROPERTIES.LDP.IS_MEMBER_OF_RELATION];
 
+    containers.push({
+      fcrepoPath : pathutils.joinUrlPath(this.FIN_IO_INDIRECT_CONTAINER_ROOT, ag.fcrepoPath),
+      metadata : {
+        fsfull : '_virtual_',
+      },
+      graph : {
+        mainNode : {
+          '@id' : '',
+          '@type' : [utils.TYPES.FIN_IO],
+          'http://schema.org/name' : 'FinIo Virtual Indirect Containers Root - '+ag.fcrepoPath
+        }
+      }
+    });
+
     // root has relaction (ex: hasPart)
     containers.push({
-      fcrepoPath : pathutils.joinUrlPath(ag.fcrepoPath, vIdCConfig.hasFolder),
+      fcrepoPath : pathutils.joinUrlPath(this.FIN_IO_INDIRECT_CONTAINER_ROOT, ag.fcrepoPath, vIdCConfig.hasFolder),
       metadata : {
         fsfull : '_virtual_',
       },
@@ -600,7 +617,7 @@ class FinIoImport {
 
     // root is relation (ex: isPartOf)
     containers.push({
-      fcrepoPath : pathutils.joinUrlPath(ag.fcrepoPath, vIdCConfig.isFolder),
+      fcrepoPath : pathutils.joinUrlPath(this.FIN_IO_INDIRECT_CONTAINER_ROOT, ag.fcrepoPath, vIdCConfig.isFolder),
       metadata : {
         fsfull : '_virtual_',
       },
@@ -626,7 +643,7 @@ class FinIoImport {
       if( vIdCConfig.type !== type ) continue;
 
       containers.push({
-        fcrepoPath : pathutils.joinUrlPath(ag.fcrepoPath, vIdCConfig.isFolder, item.fcrepoPath),
+        fcrepoPath : pathutils.joinUrlPath(this.FIN_IO_INDIRECT_CONTAINER_ROOT, ag.fcrepoPath, vIdCConfig.isFolder, item.fcrepoPath),
         metadata : {
           fsfull : '_virtual_',
         },
@@ -642,7 +659,7 @@ class FinIoImport {
       });
 
       containers.push({
-        fcrepoPath : pathutils.joinUrlPath(ag.fcrepoPath, vIdCConfig.hasFolder, item.fcrepoPath),
+        fcrepoPath : pathutils.joinUrlPath(this.FIN_IO_INDIRECT_CONTAINER_ROOT, ag.fcrepoPath, vIdCConfig.hasFolder, item.fcrepoPath),
         metadata : {
           fsfull : '_virtual_',
         },
@@ -816,7 +833,7 @@ class FinIoImport {
     }
 
     let resp = await api.head({
-      path: this.fcrepoPath
+      path: fcrepoPath
     });
     this.existsStatusCode[fcrepoPath] = resp.last.statusCode;
 

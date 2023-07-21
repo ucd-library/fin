@@ -1,3 +1,12 @@
+# 2.2.0
+
+  - `fin io` indirect reference restructure
+ 
+# 2.1.x
+
+  - fin io import rewrite.
+  - gcssync fixes
+
 # 2.0.4
 
  - Fix for gcssync when root path is a `gcs` 'directory' (i.e. a real file)

@@ -5,6 +5,7 @@ const path = require('path');
 const deepmerge = require('deepmerge');
 const pg = require('./pg.js');
 const config = require('../config.js');
+const logger = require('./logger.js');
 const RDF_URIS = require('./common-rdf-uris.js');
 
 const storage = ocfl.storage({
@@ -255,6 +256,7 @@ class DirectAccess {
 
     let ocflId = result.ocfl_id;
     let file = result.fedora_id.replace(ocflId, '');
+    let orgFile = file.replace(/^\//, '');
     let isBinary = false;
 
     if( opts.isBinary || file.match(/\/?fcr:metadata$/) ) {
@@ -262,10 +264,12 @@ class DirectAccess {
       if( file === '' ) {
         file = path.parse(ocflId).base;
       }
+      orgFile = orgFile.replace(/\/?fcr:metadata$/, '');
       file += '~fcr-desc.nt';
       isBinary = true;
     } else if ( opts.isAcl || file.match(/\/fcr:acl$/) ) {
       file = file.replace(/\/fcr:acl$/, '');
+      orgFile = file;
       file = path.join(file, 'fcr-container~fcr-acl.nt')
     } else {
       file = path.join(file, 'fcr-container.nt');
@@ -277,7 +281,7 @@ class DirectAccess {
     let fcrepoMetadata = null;
 
     if( isBinary ) {
-      fcrepoMetadata = JSON.parse(await object.getFile('.fcrepo/fcr-root.json').asString());
+      fcrepoMetadata = JSON.parse(await object.getFile(`.fcrepo/${orgFile}.json`).asString());
 
       if( fcrepoMetadata.digests ) {
         let digests = fcrepoMetadata.digests;
