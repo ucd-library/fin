@@ -752,7 +752,7 @@ class FinIoImport {
       content = JSON.stringify(content, null, 2);
     }
 
-    finPath = finPath.replace(/\/fcr:metadata$/, '');
+    finPath = finPath.replace(/\/fcr:metadata$/, '').replace(/\/fcr:acl$/, '');
 
     let matches = Array.from(content.match(new RegExp(`"${utils.UCD_BASE_URI}.*?"`,'g')) || []);
     for( let match of matches ) {

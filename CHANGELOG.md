@@ -4,6 +4,7 @@
   - fix for dbsync reindex endpoint
   - fix for stomp disconnection
   - adding force binary update flag to fin io
+  - fix for acl imports via fin io (@base: required for pointing at container)
 
 # 2.2.0
 
