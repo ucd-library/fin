@@ -39,6 +39,16 @@ class DbSync {
     this.readLoop();
     this.validateLoop();
     this.processCheckQueueLoop();
+
+    // cleanup deleted containers
+    setInterval(() => this.cleanupDeletedContainers(), 1000 * 60 * 60 * 24);
+    this.cleanupDeletedContainers();
+  }
+
+  async cleanupDeletedContainers() {
+    let resp = await postgres.cleanupDeletedContainers();
+    if( resp.rowCount === 0 ) return;
+    logger.info('Cleanup ' + resp.rowCount + ' deleted containers from dbsync.update_status');
   }
 
   async readLoop() {
@@ -556,9 +566,12 @@ class DbSync {
       let graph = await model.get(dbId);
 
       if (!graph) {
-        validateResponse = {
-          comments: ['No data found for ' + modelId + ' ' + dbId]
-        }
+        logger.info('No data found for ' + modelId + ' ' + dbId + ' removing validation');
+        // validateResponse = {
+        //   comments: ['No data found for ' + modelId + ' ' + dbId]
+        // }
+        await postgres.removeValidation(modelId, dbId);
+        return;
       } else {
         validateResponse = await model.validate(graph);
       }

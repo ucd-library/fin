@@ -23,7 +23,12 @@ const viewConfig = {
       if ( ['validation_error_count', 'validation_warning_count', 'validation_comment_count'].includes(key) ) {
         if( row[key] === undefined || row[key] === null ) return '';
         let filterKey = key.replace('validation_', '');
-        return html`<a href="#data-validation?limit=10&order=db_id.asc&${filterKey}=gt.0&model=eq.${row.name}">${row[key]}</a>`;
+        return html`<visual-change>
+          <a href="#data-validation?limit=10&order=db_id.asc&${filterKey}=gt.0&model=eq.${row.name}">${row[key]}</a>
+        </visual-change>`;
+      }
+      if( key === 'dbItemCount' ) {
+        return html`<visual-change>${row[key]}<visual-change>`;
       }
       return standardRender(row, key);
     }
@@ -280,7 +285,8 @@ function standardRender(row, key) {
     return html`${unsafeHTML(formatJson(value))}`;
   }
   if( typeof value === 'string' && value.match(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d/) ) {
-    return new Date(new Date(value).getTime() - (new Date().getTimezoneOffset()*60*1000)).toLocaleString();
+    let d = new Date(new Date(value).getTime() - (new Date().getTimezoneOffset()*60*1000)).toLocaleString();
+    return html`<visual-change>${d}<visual-change>`;
   }
   return value;
 }

@@ -6,14 +6,15 @@ const yaml = require('js-yaml');
 const utils = require('./utils');
 
 const GIT_SOURCE = 'http://digital.ucdavis.edu/schema#GitSource';
-const GIT_SOURCE_FILE = 'http://digital.ucdavis.edu/schema#git/file';
-const GIT_SOURCE_ROOT_DIR = 'http://digital.ucdavis.edu/schema#git/rootDir';
+const GIT_SOURCE_FILE = 'http://digital.ucdavis.edu/schema#git-file';
+const GIT_SOURCE_ROOT_DIR = 'http://digital.ucdavis.edu/schema#git-rootDir';
 
 const ARCHIVAL_GROUP = 'http://fedora.info/definitions/v4/repository#ArchivalGroup';
 const BINARY = 'http://fedora.info/definitions/v4/repository#Binary';
 const BINARY_COMPACT = 'fedora:Binary';
 const NON_RDF_SOURCE = 'http://www.w3.org/ns/ldp#NonRDFSource';
 const CONTAINS = 'http://www.w3.org/ns/ldp#contains';
+const CONTAINS_COMPACT = 'contains';
 const DIGEST = 'http://fedora.info/definitions/v4/repository#hasMessageDigest';
 const FILENAME = 'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#filename';
 const HAS_MEMBER_RELATION = 'http://www.w3.org/ns/ldp#hasMemberRelation';
@@ -229,7 +230,6 @@ class ExportCollection {
     // let graph = JSON.parse(metadata.last.body);
     metadata = utils.getGraphNode(graph, '');
 
-
     // set archivalGroup and gitsource if is archivalGroup
     if( isArchivalGroup ) {
       archivalGroup = metadata;
@@ -407,9 +407,8 @@ class ExportCollection {
   }
 
   async crawlContains(options, metadata, archivalGroup, graph) {
-
     // check if this container has children
-    let contains = utils.getPropAsString(metadata, CONTAINS);
+    let contains = utils.getPropAsString(metadata, CONTAINS_COMPACT);
     if( !contains ) return; // no more children, done crawling this branch
 
     // just make sure this is an array...

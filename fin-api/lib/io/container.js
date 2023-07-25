@@ -199,10 +199,11 @@ class FinImportContainer {
     let graphNode = this.graph.mainNode;
 
     if( graphNode ) {
-      if( graphNode['@id'] ) {
-        this.pathDebug.id = 2;
-        return graphNode['@id'];
-      }
+      // JM - no longer looking at graphNode['@id'] as it should be blank
+      // if( graphNode['@id'] ) {
+      //   this.pathDebug.id = 2;
+      //   return graphNode['@id'];
+      // }
 
       let ids = utils.getPropAsString(graphNode, utils.PROPERTIES.SCHEMA.IDENTIFIER);
       if( ids && !Array.isArray(ids) ) ids = [ids];

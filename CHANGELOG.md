@@ -1,3 +1,10 @@
+# 2.2.2
+
+  - fin io no longer looks at `@id` for ldp container id lookup
+  - Admin UI displays changes for (some) values, this will by built out more
+  - Data validation entries are now deleted if not database item exists
+  - dbsync.update_status entries for update_types `Delete` and `Purge` are now deleted removed after one week.
+
 # 2.2.1
 
   - fixes for fin io `@base:` handling

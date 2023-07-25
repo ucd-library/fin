@@ -159,6 +159,16 @@ class DbSyncPostgresUtils {
     );
   }
 
+  cleanupDeletedContainers() {
+    return this.pg.query(`
+      DELETE FROM 
+        update_status 
+      WHERE 
+        CAST(ARRAY['Delete', 'Purge'] AS fcrepo_update_type[]) && update_types AND 
+        updated < NOW() - INTERVAL '1 week';
+    `);
+  }
+
   /**
    * @method reindexByAction
    * @description get status entries for a given action.  This returns a cursor

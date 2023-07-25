@@ -36,7 +36,7 @@ return html`
   <h2 id="data-models" class="heading--weighted-underline">
     Data Models <a href="${this.baseDocsUrl}/data-models" target="_blank">Documentation</a>
   </h2>
-  <div>Validate Queue Length: ${this.dbSyncValidateQueueLength}<div>
+  <div>Validate Queue Length: <visual-change>${this.dbSyncValidateQueueLength}</visual-change><div>
   <fin-admin-data-table 
     name="dashboard-data-models"
     hide-total
@@ -50,8 +50,7 @@ return html`
     DB Sync Stats <a href="${this.baseDocsUrl}/services/dbsync-service.md" target="_blank">Documentation</a>
   </h2>
   <div>
-    Event Queue Length: ${this.dbSyncQueueLength}
-    <span ?hidden="${this.dbSyncSpeed === 0 || this.dbSyncQueueLength === 0}"> - Processing: ${this.dbSyncSpeed} containers/sec</span>  
+    Event Queue Length: <visual-change>${this.dbSyncQueueLength}</visual-change>
   <div>
   <fin-admin-data-table 
     name="dashboard-dbsync-stats"

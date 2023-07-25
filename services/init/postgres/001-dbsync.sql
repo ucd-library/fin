@@ -114,6 +114,7 @@ CREATE INDEX IF NOT EXISTS update_status_path_idx ON update_status (path);
 CREATE INDEX IF NOT EXISTS update_status_action_idx ON update_status (action);
 CREATE INDEX IF NOT EXISTS update_status_model_idx ON update_status (model);
 CREATE INDEX IF NOT EXISTS update_status_db_id_idx ON update_status (db_id);
+CREATE INDEX IF NOT EXISTS update_status_update_types_idx ON update_status (update_types);
 
 CREATE OR REPLACE VIEW validate_response_view AS
   SELECT 

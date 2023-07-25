@@ -7,6 +7,7 @@ import clone from 'clone';
 
 import "@ucd-lib/theme-elements/brand/ucd-theme-collapse/ucd-theme-collapse.js"
 
+import "../widgets/visual-change.js"
 import "../widgets/fin-admin-data-table.js"
 import config from "../../src/config.js"
 
@@ -17,8 +18,6 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     return {
       dataModels : [],
       openTransactions : {type: Array},
-      dbSyncQueueLength : {type: String},
-      dbSyncSpeed : {type: Number},
       dbSyncValidateQueueLength : {type: String},
       dataModelsDtData : {type: Array},
       reindexing : {type: Boolean},
@@ -46,15 +45,14 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.workflowName = '';
     this.workflowPath = '';
     this.deletingWorkflows = false;
-    this.dbSyncSpeed = 0;
     this.fcrepoTypeStats = [];
 
     this.baseDocsUrl = '';
 
     this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
 
-    this.dbSyncQueueLength = '...';
-    this.dbSyncValidateQueueLength = '...';
+    this.dbSyncQueueLength = '';
+    this.dbSyncValidateQueueLength = '';
 
     this._onAutoRefresh();
   }
@@ -84,13 +82,6 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       .then(e => {
         if( e.payload.length < 1 ) {
           return;
-        }
-        
-        if( this.dbSyncQueueLength && this.lastRefreshed ) {
-          let timeDiff = Date.now() - this.lastRefreshed;
-          this.dbSyncSpeed = Math.round(
-            (this.dbSyncQueueLength - e.payload[0].count) / timeDiff
-          );
         }
 
         this.dbSyncQueueLength = e.payload[0].count;
