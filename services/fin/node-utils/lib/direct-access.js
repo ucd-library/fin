@@ -1,19 +1,24 @@
-const ocfl = require('@ocfl/ocfl-fs');
+const ocflfs = require('@ocfl/ocfl-fs');
+const ocfl = require('@ocfl/ocfl');
 const jsonld = require('jsonld');
 const N3 = require('n3');
 const path = require('path');
+const fs = require('fs-extra');
 const deepmerge = require('deepmerge');
 const pg = require('./pg.js');
 const config = require('../config.js');
 const logger = require('./logger.js');
 const RDF_URIS = require('./common-rdf-uris.js');
 
-const storage = ocfl.storage({
-  root: '/data/ocfl-root', 
-  layout: {
-    extensionName: '0004-hashed-n-tuple-storage-layout'
-  }
-});
+let storage;
+if( config.ocfl.mutableHead === false ) {
+  storage = ocflfs.storage({
+    root: config.ocfl.root, 
+    layout: {
+      extensionName: '0004-hashed-n-tuple-storage-layout'
+    }
+  });
+}
 
 // Leverage direct access to OCFL storage and PG to get Container data
 class DirectAccess {
@@ -34,7 +39,7 @@ class DirectAccess {
     this.quadParser = new N3.Parser({ format: 'N-Quads' });
 
     this.aclCache = new Map();
-    this.aclCacheExpire = 1000*10; // 10 seconds
+    this.aclCacheExpire = config.ocfl.directAccess.aclCacheExpire;
   }
 
   async checkAccess(fcPath, roles=[], opts={}) {
@@ -276,12 +281,23 @@ class DirectAccess {
     }
     file = file.replace(/^\//, '');
 
-    let object = await storage.object(ocflId);
-    let fileContent = await object.getFile(file).asString();
+    let object, fileContent;
+
+    if( config.ocfl.mutableHead === true ) {
+      fileContent = this.readMutableHead(ocflId, file);
+    } else {
+      object = await storage.object(ocflId);
+      fileContent = await object.getFile(file).asString();
+    }
+
     let fcrepoMetadata = null;
 
     if( isBinary ) {
-      fcrepoMetadata = JSON.parse(await object.getFile(`.fcrepo/${orgFile}.json`).asString());
+      if( config.ocfl.mutableHead === true ) {
+        fcrepoMetadata = JSON.parse(this.readMutableHead(ocflId, `.fcrepo/${orgFile}.json`));
+      } else {
+        fcrepoMetadata = JSON.parse(await object.getFile(`.fcrepo/${orgFile}.json`).asString());
+      }
 
       if( fcrepoMetadata.digests ) {
         let digests = fcrepoMetadata.digests;
@@ -307,6 +323,27 @@ class DirectAccess {
     }
 
     return doc;
+  }
+
+  readMutableHead(ocflId, file) {
+    // map id using extension
+    let id = layoutExt.map(ocflId);
+    
+    // read head inventory file
+    let root = path.join(config.ocfl.root, id);
+    let inventory = path.join(root, 'extensions', '0005-mutable-head', 'head', 'inventory.json');
+    inventory = JSON.parse(fs.readFileSync(inventory, 'utf8'));
+
+    let hashes = inventory.manifest;
+    let match = new RegExp(`content/r\\d+/${file}`);
+    for( let hash in hashes ) {
+      if( hashes[hash][0].match(match) ) {
+        let realPath = hashes[hash][0];
+        return fs.readFileSync(path.join(root, realPath), 'utf8');
+      }
+    }
+
+    return null;
   }
 
   async readPg(fcPath) {

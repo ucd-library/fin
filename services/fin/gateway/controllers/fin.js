@@ -23,6 +23,8 @@ proxy.on('error', e => {
   logger.error('http-proxy error', e.message, e.stack);
 });
 
+logger.info('OCFL Mutable Head Enabled:', config.ocfl.mutableHead);
+
 
 router.get('/status', keycloak.protect(['admin']), async (req, res) => {
   try {
@@ -208,7 +210,6 @@ router.get(/\/rest\/.*/, async (req, res) => {
 
   let roles = getRoles(req);
   try {
-    // let t = Date.now();
     let response;
 
     if( req.get('Accept') === 'application/fin-cache' ) {
@@ -217,8 +218,6 @@ router.get(/\/rest\/.*/, async (req, res) => {
     } else {
       response = await directAccess.getContainer(finPath, roles);
     }
-
-    // logger.info('getContainer', finPath, Date.now()-t);
     
     res.json(response);
   } catch(e) {

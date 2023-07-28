@@ -10,22 +10,30 @@ class GcsConfig {
 
   constructor() {
     this.CONFIG_PATH = '/fin/gcs/config.json';
-    this.loaded = this.load();
     this.config = null;
   }
 
   load() {
-    this.getConfig();
-    return this.requestLoopPromise;
+    if( this.config !== null ) {
+      return;
+    }
+    if( this.requestLoopPromise ) {
+      return this.requestLoopPromise;
+    }
+
+    this.requestLoopPromise = new Promise(async (resolve, reject) => {
+      this.requestLoopPromiseResolve = resolve;
+    });
+
+    this._loadingLoop();
   }
 
   async getConfig() {
-    if( !this.requestLoopPromise ) {
-      this.requestLoopPromise = new Promise(async (resolve, reject) => {
-        this.requestLoopPromiseResolve = resolve;
-      });
-    }
+    await this.load();
+    return this.config;
+  }
 
+  async _loadingLoop() {
     let url = new URL(config.fcrepo.host);
     await waitUntil(url.hostname, url.port);
 
@@ -36,28 +44,24 @@ class GcsConfig {
       directAccess : true
     });
 
-    if( res.last.statusCode === 404 ) {
-      logger.info('GCS Config not found');
-      this.config = {message: 'not found'};
-      this.requestLoopPromise = null;
-      this.requestLoopPromiseResolve(this.config);
+    if( res.last.statusCode !== 200 ) {
+      logger.info('GCS Config not found, retrying in 2 sec');
+      // this.config = {message: 'not found'};
+      // this.requestLoopPromise = null;
+      // this.requestLoopPromiseResolve(this.config);
+      await sleep(2000);
+      this._loadingLoop();
       return;
     }
 
-    if( res.last.statusCode === 200 ) {
-      let body = res.last.body.replace(/\{\{(\w+)\}\}/g, (match, p1) => {
-        return process.env[p1] || '';
-      });
-      
+    let body = res.last.body.replace(/\{\{(\w+)\}\}/g, (match, p1) => {
+      return process.env[p1] || '';
+    });
 
-      this.config = JSON.parse(body);
-      logger.info('GCS Config', this.config);
-      this.requestLoopPromise = null;
-      this.requestLoopPromiseResolve(this.config);
-    } else {
-      await sleep(1000);
-      this.getConfig();
-    }
+    this.config = JSON.parse(body);
+    logger.info('GCS Config', this.config);
+    this.requestLoopPromise = null;
+    this.requestLoopPromiseResolve(this.config);
   }
 
 }

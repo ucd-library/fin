@@ -4,9 +4,11 @@ FROM ${FIN_SERVER_IMAGE} as fin-server
 FROM ${INIT_BASE}
 
 COPY --from=fin-server /fin/api /fin-api
+RUN cd /fin-api && npm rebuild
 RUN cd /fin-api && npm link
 
 COPY --from=fin-server /fin/services /fin/services
+RUN cd /fin/services && npm rebuild
 RUN cd /fin/services && npm link @ucd-lib/fin-api
 RUN cd /fin/services && npm link 
 

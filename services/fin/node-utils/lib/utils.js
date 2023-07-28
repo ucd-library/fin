@@ -22,7 +22,7 @@ function getRootDomain(url) {
 
 function getContainerHostname() {
   return new Promise((resolve, reject) => {
-    console.log('getting container hostname',os.hostname());
+    logger.info('getting container hostname',os.hostname());
     dns.lookup(os.hostname(), (err, address, family) => {
       if(err) return reject(err);
 

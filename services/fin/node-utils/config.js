@@ -79,6 +79,14 @@ module.exports = {
     disableServices
   },
 
+  ocfl : {
+    root : env.OCFL_ROOT || '/data/ocfl-root',
+    mutableHead : (env.OCFL_MUTABLE_HEAD === 'true' || env.FCREPO_AUTO_VERSION === 'false'),
+    directAccess : {
+      aclCacheExpire : 1000 * 10
+    }
+  },
+
   rdf : {
     baseUrl : 'http://digital.ucdavis.edu/schema#',
     prefix : 'ucdlib'
@@ -145,7 +153,9 @@ module.exports = {
       "manage-account-links",
       "view-profile",
       "offline_access"
-    ]
+    ],
+    // default cache all tokens for 30 seconds before requesting verification again
+    tokenCacheTTL : env.OIDC_TOKEN_CACHE_TTL ? parseInt(env.OIDC_TOKEN_CACHE_TTL) : (1000*30)
   },
 
   finCache : {

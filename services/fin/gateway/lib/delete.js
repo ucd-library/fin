@@ -31,10 +31,7 @@ class FcrepoDeleteWrapper {
     ];
     let repoPath = config.fcrepo.root+repoPathParts.join('/');
 
-    let rootPath = path.join(
-      config.gateway.fcrepoDataMount, 
-      config.gateway.ocflRoot
-    );
+    let rootPath = config.ocfl.root;
     
     let removed = false;
     for( let i = 0; i < repoPathParts.length; i++ ) {

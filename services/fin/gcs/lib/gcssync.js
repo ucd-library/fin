@@ -18,7 +18,7 @@ class GcsSync {
   }
 
   async init() {
-    await gcsConfig.loaded;
+    await gcsConfig.load();
 
     this.config = (gcsConfig.config || {}).sync || {};
 

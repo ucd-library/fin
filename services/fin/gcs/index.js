@@ -84,7 +84,7 @@ function hasAccess(req, res, next) {
   let bucket = svcPathParts.shift();
   let gcsPath = path.join(fcPath, ...svcPathParts);
 
-  gcsConfig.loaded.then(config => {
+  gcsConfig.getConfig().then(config => {
     let accessDef = config.access.find(item => item.bucket === bucket);
     if( !accessDef ) return res.status(403).json({error : 'Access Denied: Bucket '+bucket});
 

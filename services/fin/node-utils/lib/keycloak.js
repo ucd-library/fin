@@ -9,10 +9,9 @@ const clone = require('clone');
 class KeycloakUtils {
 
   constructor() {
-    // we will cache all tokens for 30 seconds
     this.tokenCache = new Map();
     this.tokenRequestCache = new Map();
-    this.tokenCacheTTL = 1000*30;
+    this.tokenCacheTTL = config.oidc.tokenCacheTTL;
 
     this.setUser = this.setUser.bind(this);
     this.protect = this.protect.bind(this);
