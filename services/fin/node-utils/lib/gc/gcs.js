@@ -53,7 +53,10 @@ class GcsWrapper {
    * 
    * @return {Promise}
    */
-  async syncToGcs(finPath, gcsBucket, opts={}) {
+  async syncToGcs(finPath, gcsBucket, opts={}, crawled={}) {
+    if( crawled[finPath] ) return;
+    crawled[finPath] = true;
+
     let gcPath = finPath;
     if( opts.replacePath ) {
       gcPath = opts.replacePath(finPath);
@@ -61,6 +64,8 @@ class GcsWrapper {
 
     let gcsFile = 'gs://'+gcsBucket+gcPath;
     let fcrepoContainer = await this.syncContainerToGcs(finPath, gcsFile, opts);
+
+    if( opts.crawlChildren === false ) return;
 
     if( !Array.isArray(fcrepoContainer) ) {
       fcrepoContainer = [fcrepoContainer];
@@ -71,7 +76,7 @@ class GcsWrapper {
 
       for( let child of node[RDF_URIS.PROPERTIES.CONTAINS] ) {
         let childFinPath = child['@id'].split(api.getConfig().fcBasePath)[1];
-        await this.syncToGcs(childFinPath, gcsBucket, opts);
+        await this.syncToGcs(childFinPath, gcsBucket, opts, crawled);
       }
     }
   }
@@ -229,8 +234,12 @@ class GcsWrapper {
     // // all other nodes will be uploaded as jsonld and have a new md5 hash property
     // let index = fcrepoContainer.findIndex(node => node === binaryNode);
     // fcrepoContainer.splice(index, 1);
+    if( !finPath.match(/\/fcr:metadata$/) ) {
+      finPath += '/fcr:metadata';
+      gcsFile += '/fcr:metadata';
+    }
 
-    await this.syncMetadataToGcs(finPath+'/fcr:metadata', gcsFile+'/fcr:metadata', opts);
+    await this.syncMetadataToGcs(finPath, gcsFile, opts);
   }
 
   async syncBinaryToFcrepo(file, opts={}) {
@@ -650,7 +659,8 @@ class GcsWrapper {
     if( !fcrepoContainer[RDF_URIS.PROPERTIES.HAS_MESSAGE_DIGEST] ) return false;
 
     let md5 = fcrepoContainer[RDF_URIS.PROPERTIES.HAS_MESSAGE_DIGEST].find(item => item['@id'].startsWith('urn:md5:'));
-    
+    if( !md5 ) return false;
+
     let md5Base64 = Buffer.from(md5['@id'].replace(/^urn:md5:/, ''), 'hex').toString('base64');
 
     if( md5Base64 === gcsFile.md5Hash ) {
