@@ -362,7 +362,7 @@ class FinApi {
       // let shaNum = 256; // this is causing issues, fcrepo doesn't seem to calculate it correctly
       // let shaNum = 1;
 
-      let {sha256, sha512, md5} = await this.hash(options.file, shaNum);
+      let {sha256, sha512, md5} = await this.hash(options.file);
       options.headers.digest = `sha256=${sha256}, sha512=${sha512}, md5=${md5}`;
     }
 
