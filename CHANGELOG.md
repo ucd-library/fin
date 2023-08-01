@@ -1,3 +1,11 @@
+# 2.2.4
+
+  - fin io calculating sha256, sha512 and md5 checksums for binary files
+  - fin quad cache now storing last modified date for quads
+  - fin direct ocfl access to fetching last modifed and created dates
+  - major bug fixes for gcssync gcs -> fcrepo
+  - fin io adding md5 and sha512 checksums for metadata files
+
 # 2.2.2
 
   - fin io no longer looks at `@id` for ldp container id lookup

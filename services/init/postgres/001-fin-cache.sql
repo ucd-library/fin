@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS quads (
   subject_id INTEGER REFERENCES quads_uri_ref(uri_ref_id),
   predicate_id INTEGER REFERENCES quads_uri_ref(uri_ref_id),
   object_value TEXT,
-  object_type_id INTEGER REFERENCES quads_uri_ref(uri_ref_id)
+  object_type_id INTEGER REFERENCES quads_uri_ref(uri_ref_id),
+  last_modified TIMESTAMP
 );
 
 CREATE OR REPLACE VIEW quads_view AS 
@@ -22,7 +23,8 @@ CREATE OR REPLACE VIEW quads_view AS
     (SELECT uri FROM quads_uri_ref WHERE uri_ref_id = subject_id) AS subject,
     (SELECT uri FROM quads_uri_ref WHERE uri_ref_id = predicate_id) AS predicate,
     (SELECT uri FROM quads_uri_ref WHERE uri_ref_id = object_type_id) AS object_type,
-    object_value as object
+    object_value as object,
+    last_modified
   FROM quads;
 
 
@@ -31,7 +33,8 @@ CREATE OR REPLACE FUNCTION quads_insert (
   subject_id_in TEXT,
   predicate_in TEXT,
   object_value_in TEXT,
-  object_type_in TEXT
+  object_type_in TEXT,
+  modified_in TIMESTAMP
 ) RETURNS void AS $$
 DECLARE
   fid INTEGER;
@@ -52,8 +55,8 @@ BEGIN
   INSERT INTO fin_cache.quads_uri_ref (uri) VALUES (object_type_in) ON CONFLICT DO NOTHING;
   SELECT uri_ref_id INTO otid FROM fin_cache.quads_uri_ref WHERE uri = object_type_in;
 
-  INSERT INTO fin_cache.quads (fedora_id, subject_id, predicate_id, object_value, object_type_id)
-  VALUES (fid, sid, pid, object_value_in, otid);
+  INSERT INTO fin_cache.quads (fedora_id, subject_id, predicate_id, object_value, object_type_id, last_modified)
+  VALUES (fid, sid, pid, object_value_in, otid, modified_in);
 
 END;
 $$ LANGUAGE plpgsql;

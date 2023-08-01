@@ -292,17 +292,18 @@ class FinImportContainer {
     let manifest = {};
     
     if( this.binary.fsfull ) {
-      localBinarySha = this.api.sha(this.binary.fsfull, '256');
+      localBinarySha = this.api.hash(this.binary.fsfull);
     }
     if( this.metadata.fsfull ) {
-      localMetadataSha = this.api.sha(this.metadata.fsfull, '256');
+      localMetadataSha = this.api.hash(this.metadata.fsfull);
     }
 
     await quadRequest;
     
     if( localBinarySha !== null ) {
+      localBinarySha = await localBinarySha;
       manifest.binary = {
-        fs : await localBinarySha,
+        fs : localBinarySha.sha256,
         ldp : await this.getBinarySha256()
       }
       if( manifest.binary.ldp === manifest.binary.fs ) {
@@ -310,8 +311,11 @@ class FinImportContainer {
       }
     }
     if( localMetadataSha !== null ) {
+      localMetadataSha = await localMetadataSha;
       manifest.metadata = {
-        fs : await localMetadataSha,
+        fs : localMetadataSha.sha256,
+        fsMd5 : localMetadataSha.md5,
+        fsSha512 : localMetadataSha.sha512,
         ldp : await this.getQuadCachePredicate(FIN_CACHE_PREDICATES.METADATA_HASH)
       }
       if( manifest.metadata.ldp === manifest.metadata.fs ) {

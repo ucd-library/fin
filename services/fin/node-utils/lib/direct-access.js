@@ -292,6 +292,14 @@ class DirectAccess {
 
     let fcrepoMetadata = null;
 
+    if( config.ocfl.mutableHead === true ) {
+      fcrepoMetadata = JSON.parse(this.readMutableHead(ocflId, `.fcrepo/fcr-root.json`));
+    } else {
+      fcrepoMetadata = JSON.parse(await object.getFile(`.fcrepo/fcr-root.json`).asString());
+    }
+    fileContent += `\n<${fcPath}> <http://fedora.info/definitions/v4/repository#lastModified> "${fcrepoMetadata.lastModifiedDate}" .`
+    fileContent += `\n<${fcPath}> <http://fedora.info/definitions/v4/repository#created> "${fcrepoMetadata.createdDate}" .`
+
     if( isBinary ) {
       if( config.ocfl.mutableHead === true ) {
         fcrepoMetadata = JSON.parse(this.readMutableHead(ocflId, `.fcrepo/${orgFile}.json`));

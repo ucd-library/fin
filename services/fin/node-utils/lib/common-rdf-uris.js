@@ -23,10 +23,13 @@ module.exports = {
     CONTAINS : 'http://www.w3.org/ns/ldp#contains',
     HAS_PART : 'http://schema.org/hasPart',
     HAS_MESSAGE_DIGEST : 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest',
+    LAST_MODIFIED : 'http://fedora.info/definitions/v4/repository#lastModified',
     FILENAME : 'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#filename',
     HAS_MIME_TYPE : 'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#hasMimeType',
-    FIN_IO_GCS_METADATA_MD5 : 'http://digital.ucdavis.edu/schema#FinIoGcsMetadataMd5',
-    FIN_IO_GCS_PATH : 'http://digital.ucdavis.edu/schema#FinIoGcsPath',
+    FIN_IO_GCS_METADATA_MD5 : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataMd5',
+    FIN_IO_GCS_METADATA_SHA256 : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataSha256',
+    FIN_IO_GCS_METADATA_SHA512 : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataSha512',
+    FIN_IO_GCS_PATH : 'http://digital.ucdavis.edu/schema#finIoGcsPath',
   }
 
 };

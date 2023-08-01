@@ -2,6 +2,7 @@ const {URL} = require('url');
 const dns = require('dns');
 const os = require('os');
 const {exec} = require('child_process');
+const logger = require('./logger.js');
 
 /**
  * @method getRootDomain

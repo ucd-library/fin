@@ -359,21 +359,11 @@ class FinApi {
 
     // set the checksum if not an rdf file
     if( !options.isRdfType ) {
-      let shaNum = 256; // this is causing issues, fcrepo doesn't seem to calculate it correctly
+      // let shaNum = 256; // this is causing issues, fcrepo doesn't seem to calculate it correctly
       // let shaNum = 1;
 
-      let {sha, md5} = await this.hash(options.file, shaNum);
-      options.headers.digest = `sha${shaNum}=${sha}, md5=${md5}`;
-
-      // set the fin-tag header
-      let tags = {};
-      if( options.headers['fin-tag'] ) {
-        tags = JSON.parse(options.headers['fin-tag']);        
-      }
-      tags[`binary-sha${shaNum}`] = sha;
-      tags['binary-md5'] = md5;
-      tags['binary'] = true;
-      options.headers['fin-tag'] = JSON.stringify(tags);
+      let {sha256, sha512, md5} = await this.hash(options.file, shaNum);
+      options.headers.digest = `sha256=${sha256}, sha512=${sha512}, md5=${md5}`;
     }
 
     // set the content disposition from file name or provided filename option
@@ -413,17 +403,20 @@ class FinApi {
    * @method hash 
    * @description Calculate md5 and sha for given file
    */
-  hash(file, shaNum=256) {
+  hash(file) {
     return new Promise((resolve, reject) => {
       let md5 = crypto.createHash('md5');
-      let sha = crypto.createHash('sha'+shaNum);
+      let sha256 = crypto.createHash('sha256');
+      let sha512 = crypto.createHash('sha512');
       fs.createReadStream(file)
         .on('data', data => {
-          sha.update(data)
-          md5.update(data)
+          sha256.update(data);
+          sha512.update(data);
+          md5.update(data);
         })
         .on('close', () => resolve({
-          sha : sha.digest('hex'),
+          sha256 : sha256.digest('hex'),
+          sha512 : sha512.digest('hex'),
           md5 : md5.digest('hex')
         }));
     });

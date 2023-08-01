@@ -18,9 +18,11 @@ class FinIoImport {
     this.existsStatusCode = {};
 
     this.FIN_CACHE_PREDICATES = {
-      AG_HASH : 'http://digital.ucdavis.edu/schema#finio-ag-hash',
+      AG_HASH : 'http://digital.ucdavis.edu/schema#finIoAgHash',
       BINARY_HASH : 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest',
-      METADATA_HASH : 'http://digital.ucdavis.edu/schema#finio-metadata-sha256'
+      METADATA_HASH : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataSha256',
+      METADATA_HASH_SHA512 : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataSha512',
+      METADATA_HASH_MD5 : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataMd5'
     }
 
     this.FIN_IO_INDIRECT_CONTAINER_ROOT = '/indirect-containers';
@@ -423,6 +425,8 @@ class FinIoImport {
       }
 
       finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.fs}];
+      finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH_SHA512] = [{'@value': container.shaManifest.metadata.fsSha512}];
+      finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH_MD5] = [{'@value': container.shaManifest.metadata.fsMd5}];
     }
 
     // set ldp headers for types that must be specified there and not in @type
@@ -535,6 +539,8 @@ class FinIoImport {
     }
 
     finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.fs}];
+    finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH_SHA512] = [{'@value': container.shaManifest.metadata.fsSha512}];
+    finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH_MD5] = [{'@value': container.shaManifest.metadata.fsMd5}];
 
     utils.cleanupContainerNode(container.graph.mainNode);
 

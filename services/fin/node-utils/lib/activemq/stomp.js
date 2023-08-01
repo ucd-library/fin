@@ -77,7 +77,7 @@ class ActiveMqStompConnection extends ActiveMqClient {
       this.connectingProm = null;
     }
 
-    this._connect({fromRetry: true});
+    this.connect({fromRetry: true});
   }
 
   async connect(opts={}) {
@@ -149,11 +149,10 @@ class ActiveMqStompConnection extends ActiveMqClient {
    * @description connect to activemq via STOMP
    */
   _subscribe(topic) {
-    logger.info('STOMP client '+this.clientName+' subscribing to: ', topic);
-
     if( this.subscriptions[topic] ) {
       return;
     }
+    logger.info('STOMP client '+this.clientName+' subscribing to: ', topic);
 
     this.subscriptions[topic] = [];
 

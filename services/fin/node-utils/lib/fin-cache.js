@@ -63,12 +63,12 @@ class FinSearch {
    * @param {String} object 
    * @returns 
    */
-  async set(graph, subject, predicate, object='', objectType='') {
+  async set(graph, subject, predicate, object='', objectType='', lastModified=null) {
     subject = this._formatFedoraId(subject);
 
     return pg.query(
-      `select * from ${SCHEMA}.quads_insert($1, $2, $3, $4, $5)`, 
-      [graph, subject, predicate, object, objectType]
+      `select * from ${SCHEMA}.quads_insert($1, $2, $3, $4, $5, $6)`, 
+      [graph, subject, predicate, object, objectType, lastModified]
     );
   }
 
@@ -143,7 +143,11 @@ class FinSearch {
     }
 
     let quads = await directAccess.readOcfl(finPath, opts);
-    
+
+    // get last modified date
+    let lastModified = quads.find(quad => quad.predicate.id === URIS.PROPERTIES.LAST_MODIFIED);
+    if( lastModified ) lastModified = lastModified.object.value;
+
     await this.delete(fedoraId);
 
     if( !quads ) return;
@@ -156,7 +160,8 @@ class FinSearch {
         quad.subject.id, 
         quad.predicate.id, 
         quad.object.value,
-        quad.object.datatypeString
+        quad.object.datatypeString,
+        lastModified
       );
     }
   }
