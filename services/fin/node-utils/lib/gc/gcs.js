@@ -732,7 +732,9 @@ class GcsWrapper {
     if( !gcsFile ) return false;
     finQuads = finCache.getPropertyValues(finQuads, 'predicate', RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5);
     if( finQuads.length === 0 ) return false;
-    return (finQuads[0] === gcsFile.md5Hash);
+    if( finQuads[0] === gcsFile.md5Hash ) return true;
+    let b64 = Buffer.from(finQuads[0], 'hex').toString('base64');
+    return (b64 === gcsFile.md5Hash);
   }
 
   isBinaryMd5Match(fcrepoContainer, gcsFile) {
