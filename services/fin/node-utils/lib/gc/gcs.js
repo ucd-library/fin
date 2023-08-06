@@ -166,6 +166,9 @@ class GcsWrapper {
    * @param {Object} gcsFile 
    */
   async syncBinaryToGcs(finPath, fcrepoContainer, gcsFile, opts={}) {
+    finPath = finPath.replace(/\/fcr:metadata$/, '');
+    gcsFile = gcsFile.replace(/\/fcr:metadata$/, '');
+
     try {
       let gcsMetadata = await this.getGcsFileMetadata(gcsFile);
 
@@ -181,7 +184,7 @@ class GcsWrapper {
           message : 'md5 match'
         });
       } else {
-        logger.info('syncing container from fcrepo to gcs', finPath, gcsFile);
+        logger.info('syncing binary container from fcrepo to gcs', finPath, gcsFile);
 
         // stream upload to gcs
         let result = await api.get({
@@ -328,14 +331,16 @@ class GcsWrapper {
 
     try {
       let finQuads = await finCache.get(finPath);
-
+      
       if( !this.isMetadataTagMatch(finQuads, file.metadata) ) {
         logger.info('syncing container from gcs to fcrepo', gcsFile, finPath);
 
         await this.ensureRootPaths(finPath, opts.ensurePathCache);
 
-        let jsonld = JSON.parse(await this.loadFileIntoMemory(gcsFile));
-        this.addGcsMetadataNode(jsonld, {
+        let content = await this.loadFileIntoMemory(gcsFile);
+        let jsonld = JSON.parse(content);
+
+        jsonld = this.addGcsMetadataNode(jsonld, {
           md5 : file.metadata.md5Hash,
           gcsFile : gcsFile
         });
@@ -346,13 +351,19 @@ class GcsWrapper {
 
         // get root node
         let rootNode = api.io.utils.getMainGraphNode(jsonld, finPath);
+        if( rootNode && rootNode['@type'] && Array.isArray(rootNode['@type']) && !rootNode['@type'].length ) {
+          delete rootNode['@type'];
+        }
 
-        let current = api.head({
+        let current = await api.head({
           path: finPath, 
           host: config.fcrepo.host, 
           superuser: true, 
           directAccess: true
         });
+
+        if( current.last.statusCode === 200 ) current = true;
+        else current = false;
 
         // strips types that must be provided as a Link headers, adds them to headers
         api.io.utils.cleanupContainerNode(rootNode, headers, current);
@@ -414,11 +425,10 @@ class GcsWrapper {
       let {isArchivalGroup, container} = await this.getFcrepoContainer(finPath, true);
       let fcrepoContainer = container;
 
-      // strip out gcs metadata node
-      api.io.utils.removeGraphNode(fcrepoContainer, RDF_URIS.TYPES.FIN_IO_GCS_METADATA);
+      let finQuads = await finCache.get(finPath);
 
       let fileContent = JSON.stringify(fcrepoContainer);
-      if( this.isMetadataMd5Match(fileContent, gcsMetadata) ) {
+      if( this.isMetadataTagMatch(finQuads, gcsMetadata) ) {
         logger.debug('md5 match, ignoring fcrepo to gcs sync', finPath, gcsFile);
         await pg.updateStatus({
           path : finPath,
@@ -432,17 +442,62 @@ class GcsWrapper {
 
       logger.info('syncing container from fcrepo to gcs', finPath, gcsFile);
 
+      // calculate md5 hash of fileContent
+      let md5Hash = this._getB64Md5Hash(fileContent);
+
       // upload file to gcs
       await this.getGcsFileObjectFromPath(gcsFile).save(fileContent, {
         contentType : 'application/ld+json',
         metadata : {
           metadata : {
+            md5Hash,
             'damsBaseUrl' : config.server.url,
             'damsPath' : finPath,
             'isArchivalGroup' : isArchivalGroup
           }
         }
       });
+      
+      // NOT WORKING :(
+      // now patch fcrepo with new md5 hash
+      // let response = await api.patch({
+      //   path : finPath,
+      //   host : config.gateway.host,
+      //   jwt : await keycloak.getServiceAccountToken(),
+      //   body : `
+      //     DELETE {
+      //       <${RDF_URIS.NODE_HASH.FIN_GCSSYNC_METADATA}> ?p ?o .
+      //     }
+      //     INSERT { 
+      //       <${RDF_URIS.NODE_HASH.FIN_GCSSYNC_METADATA}> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <${RDF_URIS.TYPES.FIN_GCSSYNC_METADATA}> .
+      //       <${RDF_URIS.NODE_HASH.FIN_GCSSYNC_METADATA}> <${RDF_URIS.PROPERTIES.GCSSYNC_GCS_PATH}> "${gcsFile}" .
+      //       <${RDF_URIS.NODE_HASH.FIN_GCSSYNC_METADATA}> <${RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5}> "${md5Hash}" .
+      //     } 
+      //     WHERE {}`
+      // });
+
+      let response = await api.metadata({
+        path: finPath,
+        headers : {
+          Prefer : `return=representation; omit="${this.OMIT.join(' ')}"`
+        },
+        host : config.gateway.host
+      });
+      container = JSON.parse(response.last.body);
+
+      container = this.addGcsMetadataNode(container, {
+        md5 : md5Hash,
+        gcsFile : gcsFile
+      });
+
+      let result = await this.fcrepoPut({
+        path : finPath,
+        body : JSON.stringify(container),
+        headers : {
+          'Content-Type' : api.RDF_FORMATS.JSON_LD
+        }
+      });
+      // console.log(result);
 
       await pg.updateStatus({
         path : finPath,
@@ -542,23 +597,25 @@ class GcsWrapper {
    */
   addGcsMetadataNode(jsonld, metadata) {
     if( !jsonld['@graph'] ) {
-      jsonld = {'@graph' : [jsonld]};
+      jsonld = {'@graph' : jsonld};
     }
     if( !Array.isArray(jsonld['@graph']) ) {
       jsonld['@graph'] = [jsonld['@graph']];
     }
 
-    let metadataNode = api.io.utils.getGraphNode(jsonld, RDF_URIS.PROPERTIES.FIN_IO_GCS_METADATA_MD5);
+    let metadataNode = api.io.utils.getGraphNode(jsonld, RDF_URIS.TYPES.FIN_GCSSYNC_METADATA);
     if( !metadataNode ) {
       metadataNode = {
-        '@id' : RDF_URIS.NODE_HASH.FIN_IO_GCS_METADATA,
-        '@type' : RDF_URIS.TYPES.FIN_IO_GCS_METADATA
+        '@id' : RDF_URIS.NODE_HASH.FIN_GCSSYNC_METADATA,
+        '@type' : RDF_URIS.TYPES.FIN_GCSSYNC_METADATA
       };
       jsonld['@graph'].push(metadataNode);
     }
 
-    metadataNode[RDF_URIS.PROPERTIES.FIN_IO_GCS_METADATA_MD5] = [{'@value': metadata.md5}];
-    metadataNode[RDF_URIS.PROPERTIES.FIN_IO_GCS_PATH] = [{'@value': metadata.gcsFile}];
+    metadataNode[RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5] = [{'@value': metadata.md5}];
+    metadataNode[RDF_URIS.PROPERTIES.GCSSYNC_GCS_PATH] = [{'@value': metadata.gcsFile}];
+
+    return jsonld;
   }
 
 
@@ -595,7 +652,6 @@ class GcsWrapper {
    */
   async getFcrepoContainer(finPath, storageFormat=false) {
     let headers = {};
-    finPath = finPath.replace(/\/fcr:metadata$/, '');
 
     if( storageFormat ) {
       headers = {
@@ -606,9 +662,7 @@ class GcsWrapper {
     let response = await api.metadata({
       path: finPath,
       headers,
-      host : config.fcrepo.host,
-      superuser : true,
-      directAccess : true
+      host : config.gateway.host
     });
 
     if( response.last.statusCode !== 200 ) {
@@ -617,27 +671,54 @@ class GcsWrapper {
 
     let container = JSON.parse(response.last.body);
     if( storageFormat ) {
-      let baseUrl = config.fcrepo.host+api.getConfig().fcBasePath;
-
-      for( let node of container ) {
-        if( !node['@id'] ) continue;
-        if( !node['@id'].startsWith(baseUrl) ) continue;
-        node['@id'] = node['@id'].replace(baseUrl, 'info:fedora');
-      }
+      this._stripIds(container);
     }
-
-    // append container types
-    container.push({
-
-    });
 
     let links = api.parseLinkHeader(response.last.headers.link);
     let isArchivalGroup = links.type.find(item => item.url === RDF_URIS.TYPES.ARCHIVAL_GROUP) ? true : false;
 
+    if( storageFormat ) {
+      // append special ldp types required to recreate containers
+      let rootNode = api.io.utils.getMainGraphNode(container, finPath);
+      if( rootNode ) {
+        if( !rootNode['@type'] ) rootNode['@type'] = [];
+        if( !Array.isArray(rootNode['@type']) ) rootNode['@type'] = [rootNode['@type']];
+
+        api.io.utils.TO_HEADER_TYPES.forEach(type => {
+          let include = links.type.find(item => item.url === type) ? true : false;
+          if( include ) rootNode['@type'].push(type);
+        });
+      }
+
+      // strip out gcs metadata node
+      api.io.utils.removeGraphNode(container, RDF_URIS.TYPES.FIN_GCSSYNC_METADATA);
+      api.io.utils.removeGraphNode(container, RDF_URIS.TYPES.FIN_IO_METADATA);
+    }
+
     return {isArchivalGroup, container};
   }
 
+  _stripIds(object) {
+    if( Array.isArray(object) ) {
+      object.forEach(item => this._stripIds(item));
+    }
+
+    if( typeof object !== 'object' ) return;
+
+    if( object['@id'] && object['@id'].match(/\/fcrepo\/rest/) && object['@id'].match(/^http(s)?:\/\//) ) {
+      object['@id'] = 'info:fedora'+object['@id']
+        .replace(/.*\/fcrepo\/rest/, '')
+    }
+
+    for( let key in object ) {
+      if( key.startsWith('@') ) continue;
+      if( typeof object[key] !== 'object' ) continue;
+      this._stripIds(object[key]);
+    }
+  }
+
   isBinaryTagMatch(finQuads, gcsFile) {
+    if( !gcsFile ) return false;
     finQuads = finCache.getPropertyValues(finQuads, 'predicate', RDF_URIS.PROPERTIES.HAS_MESSAGE_DIGEST);
 
     let md5 = finQuads.find(item => item.startsWith('urn:md5:'));
@@ -648,7 +729,8 @@ class GcsWrapper {
   }
 
   isMetadataTagMatch(finQuads, gcsFile) {
-    finQuads = finCache.getPropertyValues(finQuads, 'predicate', RDF_URIS.PROPERTIES.FIN_IO_GCS_METADATA_MD5);
+    if( !gcsFile ) return false;
+    finQuads = finCache.getPropertyValues(finQuads, 'predicate', RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5);
     if( finQuads.length === 0 ) return false;
     return (finQuads[0] === gcsFile.md5Hash);
   }
@@ -662,43 +744,29 @@ class GcsWrapper {
     if( !md5 ) return false;
 
     let md5Base64 = Buffer.from(md5['@id'].replace(/^urn:md5:/, ''), 'hex').toString('base64');
-
     if( md5Base64 === gcsFile.md5Hash ) {
       return true;
     }
     return false;
   }
 
-  isMetadataMd5Match(fileContent, gcsFile) {
-    if( !fileContent || !gcsFile ) return false;
+  // isMetadataMd5Match(fileContent, gcsFile) {
+  //   if( !fileContent || !gcsFile ) return false;
 
-    if( typeof fileContent === 'string' ) {
-      fileContent = JSON.parse(fileContent);
-    }
+  //   if( typeof fileContent === 'string' ) {
+  //     fileContent = JSON.parse(fileContent);
+  //   }
 
-    let gcsMetadataNode = api.io.utils.getGraphNode(fileContent, RDF_URIS.TYPES.FIN_IO_GCS_METADATA);
-    if( gcsMetadataNode && gcsMetadataNode[RDF_URIS.PROPERTIES.FIN_IO_GCS_METADATA_MD5] ) {
-      let md5 = gcsMetadataNode[RDF_URIS.PROPERTIES.FIN_IO_GCS_METADATA_MD5][0]['@value'];
-      if( md5 === gcsFile.md5Hash ) {
-        return true;
-      }
-    }
+  //   let gcsMetadataNode = api.io.utils.getGraphNode(fileContent, RDF_URIS.TYPES.FIN_GCSSYNC_METADATA);
+  //   if( gcsMetadataNode && gcsMetadataNode[RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5] ) {
+  //     let md5 = gcsMetadataNode[RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5][0]['@value'];
+  //     if( md5 === gcsFile.md5Hash ) {
+  //       return true;
+  //     }
+  //   }
 
-    // if no md5 in metadata, compare the file content
-    // strip out the gcs metadata node
-    api.io.utils.removeGraphNode(fileContent, RDF_URIS.TYPES.FIN_IO_GCS_METADATA);
-    fileContent = JSON.stringify(fileContent);
-
-    let md5 = crypto.createHash('md5');
-    md5.update(fileContent);
-    md5 = md5.digest('base64');
-
-    if( md5 === gcsFile.md5Hash ) {
-      return true;
-    }
-
-    return false;
-  }
+  //   return false;
+  // }
 
   loadFileIntoMemory(gcsFile) {
     return new Promise((resolve, reject) => {
@@ -820,6 +888,19 @@ class GcsWrapper {
 
       if( cache ) cache.add(path);
     }
+  }
+
+  /**
+   * @method _getB64Md5Hash
+   * @description get the base64 md5 hash of a string
+   * 
+   * @param {String} content 
+   * @returns {String}
+   */
+  _getB64Md5Hash(content) {
+    let md5 = crypto.createHash('md5');
+    md5.update(content);
+    return md5.digest('base64');
   }
 
 }

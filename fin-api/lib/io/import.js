@@ -20,9 +20,9 @@ class FinIoImport {
     this.FIN_CACHE_PREDICATES = {
       AG_HASH : 'http://digital.ucdavis.edu/schema#finIoAgHash',
       BINARY_HASH : 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest',
-      METADATA_HASH : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataSha256',
-      METADATA_HASH_SHA512 : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataSha512',
-      METADATA_HASH_MD5 : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataMd5'
+      METADATA_HASH : 'http://digital.ucdavis.edu/schema#finIoMetadataSha256',
+      METADATA_HASH_SHA512 : 'http://digital.ucdavis.edu/schema#finIoMetadataSha512',
+      METADATA_HASH_MD5 : 'http://digital.ucdavis.edu/schema#finIoMetadataMd5'
     }
 
     this.FIN_IO_INDIRECT_CONTAINER_ROOT = '/indirect-containers';

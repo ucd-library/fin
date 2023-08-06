@@ -5,7 +5,9 @@ const COMMON_URI = require('./lib/common-rdf-uris');
 
 function processArray(value) {
   if( value && value.length ) {
-    return value.split(/,|\s/).map(item => item.trim());
+    return value.split(/,|\s/)
+      .map(item => item.trim())
+      .filter(item => item);
   }
   return null;
 }
@@ -42,9 +44,10 @@ if( !env.WORKFLOW_ENV ) env.WORKFLOW_ENV = 'local-dev';
 let finCachePredicates = (processArray(process.env.FIN_CACHE_PREDICATES) || [])
   .map(predicate => {
     if( predicate.match(/^\/.*\/(i|g)?$/) ) {
-      return predicate;
+      let flags = predicate.split('/').pop();
+      return new RegExp(predicate.replace(/(^\/|\/(g|i)?$)/g, ''), flags);
     } else {
-      return new RegExp(predicate);
+      return predicate;
     }
   });
 if( finCachePredicates.length === 0 ) {

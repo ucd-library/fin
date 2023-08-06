@@ -693,6 +693,7 @@ class FinApi {
     var req = this.baseRequest('PATCH', options);
     
     if( options.content ) req.body = options.content;
+    else if( options.body ) req.body = options.body;
     else req.body = fs.createReadStream(options.file);
 
     return _simpleRequest(req);

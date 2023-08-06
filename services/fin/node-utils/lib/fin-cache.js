@@ -144,6 +144,19 @@ class FinSearch {
 
     let quads = await directAccess.readOcfl(finPath, opts);
 
+    // grab memberships as well
+    let memberships = await directAccess.getMembership(finPath);
+    memberships.forEach(item => {
+      quads.push({
+        subject : {id: item.subject_id},
+        predicate : {id: item.property},
+        object : {
+          value : item.object_id,
+          datatypeString : ''
+        }
+      });
+    });
+
     // get last modified date
     let lastModified = quads.find(quad => quad.predicate.id === URIS.PROPERTIES.LAST_MODIFIED);
     if( lastModified ) lastModified = lastModified.object.value;

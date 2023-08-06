@@ -72,7 +72,7 @@ class ExportCollection {
   constructor(_api) {
     api = _api;
 
-    this.JSONLD_FORMAT = api.GET_JSON_ACCEPT.COMPACTED;
+    this.JSONLD_FORMAT = api.GET_JSON_ACCEPT.EXPANDED;
   }
 
   /**
@@ -388,7 +388,7 @@ class ExportCollection {
           let node = utils.getGraphNode(metadata, type);
           if( !node ) continue;
 
-          let crawlProps = utils.getProp(node, hasMemberRelation);
+          let crawlProps = utils.getPropAsString(node, hasMemberRelation);
           if( !crawlProps ) continue;
           if( !Array.isArray(crawlProps) ) crawlProps = [crawlProps];
 

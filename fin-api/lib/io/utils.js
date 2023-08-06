@@ -200,6 +200,7 @@ class IoUtils {
         return node;
       } else if( !isRe ) {
         if( node['@id'] === id ) return node;
+        if( node['@id'] === 'info:fedora'+id ) return node;
         if( this.isNodeOfType(node, id) ) return node;
       }
     }

@@ -167,7 +167,6 @@ class ActiveMqStompConnection extends ActiveMqClient {
         await this.logDebug('message-error', error);
         return logger.error('STOMP client '+this.clientName+' error message', error);
       }
-      this.client.ack(message);
 
       var headers = message.headers;
 
@@ -183,7 +182,7 @@ class ActiveMqStompConnection extends ActiveMqClient {
       for( let clientId in this.subscriptions[topic] ) {
         let callback = this.subscriptions[topic][clientId];
         try {
-          await callback({headers, body})
+          await callback({headers, body});
         } catch(e) {
           await this.logDebug('processing-error', e);
           logger.error('STOMP client '+clientId+' processing error', e);
@@ -191,6 +190,8 @@ class ActiveMqStompConnection extends ActiveMqClient {
           catch(e) { logger.error(e.stack) }
         }
       }
+
+      this.client.ack(message);
     });   
   }
 

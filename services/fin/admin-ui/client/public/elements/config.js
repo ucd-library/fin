@@ -188,7 +188,7 @@ const viewConfig = {
     hideTotal : true,
     renderCellValue : (row, key) => {
       if( key === 'action' ) {
-        return html`<a href="#dbsync?action=eq.${row[key]}">${row[key]}</a>`;
+        return html`<visual-change><a href="#dbsync?action=eq.${row[key]}">${row[key]}</a></visual-change>`;
       }
       return standardRender(row, key);
     },

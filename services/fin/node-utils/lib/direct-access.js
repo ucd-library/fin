@@ -373,8 +373,8 @@ class DirectAccess {
     }
 
     // set membership
-    result = await pg.query('SELECT * FROM membership where subject_id = $1', [fcPath]);
-    result.rows.forEach(row => {
+    result = await this.getMembership(fcPath);
+    result.forEach(row => {
       if( !node[row.property] ) {
         node[row.property] = [];
       }
@@ -387,6 +387,22 @@ class DirectAccess {
     let graph = [node];
 
     return graph;
+  }
+
+  async getMembership(fcPath) {
+    fcPath = this.cleanPath(fcPath);
+    let result = await pg.query(`
+      SELECT 
+        subject_id, property, object_id 
+      FROM 
+        membership
+      WHERE
+        subject_id = $1 AND end_time > NOW() 
+      GROUP BY 
+        subject_id, property, object_id`, 
+      [fcPath]
+    );
+    return result.rows;
   }
 
   async getTypes(fcPath) {
