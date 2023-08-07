@@ -425,6 +425,9 @@ class GcsWrapper {
       let {isArchivalGroup, container} = await this.getFcrepoContainer(finPath, true);
       let fcrepoContainer = container;
 
+      // TODO: check if metadata is just empty array and is binary metadata
+      // if so, skip file.
+
       let finQuads = await finCache.get(finPath);
 
       let fileContent = JSON.stringify(fcrepoContainer);

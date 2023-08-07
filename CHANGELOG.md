@@ -1,3 +1,7 @@
+# 2.2.5
+
+  - gcssync bug fixes and updates
+
 # 2.2.4
 
   - fin io calculating sha256, sha512 and md5 checksums for binary files
