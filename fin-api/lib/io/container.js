@@ -3,9 +3,9 @@ const utils = require('./utils');
 const pathutils = require('../utils/path');
 
 const FIN_CACHE_PREDICATES = {
-  AG_HASH : 'http://digital.ucdavis.edu/schema#finio-ag-hash',
+  AG_HASH : 'http://digital.ucdavis.edu/schema#finIoAgHash',
   BINARY_HASH : 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest',
-  METADATA_HASH : 'http://digital.ucdavis.edu/schema#finio-metadata-sha256'
+  METADATA_HASH : 'http://digital.ucdavis.edu/schema#finIoMetadataSha256'
 }
 
 class FinImportContainer {
@@ -117,25 +117,32 @@ class FinImportContainer {
   getFcrepoPath() {
     // console.log('\nfsfull', this.binary.fsfull ||  this.metadata.fsfull)
     // this is root archival group
+
+    if( this.typeConfig.fcrepoPathType === 'subpath' ) {
+      this.pathDebug.fcrepoPath = 2;
+      return pathutils.joinUrlPath(this.subPath, this.id);
+    }
+
     if( this.isArchivalGroup ) {
       let agRoot = this.agTypeConfig?.basePath || '/';
 
-      if( this.typeConfig.fcrepoPathType === 'id' ) {
+      // if( this.typeConfig.fcrepoPathType === 'id' ) {
         this.pathDebug.fcrepoPath = 1;
         return pathutils.joinUrlPath(agRoot, this.id);
-      } else if( this.typeConfig.fcrepoPathType === 'subpath' ) {
-        this.pathDebug.fcrepoPath = 2;
-        return pathutils.joinUrlPath(agRoot, this.subPath, this.id);
-      }
+      // }
+      // } else if( this.typeConfig.fcrepoPathType === 'subpath' ) {
+      //   this.pathDebug.fcrepoPath = 2;
+      //   return pathutils.joinUrlPath(agRoot, this.subPath, this.id);
+      // }
       return;
     }
 
     if( this.archivalGroup ) {
-      if( this.typeConfig.fcrepoPathType === 'id' ) {
+      // if( this.typeConfig.fcrepoPathType === 'id' ) {
         let agRoot = this.archivalGroup.fcrepoPath || '/';
         this.pathDebug.fcrepoPath = 3;
         return pathutils.joinUrlPath(agRoot, this.subPath, this.id);
-      } 
+      // } 
     }
 
     // non-archival group import by subpath

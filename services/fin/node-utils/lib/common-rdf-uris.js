@@ -29,9 +29,9 @@ module.exports = {
     HAS_MIME_TYPE : 'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#hasMimeType',
     GCSSYNC_METADATA_MD5 : 'http://digital.ucdavis.edu/schema#finGcsSyncMetadataMd5',
     GCSSYNC_GCS_PATH : 'http://digital.ucdavis.edu/schema#finGcsSyncPath',
-    FIN_IO_METADATA_MD5 : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataMd5',
-    FIN_IO_METADATA_SHA256 : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataSha256',
-    FIN_IO_METADATA_SHA512 : 'http://digital.ucdavis.edu/schema#finIoGcsMetadataSha512',
+    FIN_IO_METADATA_MD5 : 'http://digital.ucdavis.edu/schema#finIoMetadataMd5',
+    FIN_IO_METADATA_SHA256 : 'http://digital.ucdavis.edu/schema#finIoMetadataSha256',
+    FIN_IO_METADATA_SHA512 : 'http://digital.ucdavis.edu/schema#finIoMetadataSha512'
   }
 
 };

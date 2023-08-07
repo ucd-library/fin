@@ -279,7 +279,6 @@ class FinIoImport {
       this.currentOp = api.startTransaction({timeout: this.DEFAULT_TIMEOUT});
       let tResp = await this.currentOp;
       if( tResp.last.statusCode !== 201 ) {
-        console.log(tResp.last);
         console.error('Unable to start transaction: ', tResp.last.statusCode, tResp.last.body);
         process.exit(1);
         return;
@@ -414,6 +413,8 @@ class FinIoImport {
     // let finIoNode = container.finIoNode || this.createFinIoNode();
     // let finTag = container.finTag || {};
     let finIoNode = this.createFinIoNode();
+
+    console.log(container.shaManifest.metadata);
 
     // check if d exists and if there is the ucd metadata sha.
     let forceUpdate = this.options.forceMetadataUpdate || force;
