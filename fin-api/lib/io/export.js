@@ -274,6 +274,9 @@ class ExportCollection {
 
     if( isBinary ) {
       binaryFile = utils.getPropAsString(metadata, FILENAME);
+      if( Array.isArray(binaryFile) ) {
+        binaryFile = binaryFile[0];
+      }
       cdir = cdir.split('/');
       if( !binaryFile ) {
         binaryFile = cdir.pop();
@@ -281,9 +284,6 @@ class ExportCollection {
         cdir.pop();
       }
       cdir = cdir.join('/');
-      if( Array.isArray(binaryFile) ) {
-        binaryFile = binaryFile[0];
-      }
     }
 
     // write binary
