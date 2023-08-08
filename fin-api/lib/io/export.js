@@ -15,7 +15,8 @@ const BINARY_COMPACT = 'fedora:Binary';
 const NON_RDF_SOURCE = 'http://www.w3.org/ns/ldp#NonRDFSource';
 const CONTAINS = 'http://www.w3.org/ns/ldp#contains';
 const CONTAINS_COMPACT = 'contains';
-const DIGEST = 'http://fedora.info/definitions/v4/repository#hasMessageDigest';
+const DIGEST_V1 = 'http://fedora.info/definitions/v4/repository#hasMessageDigest';
+const DIGEST = 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest';
 const FILENAME = 'http://www.ebu.ch/metadata/ontologies/ebucore/ebucore#filename';
 const HAS_MEMBER_RELATION = 'http://www.w3.org/ns/ldp#hasMemberRelation';
 const IS_MEMBER_OF_RELATION = 'http://www.w3.org/ns/ldp#isMemberOfRelation';
@@ -280,6 +281,9 @@ class ExportCollection {
         cdir.pop();
       }
       cdir = cdir.join('/');
+      if( Array.isArray(binaryFile) ) {
+        binaryFile = binaryFile[0];
+      }
     }
 
     // write binary
@@ -294,7 +298,13 @@ class ExportCollection {
       if( !fs.existsSync(filePath) ) {
         download = true;
       } else {
-        let shas = utils.getPropAsString(metadata, DIGEST);
+        let shas;
+        if( options.fromV1 ) {
+          shas = utils.getPropAsString(metadata, DIGEST_V1);
+        } else {
+          shas = utils.getPropAsString(metadata, DIGEST);
+        }
+
         if( shas ) {
           if( !Array.isArray(shas) ) shas = [shas];
           shas = shas.map(item => {
@@ -408,7 +418,7 @@ class ExportCollection {
 
   async crawlContains(options, metadata, archivalGroup, graph) {
     // check if this container has children
-    let contains = utils.getPropAsString(metadata, CONTAINS_COMPACT);
+    let contains = utils.getPropAsString(metadata, CONTAINS);
     if( !contains ) return; // no more children, done crawling this branch
 
     // just make sure this is an array...

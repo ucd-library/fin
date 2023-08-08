@@ -414,8 +414,6 @@ class FinIoImport {
     // let finTag = container.finTag || {};
     let finIoNode = this.createFinIoNode();
 
-    console.log(container.shaManifest.metadata);
-
     // check if d exists and if there is the ucd metadata sha.
     let forceUpdate = this.options.forceMetadataUpdate || force;
     if( container.metadata.fsfull !== '_virtual_' ) {
