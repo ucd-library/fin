@@ -301,10 +301,12 @@ class DirectAccess {
     fileContent += `\n<${fcPath}> <http://fedora.info/definitions/v4/repository#created> "${fcrepoMetadata.createdDate}" .`
 
     if( isBinary ) {
-      if( config.ocfl.mutableHead === true ) {
-        fcrepoMetadata = JSON.parse(this.readMutableHead(ocflId, `.fcrepo/${orgFile}.json`));
-      } else {
-        fcrepoMetadata = JSON.parse(await object.getFile(`.fcrepo/${orgFile}.json`).asString());
+      if( orgFile ) {
+        if( config.ocfl.mutableHead === true ) {
+          fcrepoMetadata = JSON.parse(this.readMutableHead(ocflId, `.fcrepo/${orgFile}.json`));
+        } else {
+          fcrepoMetadata = JSON.parse(await object.getFile(`.fcrepo/${orgFile}.json`).asString());
+        }
       }
 
       if( fcrepoMetadata.digests ) {

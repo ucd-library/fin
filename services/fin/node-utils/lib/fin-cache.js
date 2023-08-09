@@ -8,7 +8,7 @@ const SCHEMA = 'fin_cache';
 const ACTIVE_MQ_HEADER_ID = 'org.fcrepo.jms.identifier';
 const ACTIVE_MQ_HEADER_TYPES = 'org.fcrepo.jms.resourceType';
 
-class FinSearch {
+class FinCache {
 
   constructor() {
     pg.connect();
@@ -43,12 +43,16 @@ class FinSearch {
 
     // make sure to pass the id that includes /fcr:metadata
     for( let ut of updateType ) {
-      if( this.UPDATE_TYPES.DELETE.includes(ut) ) {
-        await this.delete(id);
-      } else if( this.UPDATE_TYPES.CREATE === ut || this.UPDATE_TYPES.UPDATE === ut ) {
-        await this.update(id, types);
-      } else if( this.UPDATE_TYPES.REINDEX === ut ) {
-        await this.reindex(id);
+      try {
+        if( this.UPDATE_TYPES.DELETE.includes(ut) ) {
+          await this.delete(id);
+        } else if( this.UPDATE_TYPES.CREATE === ut || this.UPDATE_TYPES.UPDATE === ut ) {
+          await this.update(id, types);
+        } else if( this.UPDATE_TYPES.REINDEX === ut ) {
+          await this.reindex(id);
+        }
+      } catch(e) {
+        logger.error('Failed fin-cache '+ut+' event handling for: '+id, e);
       }
     }
   }
@@ -245,4 +249,4 @@ class FinSearch {
 
 }
 
-module.exports = FinSearch;
+module.exports = FinCache;
