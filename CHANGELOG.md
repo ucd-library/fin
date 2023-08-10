@@ -1,3 +1,9 @@
+# 2.2.6
+
+  - gcssync bug fixes
+  - direct ocfl access bug fixes
+  - fin-cache fixes
+
 # 2.2.5
 
   - gcssync bug fixes and updates
