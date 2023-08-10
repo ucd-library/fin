@@ -146,7 +146,7 @@ class FinCache {
       opts.isAcl = true;
     }
 
-    let quads = await directAccess.readOcfl(finPath, opts);
+    let quads = await directAccess.readOcfl(finPath, opts) || [];
 
     // grab memberships as well
     let memberships = await directAccess.getMembership(finPath);
