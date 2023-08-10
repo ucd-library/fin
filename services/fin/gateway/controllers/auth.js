@@ -19,7 +19,11 @@ router.get('/login', (req, res) => {
   for( let key in serviceModel.services ) {
     let service = serviceModel.services[key];
     if( service.type === 'AuthenticationService' ) {
-      return res.redirect(`/auth/${key}/login`);
+      let redirectPath = `/auth/${key}/login`;
+      if( req.query.redirectUrl ) {
+        redirectPath += `?redirectUrl=${req.query.redirectUrl}`;
+      }
+      return res.redirect(redirectPath);
     }
   }
 });
@@ -31,7 +35,9 @@ router.get('/logout', (req, res) => {
     }
   }
   
-  if( req.session ) req.session.destroy();
+  if( req.session ) {
+    req.session = null;
+  }
   res.redirect('/');
 });
 

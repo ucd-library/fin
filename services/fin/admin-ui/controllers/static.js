@@ -32,7 +32,7 @@ module.exports = async (app) => {
   // make sure we are logged in
   app.all('/fin/admin/', (req, res, next) => {
     if( !req.user ) {
-      res.redirect('/auth/login');
+      res.redirect('/auth/login?redirectUrl=/fin/admin/');
       return;
     }
     
