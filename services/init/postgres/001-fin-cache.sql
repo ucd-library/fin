@@ -19,13 +19,18 @@ CREATE TABLE IF NOT EXISTS quads (
 
 CREATE OR REPLACE VIEW quads_view AS 
   SELECT
-    (SELECT uri FROM quads_uri_ref WHERE uri_ref_id = fedora_id) AS fedora_id,
-    (SELECT uri FROM quads_uri_ref WHERE uri_ref_id = subject_id) AS subject,
-    (SELECT uri FROM quads_uri_ref WHERE uri_ref_id = predicate_id) AS predicate,
-    (SELECT uri FROM quads_uri_ref WHERE uri_ref_id = object_type_id) AS object_type,
+    quads_id as quads_id,
+    f.uri AS fedora_id,
+    s.uri AS subject,
+    p.uri AS predicate,
+    o.uri AS object_type,
     object_value as object,
     last_modified
-  FROM quads;
+  FROM quads
+  LEFT JOIN quads_uri_ref f ON f.uri_ref_id = fedora_id
+  LEFT JOIN quads_uri_ref s ON s.uri_ref_id = subject_id
+  LEFT JOIN quads_uri_ref p ON p.uri_ref_id = predicate_id
+  LEFT JOIN quads_uri_ref o ON o.uri_ref_id = object_type_id;
 
 
 CREATE OR REPLACE FUNCTION quads_insert (

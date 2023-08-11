@@ -58,9 +58,11 @@ export default class VisualChange extends LitElement {
       if( this.changeValue > 0 ) {
         this.changeValue = '+' + this.changeValue;
       }
-      this.showChangeValue();
-      return;
+    } else {
+      this.changeValue = this.oldValue;
     }
+
+    this.showChangeValue();
   }
 
   _onTextChange(mutations) {

@@ -188,7 +188,10 @@ const viewConfig = {
     hideTotal : true,
     renderCellValue : (row, key) => {
       if( key === 'action' ) {
-        return html`<visual-change><a href="#dbsync?action=eq.${row[key]}">${row[key]}</a></visual-change>`;
+        return html`<a href="#dbsync?action=eq.${row[key]}">${row[key]}</a>`;
+      }
+      if( key === 'count' ) {
+        return html`<visual-change>${row[key]}</visual-change>`
       }
       return standardRender(row, key);
     },
@@ -204,6 +207,9 @@ const viewConfig = {
     renderCellValue : (row, key) => {
       if( key === 'state' || key === 'name' ) {
         return html`<a href="#workflows?name=eq.${row.name}&state=eq.${row.state}">${row[key]}</a>`;
+      }
+      if( key === 'count' ) {
+        return html`<visual-change>${row[key]}</visual-change>`
       }
       return standardRender(row, key);
     },
@@ -286,7 +292,7 @@ function standardRender(row, key) {
   }
   if( typeof value === 'string' && value.match(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d/) ) {
     let d = new Date(new Date(value).getTime() - (new Date().getTimezoneOffset()*60*1000)).toLocaleString();
-    return html`<visual-change>${d}<visual-change>`;
+    return html`<visual-change>${d}</visual-change>`;
   }
   return value;
 }

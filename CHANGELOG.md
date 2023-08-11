@@ -1,3 +1,8 @@
+# 2.2.7
+
+  - admin ui updates
+  - fin-cache updates.  quads_view requires manual update
+
 # 2.2.6
 
   - gcssync bug fixes
