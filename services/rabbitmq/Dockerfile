@@ -1,0 +1,13 @@
+FROM rabbitmq:3.12-management
+
+COPY enabled_plugins /etc/rabbitmq/enabled_plugins
+# COPY advanced.config /etc/rabbitmq/advanced.config
+
+ARG FIN_APP_VERSION
+ENV FIN_APP_VERSION=${FIN_APP_VERSION}
+ARG FIN_REPO_TAG
+ENV FIN_REPO_TAG=${FIN_REPO_TAG}
+ARG FIN_BRANCH_NAME
+ENV FIN_BRANCH_NAME=${FIN_BRANCH_NAME}
+ARG FIN_SERVER_REPO_HASH
+ENV FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH}

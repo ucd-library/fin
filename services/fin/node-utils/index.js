@@ -5,11 +5,11 @@ module.exports = {
   logger : require('./lib/logger'),
   directAccess : require('./lib/direct-access'),
   ActiveMqClient : {
-    ActiveMqStompClient : require('./lib/activemq/stomp.js'),
-    ActiveMqMqttClient : require('./lib/activemq/mqtt.js')
+    ActiveMqStompClient : require('./lib/messaging/activemq/stomp.js'),
+    ActiveMqMqttClient : require('./lib/messaging/activemq/mqtt.js')
   },
   tests : {
-    ActiveMqTests : require('./lib/activemq/integration-test.js')
+    ActiveMqTests : require('./lib/messaging/integration-test.js')
   },
   pg : require('./lib/pg'),
   utils : require('./lib/utils'),
@@ -19,6 +19,7 @@ module.exports = {
   esClient : require('./lib/data-models/elastic-search/client.js'),
   FinAC : require('./lib/fin-ac/index.js'),
   FinCache : require('./lib/fin-cache.js'),
+  FinDigests : require('./lib/fin-digests.js'),
   middleware : {
     finac : require('./lib/fin-ac/middleware.js')
   },

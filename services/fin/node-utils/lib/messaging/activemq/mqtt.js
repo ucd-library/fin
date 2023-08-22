@@ -1,8 +1,8 @@
 const mqtt = require('mqtt');
 const ActiveMqClient = require('./index.js');
-const config = require('../../config.js');
-const logger = require('../logger.js');
-const waitUtil = require('../wait-until.js');
+const config = require('../../../config.js');
+const logger = require('../../logger.js');
+const waitUtil = require('../../wait-until.js');
 
 class ActiveMqMqttClient extends ActiveMqClient {
 

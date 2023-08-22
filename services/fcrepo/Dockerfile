@@ -15,6 +15,8 @@ ENV FEDORA_USER_USERNAME=fedoraUser
 ENV FEDORA_USER_PASSWORD=fedoraUser
 
 COPY activemq-mqtt-5.15.3.jar $CATALINA_HOME/webapps/fcrepo/WEB-INF/lib/activemq-mqtt-5.15.3.jar
+COPY activemq-amqp-5.16.3.jar $CATALINA_HOME/webapps/fcrepo/WEB-INF/lib/activemq-amqp-5.16.3.jar
+COPY proton-j-0.33.8.jar $CATALINA_HOME/webapps/fcrepo/WEB-INF/lib/proton-j-0.33.8.jar
 COPY activeio-core-3.1.4.jar $CATALINA_HOME/webapps/fcrepo/WEB-INF/lib/activeio-core-3.1.4.jar
 COPY hawtdispatch-1.22.jar $CATALINA_HOME/webapps/fcrepo/WEB-INF/lib/hawtdispatch-1.22.jar
 COPY mqtt-client-1.16.jar $CATALINA_HOME/webapps/fcrepo/WEB-INF/lib/mqtt-client-1.16.jar

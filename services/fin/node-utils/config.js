@@ -165,6 +165,10 @@ module.exports = {
     predicates : finCachePredicates
   },
 
+  finDigests : {
+    basePath : env.FIN_DIGESTS_BASE_PATH || '/fin/digests'
+  },
+
   finac : {
     agents : {
       admin : 'admin',

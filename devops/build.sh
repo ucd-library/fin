@@ -24,6 +24,7 @@ echo    "Postgres      : $POSTGRES_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
 echo    "Apache LB     : $LB_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
 echo    "Base Service  : $SERVER_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
 echo    "ElasticSearch : $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
+echo    "RabbitMQ : $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
 echo    "PG Rest       : $PGREST_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
 echo -e "Init          : $INIT_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG\n"
 
@@ -82,6 +83,17 @@ docker build \
   --cache-from $ELASTIC_SEARCH_IMAGE_NAME:$DOCKER_CACHE_TAG \
   services/elastic-search
 docker tag $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG $ELASTIC_SEARCH_IMAGE_NAME:$DOCKER_CACHE_TAG
+
+# Core Server - elastic search
+docker build \
+  --build-arg FIN_APP_VERSION=${APP_VERSION} \
+  --build-arg FIN_REPO_TAG=${FIN_TAG_NAME} \
+  --build-arg FIN_BRANCH_NAME=${FIN_BRANCH_NAME} \
+  --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
+  -t $RABBITMQ_IMAGE_NAME:$APP_TAG \
+  --cache-from $RABBITMQ_IMAGE_NAME:$DOCKER_CACHE_TAG \
+  services/rabbitmq
+docker tag $RABBITMQ_IMAGE_NAME:$APP_TAG $RABBITMQ_IMAGE_NAME:$DOCKER_CACHE_TAG
 
 # Core - Init services
 docker build \

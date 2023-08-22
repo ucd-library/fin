@@ -21,8 +21,9 @@
                     <!-- FIN ADDED -->
                     <compositeTopic name="fedora" forwardOnly="false">
                         <forwardTo>
-                            <queue physicalName="dbsync"/>
-                            <queue physicalName="gcssync"/>
+                            <queue physicalName="fin"/> 
+                            <!-- <queue physicalName="dbsync"/> -->
+                            <!-- <queue physicalName="gcssync"/> -->
                         </forwardTo>
                     </compositeTopic>
                 </virtualDestinations>
@@ -130,8 +131,9 @@
             />
             <transportConnector name="stomp" uri="stomp://0.0.0.0:${fcrepo.dynamic.stomp.port:61613}?maximumConnections=1000" />
 
-	    <!-- FIN ADDED -->
-            <transportConnector name="mqtt" uri="mqtt://0.0.0.0:1883"/>
+	          <!-- FIN ADDED -->
+            <transportConnector name="amqp" uri="amqp://0.0.0.0:5672"/>
+            <!-- <transportConnector name="mqtt" uri="mqtt://0.0.0.0:1883"/> -->
         </transportConnectors>
 
         <!-- destroy the spring context on shutdown to stop jetty -->

@@ -363,7 +363,16 @@ class FinApi {
       // let shaNum = 1;
 
       let {sha256, sha512, md5} = await this.hash(options.file);
-      options.headers.digest = `sha256=${sha256}, sha512=${sha512}, md5=${md5}`;
+      let digest = (options.headers.digest || '')
+        .split(',')
+        .map(item => item.trim())
+        .filter(item => item);
+
+      digest.push(`sha256=${sha256}`);
+      digest.push(`sha512=${sha512}`);
+      digest.push(`md5=${md5}`);
+
+      options.headers.digest = digest.join(', ');
     }
 
     // set the content disposition from file name or provided filename option

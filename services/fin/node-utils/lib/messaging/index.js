@@ -1,16 +1,12 @@
 
 
 /**
- * @class ActiveMqClient
+ * @class MessageQueueClient
  * @description should be implemented by a class that wants to connect to activemq
  */
-class ActiveMqClient {
+class MessageQueueClient {
 
   constructor() {
-    this.ACTIVE_MQ_HEADER_ID = 'org.fcrepo.jms.identifier';
-    this.ACTIVE_MQ_HEADER_EVENT = 'org.fcrepo.jms.eventType';
-
-
     this.callback = null;
   }
 
@@ -22,7 +18,7 @@ class ActiveMqClient {
     throw new Error('sendMessage not implemented');
   }
 
-  connect(clientName, queue) {
+  connect(opts={}) {
     throw new Error('connect not implemented');
   }
 
@@ -36,4 +32,4 @@ class ActiveMqClient {
 
 }
 
-module.exports = ActiveMqClient;
+module.exports = MessageQueueClient;

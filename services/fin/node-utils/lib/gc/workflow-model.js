@@ -11,7 +11,7 @@ const config = require('../../config.js');
 const crypto = require('crypto');
 const pg = require('../workflow/postgres.js');
 const keycloak = require('../keycloak.js');
-const ActiveMqStompClient = require('../activemq/stomp.js');
+const ActiveMqStompClient = require('../messaging/activemq/stomp.js');
 
 
 class FinGcWorkflowModel {

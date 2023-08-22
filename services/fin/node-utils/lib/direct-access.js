@@ -20,6 +20,8 @@ if( config.ocfl.mutableHead === false ) {
   });
 }
 
+const layoutExt = new ocfl.extensions.HashedNTupleStorageLayout();
+
 // Leverage direct access to OCFL storage and PG to get Container data
 class DirectAccess {
 
@@ -42,6 +44,15 @@ class DirectAccess {
     this.aclCacheExpire = config.ocfl.directAccess.aclCacheExpire;
   }
 
+  /**
+   * @method checkAccess
+   * @description check if roles have access to given path.  throws error if not
+   * 
+   * @param {String} fcPath 
+   * @param {Array<String>} roles role list to check
+   * @param {Object} opts 
+   * @param {Boolean} opts.noAclCache do not use acl cache
+   */
   async checkAccess(fcPath, roles=[], opts={}) {
     fcPath = this.cleanPath(fcPath);
 
@@ -54,6 +65,17 @@ class DirectAccess {
     }
   }
 
+  /**
+   * @method getContainer
+   * @description get container jsonld data for given path
+   * 
+   * @param {String} fcPath 
+   * @param {Array<String>} roles 
+   * @param {Object} opts
+   * @param {Boolean} opts.noAclCache do not use acl cache 
+   * 
+   * @returns {Object}
+   */
   async getContainer(fcPath, roles=[], opts={}) {
     fcPath = this.cleanPath(fcPath);
 
@@ -92,6 +114,16 @@ class DirectAccess {
     return {'@graph' : ocflGraph};
   }
 
+  /**
+   * @method hasAccess
+   * @description Internal method.  check if direct access acl object has access 
+   * to given path/roles
+   * 
+   * @param {Object} acl 
+   * @param {String} fcPath 
+   * @param {Array} roles 
+   * @returns {Boolean}
+   */
   hasAccess(acl, fcPath, roles) {
     let parts = fcPath.replace(/^\//, '').split('/');
 
@@ -120,6 +152,13 @@ class DirectAccess {
     return false;
   }
 
+  /**
+   * @method setAclCache
+   * @description set acl cache for given path.  Sets timeout to clear cache
+   * 
+   * @param {String} fcPath 
+   * @param {Onect} acl 
+   */
   setAclCache(fcPath, acl) {
     this.aclCache.set(fcPath, acl);
     setTimeout(() => {
@@ -185,8 +224,9 @@ class DirectAccess {
 
     // parse acl
     for( let node of acl ) {
+      if( !node['@type'] ) continue;
       if( !node['@type'].includes(RDF_URIS.TYPES.AUTHORIZATION) ) {
-        return;
+        continue;
       }
 
       // path to this acl protects
@@ -250,7 +290,7 @@ class DirectAccess {
     return rootNode['@type'].includes(RDF_URIS.TYPES.BINARY);
   }
 
-  async readOcfl(fcPath, opts={}) {
+  async getOcflPathInfo(fcPath, opts={}) {
     fcPath = this.cleanPath(fcPath);
 
     let result = await pg.query(`select * from ocfl_id_map where fedora_id = $1`, [fcPath]);
@@ -263,6 +303,7 @@ class DirectAccess {
     let file = result.fedora_id.replace(ocflId, '');
     let orgFile = file.replace(/^\//, '');
     let isBinary = false;
+    let isAcl = false;
 
     if( opts.isBinary || file.match(/\/?fcr:metadata$/) ) {
       file = file.replace(/\/?fcr:metadata$/, '');
@@ -275,11 +316,27 @@ class DirectAccess {
     } else if ( opts.isAcl || file.match(/\/fcr:acl$/) ) {
       file = file.replace(/\/fcr:acl$/, '');
       orgFile = file;
-      file = path.join(file, 'fcr-container~fcr-acl.nt')
+      file = path.join(file, 'fcr-container~fcr-acl.nt');
+      isAcl = true;
     } else {
       file = path.join(file, 'fcr-container.nt');
     }
     file = file.replace(/^\//, '');
+
+    return {ocflId, file, orgFile, isBinary, isAcl};
+  }
+
+  /**
+   * @method readOcfl
+   * @description read latest ocfl file and return jsonld
+   * 
+   * @param {String} fcPath 
+   * @param {Object} opts 
+   * @returns 
+   */
+  async readOcfl(fcPath, opts={}) {
+    fcPath = this.cleanPath(fcPath);
+    let {ocflId, file, orgFile, isBinary} = await this.getOcflPathInfo(fcPath, opts);
 
     let object, fileContent;
 
@@ -333,6 +390,40 @@ class DirectAccess {
     }
 
     return doc;
+  }
+
+  async getFcrepoMetadata(fcPath) {
+    fcPath = this.cleanPath(fcPath);
+    let {ocflId, file, orgFile, isBinary} = await this.getOcflPathInfo(fcPath, opts);
+
+    let fcrepoMetadata = null;
+    if( orgFile ) {
+      if( config.ocfl.mutableHead === true ) {
+        fcrepoMetadata = JSON.parse(this.readMutableHead(ocflId, `.fcrepo/${orgFile}.json`));
+      } else {
+        fcrepoMetadata = JSON.parse(await object.getFile(`.fcrepo/${orgFile}.json`).asString());
+      }
+    }
+    return fcrepoMetadata;
+  }
+
+  async getOcflHash(ocflId, opts={}) {
+    if( opts.isFcPath == true ) {
+      ocflId = this.cleanPath(ocflId);
+      let result = await pg.query(`select * from ocfl_id_map where fedora_id = $1`, [ocflId]);
+      if( !result.rows.length ) {
+        return null;
+      }
+      ocflId = result.rows[0].fedora_id;
+    }
+
+    ocflId = layoutExt.map(ocflId);
+
+    if( opts.fullPath === true ) {
+      return path.join(config.ocfl.root, ocflId);
+    }
+
+    return ocflId;
   }
 
   readMutableHead(ocflId, file) {
@@ -437,6 +528,17 @@ class DirectAccess {
       fcPath = 'info:fedora'+fcPath;
     }
     return fcPath;
+  }
+
+  async watchInventory(fcPath, callback) {
+    let fullPath = await this.getOcflHash(fcPath, {fullPath: true, isFcPath: true});
+    let inventory = path.join(fullPath, 'inventory.json');
+
+    // add abort signal
+    let signal = new AbortController().signal;
+    setTimeout(() => signal.abort(), 5000);
+    logger.info(`Watching ocfl file: ${inventory}`);
+    fs.watch(inventory, {signal, persistent: false}, callback);
   }
 
 }

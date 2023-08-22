@@ -1,9 +1,9 @@
 const stompit = require('stompit'); // docs: http://gdaws.github.io/node-stomp/api/channel/
 const ActiveMqClient = require('./index.js');
-const config = require('../../config.js');
-const logger = require('../logger.js');
-const waitUtil = require('../wait-until.js');
-const pg = require('../pg.js');
+const config = require('../../../config.js');
+const logger = require('../../logger.js');
+const waitUtil = require('../../wait-until.js');
+const pg = require('../../pg.js');
 const uuid = require('uuid');
 
 var connectOptions = {

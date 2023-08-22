@@ -423,6 +423,10 @@ class FinIoImport {
         return;
       }
 
+      headers.digest = ['finio-metadata-sha256='+container.shaManifest.metadata.fs,
+                        'finio-metadata-sha512='+container.shaManifest.metadata.fsSha512,
+                        'finio-metadata-md5='+container.shaManifest.metadata.fsMd5].join(', ')
+
       finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.fs}];
       finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH_SHA512] = [{'@value': container.shaManifest.metadata.fsSha512}];
       finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH_MD5] = [{'@value': container.shaManifest.metadata.fsMd5}];
@@ -450,6 +454,8 @@ class FinIoImport {
         partial : true,
         headers
       }, container.fsfull);
+
+      console.log(response.last.headers);
 
       if( response.error ) {
         throw new Error(response.error);
@@ -536,6 +542,11 @@ class FinIoImport {
         return false;
       }
     }
+
+    headers.digest = ['finio-metadata-sha256='+container.shaManifest.metadata.fs,
+      'finio-metadata-sha512='+container.shaManifest.metadata.fsSha512,
+      'finio-metadata-md5='+container.shaManifest.metadata.fsMd5].join(', ')
+
 
     finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.fs}];
     finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH_SHA512] = [{'@value': container.shaManifest.metadata.fsSha512}];
