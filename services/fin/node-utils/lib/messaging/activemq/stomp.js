@@ -227,11 +227,15 @@ class ActiveMqStompConnection extends ActiveMqClient {
     // );
   }
 }
-const stompConnection = new ActiveMqStompConnection();
+let stompConnection = null;
 
 class ActiveMqStompClient {
 
   constructor(name) {
+    if( !stompConnection ) {
+      stompConnection = new ActiveMqStompConnection();
+    }
+
     this.name = name;
     this.clientName = name+'-'+uuid.v4().split('-').shift();
     this.ACTIVE_MQ_HEADER_ID = stompConnection.ACTIVE_MQ_HEADER_ID;

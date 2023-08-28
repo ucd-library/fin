@@ -1,9 +1,9 @@
-const { config, logger, tests, waitUntil, ActiveMqClient, models, RDF_URIS, workflow } = require('@ucd-lib/fin-service-utils');
+const { config, logger, tests, waitUntil, MessagingClients, models, RDF_URIS, workflow } = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const postgres = require('./postgres');
 const clone = require('clone');
 
-const { ActiveMqStompClient } = ActiveMqClient;
+const { RabbitMqClient, MessageWrapper } = MessagingClients;
 const { ActiveMqTests } = tests;
 const activeMqTest = new ActiveMqTests();
 
@@ -30,9 +30,9 @@ class DbSync {
 
     await models.load();
 
-    this.activemq = new ActiveMqStompClient('dbsync');
-    this.activemq.subscribe(
-      config.activeMq.queues.dbsync,
+    this.messaging = new RabbitMqClient('dbsync');
+    this.messaging.subscribe(
+      config.rabbitmq.queues.dbsync,
       e => this.handleMessage(e)
     );
 
@@ -127,47 +127,50 @@ class DbSync {
    * 
    */
   async handleMessage(msg) {
-    if (msg.headers['edu.ucdavis.library.eventType']) {
-      let eventType = msg.headers['edu.ucdavis.library.eventType'];
+    let msgTypes = msg.getMessageTypes();
 
-      if (eventType === activeMqTest.PING_EVENT_TYPE) {
-        return;
-      }
+    if( msgTypes.includes(activeMqTest.PING_EVENT_TYPE) ) {
+      return;
+    }
 
+
+    if( msgTypes.includes('http://digital.ucdavis.edu/schema#Reindex') ) {
       await postgres.queue({
-        event_id: msg.headers['message-id'],
-        event_timestamp: new Date(parseInt(msg.headers.timestamp)).toISOString(),
-        path: msg.body['@id'],
-        container_types: msg.body['@type'],
-        update_types: [eventType]
+        event_id: msg.body['@id'],
+        event_timestamp: new Date(msg.getTimestamp()).toISOString(),
+        path: msg.getFinId(),
+        container_types: msg.getContainerTypes(),
+        update_types: msgTypes
       });
       return;
     }
 
+
     let e = {
-      event_id: msg.headers['org.fcrepo.jms.eventID'],
-      event_timestamp: new Date(parseInt(msg.headers['org.fcrepo.jms.timestamp'])).toISOString(),
-      path: msg.headers['org.fcrepo.jms.identifier'],
-      container_types: msg.headers['org.fcrepo.jms.resourceType']
-        .split(',')
-        .map(item => item.trim())
-        .filter(item => item),
-      update_types: msg.body.type
+      event_id: msg.body['@id'],
+      event_timestamp: new Date(msg.getTimestamp()).toISOString(),
+      path: msg.getFinId(),
+      container_types: msg.getContainerTypes(),
+      update_types: msg.getMessageTypes().map(t => t.split(/(#|\/)/).pop())
     };
 
     // for integration health tests, send ack message
     if (e.container_types.includes(activeMqTest.TYPES.TEST_CONTAINER) ||
       e.path.startsWith(config.activeMq.fcrepoTestPath)) {
-      await this.activemq.sendMessage(
-        {
-          '@id': e.path,
-          '@type': e.container_types,
-          'http://schema.org/agent': 'dbsync',
-          'http://schema.org/startTime': e.event_timestamp,
-          'http://schema.org/endTime': new Date().toISOString(),
-          'https://www.w3.org/ns/activitystreams': e.update_types.map(t => 'fcrepo-event-' + t)
-        },
-        { 'edu.ucdavis.library.eventType': activeMqTest.PING_EVENT_TYPE }
+      await this.messaging.sendMessage(
+        MessageWrapper.createMessage(
+          [activeMqTest.PING_EVENT_TYPE],
+          {
+            '@id': e.path,
+            '@type': e.container_types,
+            'http://schema.org/agent': 'dbsync',
+            'http://schema.org/startTime': e.event_timestamp,
+            'http://schema.org/endTime': new Date().toISOString(),
+            'https://www.w3.org/ns/activitystreams': e.update_types.map(t => {
+              return {'@id': 'http://digital.ucdavis.edu/schema#' + t + 'Message'}
+            })
+          }
+        )
       );
     }
 
@@ -190,16 +193,18 @@ class DbSync {
       // check for integration test
       if (e.container_types.includes(activeMqTest.TYPES.TEST_CONTAINER) ||
         e.path.startsWith(config.activeMq.fcrepoTestPath)) {
-        await this.activemq.sendMessage(
-          {
-            '@id': e.path,
-            '@type': e.container_types,
-            'http://schema.org/agent': 'dbsync',
-            'http://schema.org/startTime': e.event_timestamp,
-            'http://schema.org/endTime': new Date().toISOString(),
-            'https://www.w3.org/ns/activitystreams': 'data-model-update'
-          },
-          { 'edu.ucdavis.library.eventType': activeMqTest.PING_EVENT_TYPE }
+        await this.messaging.sendMessage(
+          MessageWrapper.createMessage(
+            [activeMqTest.PING_EVENT_TYPE],
+            {
+              '@id': e.path,
+              '@type': e.container_types,
+              'http://schema.org/agent': 'dbsync',
+              'http://schema.org/startTime': {'@value': e.event_timestamp},
+              'http://schema.org/endTime': {'@value' : new Date().toISOString()},
+              'https://www.w3.org/ns/activitystreams': {'@id' : 'http://digital.ucdavis.edu/schema#DataModelUpdate'}
+            }
+          )
         );
         return;
       }
@@ -212,12 +217,14 @@ class DbSync {
         logger.info('ACL ' + e.path + ' updated, sending rendex event for: ' + rootPath);
 
         // send a reindex event for root container
-        await this.activemq.sendMessage(
-          {
-            '@id': rootPath,
-            '@type': containerTypes
-          },
-          { 'edu.ucdavis.library.eventType': 'Reindex' }
+        await this.messaging.sendMessage(
+          MessageWrapper.createMessage(
+            ['http://digital.ucdavis.edu/schema#Reindex'],
+            {
+              '@id': rootPath,
+              '@type': containerTypes
+            }
+          )
         );
       }
 

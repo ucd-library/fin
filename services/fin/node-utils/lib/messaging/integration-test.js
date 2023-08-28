@@ -2,23 +2,23 @@ const config = require('../../config.js');
 const logger = require('../logger.js');
 const api = require('@ucd-lib/fin-api');
 const keycloak = require('../keycloak.js');
-const ActiveMqStompClient = require('./activemq/stomp.js');
+const RabbitMqClient = require('./rabbitmq.js');
 const pg = require('../pg.js');
 const {getContainerHostname} = require('../utils.js');
 const uuid = require('uuid').v4;
 
-class ActiveMqTests {
+class MessagingIntegrationTest {
 
   constructor(opts={}) {
     if( !opts.active ) opts.active = false;
     if( opts.active && !opts.agent ) {
-      throw new Error('ActiveMqTests requires agent when active');
+      throw new Error('MessagingIntegrationTest requires agent when active');
     }
     this.agent = opts.agent;
 
     this.schema = 'activemq';
 
-    this.PING_EVENT_TYPE = 'integration-test-ping';
+    this.PING_EVENT_TYPE = 'IntegrationTestPing';
     this.TYPES = {
       TEST_CONTAINER : 'http://digital.ucdavis.edu/schema#IntegrationTest',
       TEST_CONTAINER_ROOT : 'http://digital.ucdavis.edu/schema#IntegrationTestRoot',
@@ -26,18 +26,18 @@ class ActiveMqTests {
 
     this.ACTIONS = {
       HTTP : {
-        GET : 'http-get',
-        PUT_CREATE : 'http-put-create',
-        PUT_UPDATE : 'http-put-update',
-        DELETE : 'http-delete',
-        DELETE_TOMBSTONE : 'event-delete-tombstone',
-      },
-      event : {
-        CREATE : 'event-create',
-        UPDATE : 'event-update',
-        DELETE : 'event-delete',
-        PURGE : 'event-purge'
+        GET : 'HttpGet',
+        PUT_CREATE : 'HttpPutCreate',
+        PUT_UPDATE : 'HttpPutUpdate',
+        DELETE : 'HttpDelete',
+        DELETE_TOMBSTONE : 'HttpDeleteTombstone',
       }
+      // event : {
+      //   CREATE : 'Create',
+      //   UPDATE : 'Update',
+      //   DELETE : 'Delete',
+      //   PURGE : 'Purge'
+      // }
     }
 
     this.wireAutomaticChecks(opts);
@@ -50,13 +50,13 @@ class ActiveMqTests {
     // TODO improve this :/
     let hostname = await getContainerHostname();
     if( hostname.match(/-\d$/) && !hostname.match(/-1$/) ) {
-      logger.info('Not running ActiveMq integration tests on non-primary container: '+hostname);
+      logger.info('Not running messaging integration tests on non-primary container: '+hostname);
       return;
     }
-    logger.info(hostname+' running automatic ActiveMq integration');
+    logger.info(hostname+' running automatic messaging integration');
 
-    this.client = new ActiveMqStompClient('integration-test');
-    this.client.subscribe(config.activeMq.fcrepoTopic, this.handleMessage.bind(this));
+    this.messaging = new RabbitMqClient('integration-test');
+    this.messaging.subscribe(this.messaging.EXCLUSIVE_QUEUE, this.handleMessage.bind(this));
 
     let interval = config.activeMq.testInterval;
     if( interval > 0 ) {
@@ -82,8 +82,7 @@ class ActiveMqTests {
    * @returns {Promise}
    */
   async handleMessage(msg) {
-    let finPath = msg.headers['org.fcrepo.jms.identifier'] || msg.body['@id'];
-    finPath = finPath.replace(config.fcrepo.root, '');
+    let finPath = msg.getFinId();
 
     if( !finPath.startsWith(config.activeMq.fcrepoTestPath) ) {
       return;
@@ -91,17 +90,20 @@ class ActiveMqTests {
 
     let id = finPath.replace(config.activeMq.fcrepoTestPath+'/', '');
 
-    let updateTypes = msg.headers['edu.ucdavis.library.eventType'];
-    if( updateTypes && updateTypes === this.PING_EVENT_TYPE ) {
+    let updateTypes = msg.getMessageTypes();
+
+    if( updateTypes.includes(this.PING_EVENT_TYPE) ) {
       // handle activity stream names
-      updateTypes = msg.body['https://www.w3.org/ns/activitystreams'];
+      let msgObj = msg.getObject();
+      updateTypes = msg.getValue(msgObj, 'https://www.w3.org/ns/activitystreams');
       if( !updateTypes ) return;
       if( !Array.isArray(updateTypes) ) updateTypes = [updateTypes];
-      updateTypes = updateTypes.map(type => type.toLowerCase());
+
+      updateTypes = updateTypes.map(type => type.split(/(\/|#)/g).pop());
       
-      let agent = msg.body['http://schema.org/agent'];
-      let startTime = msg.body['http://schema.org/startTime'];
-      let endTime = msg.body['http://schema.org/endTime'];
+      let agent = msg.getValue(msgObj, 'http://schema.org/agent');
+      let startTime = msg.getValue(msgObj, 'http://schema.org/startTime');
+      let endTime = msg.getValue(msgObj, 'http://schema.org/endTime');
 
       for( let updateType of updateTypes ) {
         try {
@@ -117,9 +119,12 @@ class ActiveMqTests {
     }
 
     updateTypes = msg.body.type;
-    updateTypes = updateTypes.map(type => type.toLowerCase());
+    updateTypes = updateTypes.map(type => {
+      return type.replace('https://www.w3.org/ns/activitystreams#', '')
+        .toLowerCase()
+    });
     
-    let startTime = new Date(parseInt(msg.headers.timestamp));
+    let startTime = new Date(msg.getTimestamp());
     let endTime = new Date();
     for( let updateType of updateTypes ) {
       let action = 'fcrepo-event-'+updateType;
@@ -133,11 +138,11 @@ class ActiveMqTests {
       // but don't run next step if exists
       if( exists ) continue;
 
-      if( updateType === 'update' ) {
+      if( updateType === 'UpdateMessage' ) {
         await this.delete(id);
-      } else if ( updateType === 'create' ) {
+      } else if ( updateType === 'CreateMessage' ) {
         await this.update(id);
-      } else if ( updateType === 'delete' ) {
+      } else if ( updateType === 'DeleteMessage' ) {
         await this.purge(id);
       }
     }
@@ -398,6 +403,7 @@ class ActiveMqTests {
   updateAction(id, agent, action, error=false, startTime, endTime, message) {
     if( typeof startTime === 'object' ) startTime = startTime.toISOString();
     if( typeof endTime === 'object' ) endTime = endTime.toISOString();
+    action = this.getActionLabel(action);
 
     return pg.query(`
       INSERT INTO ${this.schema}.integration_test_action 
@@ -408,6 +414,7 @@ class ActiveMqTests {
   }
 
   async actionExists(id, agent, action) {
+    action = this.getActionLabel(action);
     let resp = await pg.query(`
       SELECT * FROM ${this.schema}.integration_test_action
       WHERE integration_test_id = $1 AND action = $3 AND agent = $2
@@ -435,6 +442,10 @@ class ActiveMqTests {
     `);
   }
 
+  getActionLabel(action) {
+    return action.split(/(\/|#)/g).pop();
+  }
+
 }
 
-module.exports = ActiveMqTests;
+module.exports = MessagingIntegrationTest;

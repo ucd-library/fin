@@ -99,7 +99,11 @@ module.exports = {
     hostname : fcrepoHostname,
     port : fcrepoPort,
     host : `http://${fcrepoHostname}:${fcrepoPort}`,
-    root : '/fcrepo/rest'
+    root : '/fcrepo/rest',
+    admin : {
+      username : env.FCREPO_ADMIN_USERNAME || 'fedoraAdmin',
+      password : env.FCREPO_ADMIN_PASSWORD || 'fedoraAdmin'
+    }
   },
 
   activeMq : {
@@ -123,6 +127,28 @@ module.exports = {
         dbsync : 'dbsync',
         gcssync : 'gcssync',
       },
+    },
+    amqp : {
+      port : env.FCREPO_AMQP_PORT || 5672
+    }
+  },
+
+  rabbitmq : {
+    host : env.RABBITMQ_HOST || 'rabbitmq',
+    port : env.RABBITMQ_PORT || 5672,
+    adminPort : env.RABBITMQ_ADMIN_PORT || 15672,
+    username : env.RABBITMQ_USERNAME || 'guest',
+    password : env.RABBITMQ_PASSWORD || 'guest',
+    vhost : env.RABBITMQ_VHOST || '/',
+    prefetch : env.RABBITMQ_PREFETCH || 1,
+    queues : {
+      dbsync : 'dbsync',
+      gcssync : 'gcssync',
+    },
+    shovel : {
+      name : 'fcrepo-shovel',
+      exchange : env.RABBITMQ_MAIN_EXCHANGE || 'fin',
+      finActiveMqQueue : 'fin', // do not include /queue
     }
   },
 

@@ -38,9 +38,9 @@ To add a new service to the integration tests, the service must:
 Here is an example of how to do this:
 
 ```js
-const {config, tests, ActiveMqClient} = require('@ucd-lib/fin-service-utils');
+const {config, tests, MessagingClients} = require('@ucd-lib/fin-service-utils');
 
-const { ActiveMqStompClient } = ActiveMqClient;
+const { ActiveMqStompClient } = MessagingClients;
 const { ActiveMqTests } = tests;
 const activeMqTest = new ActiveMqTests();
 
@@ -56,20 +56,13 @@ class MyService {
 
   async handleMessage(msg) {
     // VERY IMPORTANT TO PREVENT LOOPS
-    if (msg.headers['edu.ucdavis.library.eventType']) {
-      let eventType = msg.headers['edu.ucdavis.library.eventType'];
-
-      if (eventType === activeMqTest.PING_EVENT_TYPE) {
-        return;
-      }
+    if (msg.getMessageTypes().includes(activeMqTest.PING_EVENT_TYPE) ) {
+      return;
     }
 
-    let containerTypes = msg.headers['org.fcrepo.jms.resourceType']
-        .split(',')
-        .map(item => item.trim())
-        .filter(item => item)
-    let path = msg.headers['org.fcrepo.jms.identifier'];
-    let eventTimestamp = new Date(parseInt(msg.headers['org.fcrepo.jms.timestamp'])).toISOString();
+    let containerTypes = msg.getContainerTypes();
+    let path = msg.getFinId();
+    let eventTimestamp = new Date(parseInt(msg.body.published)).toISOString();
 
     // for integration health tests, send ack message
     if (containerTypes.includes(activeMqTest.TYPES.TEST_CONTAINER) ||
@@ -79,10 +72,11 @@ class MyService {
         {
           '@id': path,
           '@type': containerTypes,
+          
           'http://schema.org/agent': 'my-service',
           'http://schema.org/startTime': eventTimestamp,
           'http://schema.org/endTime': new Date().toISOString(),
-          'https://www.w3.org/ns/activitystreams': msg.body.type.map(t => 'fcrepo-event-' + t)
+          'https://www.w3.org/ns/activitystreams': msg.body.type.map(t =>  t + 'Message')
         },
         { 'edu.ucdavis.library.eventType': activeMqTest.PING_EVENT_TYPE }
       );

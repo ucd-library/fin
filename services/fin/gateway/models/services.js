@@ -1,5 +1,5 @@
 const api = require('@ucd-lib/fin-api');
-const {logger, config, models, ActiveMqClient, FinCache} = require('@ucd-lib/fin-service-utils');
+const {logger, config, models, MessagingClients, FinCache} = require('@ucd-lib/fin-service-utils');
 const request = require('request');
 const {URL} = require('url');
 const jsonld = require('jsonld');
@@ -15,7 +15,7 @@ jsonld.frame = util.promisify(jsonld.frame);
 // TODO: uncomment to enable finGroups
 // const finGroups = new FinGroups();
 
-const {ActiveMqStompClient} = ActiveMqClient;
+const {RabbitMqClient} = MessagingClients;
 const FIN_URL = new URL(config.server.url);
 const SERVICE_CHAR = '/svc:';
 const AUTHENTICATION_SERVICE_CHAR = '^/auth';
@@ -61,9 +61,10 @@ class ServiceModel {
     this.clientService = null;
 
     // listen for service definition updates
-    this.activemq = new ActiveMqStompClient('gateway');
-    this.activemq.subscribe(
-      config.activeMq.fcrepoTopic,
+    this.messaging = new RabbitMqClient('gateway');
+    this.messaging.subscribe(
+      // config.activeMq.fcrepoTopic,
+      this.messaging.EXCLUSIVE_QUEUE,
       e => this._onFcrepoEvent(e)
     );
 

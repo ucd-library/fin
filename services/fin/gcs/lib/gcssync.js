@@ -1,9 +1,9 @@
-const {gc, ActiveMqClient, config, logger} = require('@ucd-lib/fin-service-utils');
+const {gc, MessagingClients, config, logger} = require('@ucd-lib/fin-service-utils');
 const gcsConfig = require('./config.js');
 const init = require('./init.js');
 
 const {pubsub, gcs} = gc;
-const {ActiveMqStompClient} = ActiveMqClient;
+const {RabbitMqClient} = MessagingClients;
 
 
 class GcsSync {
@@ -36,9 +36,9 @@ class GcsSync {
       });
     }
 
-    this.activemq = new ActiveMqStompClient('gcssync');
-    this.activemq.subscribe(
-      config.activeMq.queues.gcssync,
+    this.messaging = new RabbitMqClient('gcssync');
+    this.messaging.subscribe(
+      config.rabbitmq.queues.gcssync,
       e => this.onFcMessage(e)
     );
 
@@ -55,11 +55,12 @@ class GcsSync {
   }
 
   async onFcMessage(msg) {
-    if( msg.headers['edu.ucdavis.library.eventType'] ) {
+    let isActivityStream = msg.getMessageTypes().find(type => type.match('https://www.w3.org/ns/activitystreams)'))
+    if( !isActivityStream ) {
       return;
     }
 
-    let finPath = msg.headers['org.fcrepo.jms.identifier'];
+    let finPath = msg.getFinId();
 
     if( !this.config.containers ) return;
 

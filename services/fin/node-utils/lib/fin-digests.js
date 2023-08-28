@@ -22,7 +22,7 @@ class FinDigests {
   }
 
   async onFcrepoResponse(req, res) {
-    if( this.ignore(req) ) return console.log('IGNORNING: '+req.originalUrl);
+    if( this.ignore(req) ) return;
     if( req.statusCode > 299 ) return;
 
 

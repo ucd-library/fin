@@ -11,7 +11,7 @@ const config = require('../../config.js');
 const crypto = require('crypto');
 const pg = require('../workflow/postgres.js');
 const keycloak = require('../keycloak.js');
-const ActiveMqStompClient = require('../messaging/activemq/stomp.js');
+const RabbitMqClient = require('../messaging/rabbitmq.js');
 
 
 class FinGcWorkflowModel {
@@ -33,7 +33,7 @@ class FinGcWorkflowModel {
   }
 
   async _onFcrepoEvent(event) {
-    let id = event.headers[this.activemq.ACTIVE_MQ_HEADER_ID];
+    let id = event.getFinId();
 
     // check that a workflow container was updated
     if( !id ) return;
@@ -57,10 +57,10 @@ class FinGcWorkflowModel {
   }
 
   load() {
-    if( !this.activemq ) {
-      this.activemq = new ActiveMqStompClient('workflow');
-      this.activemq.subscribe(
-        config.activeMq.fcrepoTopic,
+    if( !this.messaging ) {
+      this.messaging = new RabbitMqClient('workflow');
+      this.messaging.subscribe(
+        this.messaging.EXCLUSIVE_QUEUE,
         e => this._onFcrepoEvent(e)
       );
     }

@@ -1,15 +1,11 @@
-const {ActiveMqClient, logger, config, RDF_URIS} = require('@ucd-lib/fin-service-utils');
+const {logger, config, RDF_URIS} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const postgres = require('./postgres.js');
 const clone = require('clone');
 const uuid = require('uuid');
 
-const {ActiveMqStompClient} = ActiveMqClient;
-
 const FC_BASE_RE = new RegExp('^'+api.getConfig().fcBasePath);
 const FC_HOST_RE = new RegExp('^'+config.fcrepo.host+api.getConfig().fcBasePath);
-
-// const activemq = new ActiveMqStompClient('reindex-crawler');
 
 /**
  * @class ReindexCrawler
@@ -174,26 +170,6 @@ class ReindexCrawler {
       container_types : node['@type'] || [],
       update_types : ['Reindex']
     });
-
-    // logger.info('Sending reindex event for: ', {
-    //   '@id' : this.cleanPath(node['@id']),
-    //   '@type' : node['@type'] || []
-    // });
-    
-    // let headers = {
-    //   'edu.ucdavis.library.eventType' : 'Reindex'
-    // };
-    // if( writeIndex ) {
-    //   headers['edu.ucdavis.library.writeIndex'] = writeIndex;
-    // }
-
-    // activemq.sendMessage(
-    //   {
-    //     '@id' : this.cleanPath(node['@id']),
-    //     '@type' : node['@type'] || []
-    //   },
-    //   headers
-    // );
   }
 }
 

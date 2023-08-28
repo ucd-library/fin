@@ -4,9 +4,11 @@ module.exports = {
   jwt : require('./lib/jwt'),
   logger : require('./lib/logger'),
   directAccess : require('./lib/direct-access'),
-  ActiveMqClient : {
+  MessagingClients : {
     ActiveMqStompClient : require('./lib/messaging/activemq/stomp.js'),
-    ActiveMqMqttClient : require('./lib/messaging/activemq/mqtt.js')
+    ActiveMqMqttClient : require('./lib/messaging/activemq/mqtt.js'),
+    RabbitMqClient : require('./lib/messaging/rabbitmq.js'),
+    MessageWrapper : require('./lib/messaging/MessageWrapper.js')
   },
   tests : {
     ActiveMqTests : require('./lib/messaging/integration-test.js')

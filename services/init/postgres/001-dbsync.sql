@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 set search_path=dbsync,public;
 
 DO $$ BEGIN
-  CREATE TYPE fcrepo_update_type as enum ('Create', 'Update', 'Delete', 'Follow', 'Purge', 'Reindex', 'integration-test-ping');
+  CREATE TYPE fcrepo_update_type as enum ('Create', 'Update', 'Delete', 'Follow', 'Purge', 'Reindex', 'IntegrationTestPing');
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
