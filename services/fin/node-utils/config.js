@@ -52,8 +52,9 @@ let finCachePredicates = (processArray(process.env.FIN_CACHE_PREDICATES) || [])
   });
 if( finCachePredicates.length === 0 ) {
   finCachePredicates = [
-    new RegExp('^http://digital.ucdavis.edu/schema#'),
-    'http://www.loc.gov/premis/rdf/v1#hasMessageDigest'
+    new RegExp('^http://digital.ucdavis.edu/schema#')
+    // currently not used as hasMessageDigest is in the digital namespace via the fin-digests service
+    // 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest'
   ];
 }
 

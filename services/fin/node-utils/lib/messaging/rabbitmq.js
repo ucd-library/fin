@@ -4,6 +4,7 @@ const amqp = require('amqplib');
 const config = require('../../config.js');
 const fetch = require('node-fetch');
 const uuid = require('uuid');
+const os = require('os');
 const MessageWrapper = require('./MessageWrapper.js');
 
 // rabbitmqctl set_parameter shovel fcrepo-shovel \
@@ -21,6 +22,10 @@ class RabbitMqConnection extends MessageQueueClient {
     this.channel = null;
     this.connecting = false;
     this.subscriptions = {};
+  }
+
+  setConnectionName(name) {
+    this.connectionName = name+'-'+os.hostname();
   }
 
   async connect(retry=false) {
@@ -41,7 +46,10 @@ class RabbitMqConnection extends MessageQueueClient {
     });
 
     try {
-      this.connection = await amqp.connect('amqp://'+config.rabbitmq.host+':'+config.rabbitmq.port);
+      this.connection = await amqp.connect(
+        'amqp://'+config.rabbitmq.host+':'+config.rabbitmq.port,
+        {clientProperties: {connection_name: this.connectionName}}
+      );
     } catch(e) {
       this.retryConnection();
       return logger.error('RabbitMQ connection error', e);
@@ -231,10 +239,14 @@ class RabbitMqClient {
 
     this.EXCLUSIVE_QUEUE = rabbitmqConnection.EXCLUSIVE_QUEUE;
 
+    this.connectionName = name;
+    rabbitmqConnection.setConnectionName(name);
+
     this.clientName = name+'-'+uuid.v4().split('-').shift();
   }
 
   async subscribe(queue, callback) {
+    await rabbitmqConnection.connect();
     return rabbitmqConnection.subscribe(this.clientName, queue, callback);
   }
 

@@ -2,11 +2,11 @@ const path = require('path');
 const utils = require('./utils');
 const pathutils = require('../utils/path');
 
-const FIN_CACHE_PREDICATES = {
-  AG_HASH : 'http://digital.ucdavis.edu/schema#finIoAgHash',
-  BINARY_HASH : 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest',
-  METADATA_HASH : 'http://digital.ucdavis.edu/schema#finIoMetadataSha256'
+const FIN_IO_DIGEST_NAME = {
+  BINARY_HASH : 'sha256',
+  METADATA_HASH : 'finio-metadata-sha256',
 }
+const FIN_DIGEST_PREDICATE = 'http://digital.ucdavis.edu/schema#hasMessageDigest';
 
 class FinImportContainer {
 
@@ -293,7 +293,7 @@ class FinImportContainer {
       return this.shaManifest;
     }
 
-    let quadRequest = this.getFinQuadCache();
+    let quadRequest = this.getFinQuadCacheDigests();
     let localBinarySha = null;
     let localMetadataSha = null;
     let manifest = {};
@@ -311,7 +311,7 @@ class FinImportContainer {
       localBinarySha = await localBinarySha;
       manifest.binary = {
         fs : localBinarySha.sha256,
-        ldp : await this.getBinarySha256()
+        ldp : await this.getFinCacheDigest(FIN_IO_DIGEST_NAME.BINARY_HASH)
       }
       if( manifest.binary.ldp === manifest.binary.fs ) {
         manifest.binary.match = true;
@@ -323,7 +323,7 @@ class FinImportContainer {
         fs : localMetadataSha.sha256,
         fsMd5 : localMetadataSha.md5,
         fsSha512 : localMetadataSha.sha512,
-        ldp : await this.getQuadCachePredicate(FIN_CACHE_PREDICATES.METADATA_HASH)
+        ldp : await this.getFinCacheDigest(FIN_IO_DIGEST_NAME.METADATA_HASH)
       }
       if( manifest.metadata.ldp === manifest.metadata.fs ) {
         manifest.metadata.match = true;
@@ -335,41 +335,22 @@ class FinImportContainer {
   }
 
   /**
-   * @method getQuadCachePredicate
-   * @description get the quad cache prefix for a given fin path.  The calls
-   * to ldp are cached in memory, so thi  s function can be called multiple times.
-   *
-   * @param {String} prefix uri 
-   * 
-   * @returns {String}
-   */
-  async getQuadCachePredicate(predicate) {
-    let quads = await this.getFinQuadCache();
-    if( !quads ) return null;
-
-    quads = quads
-      .filter(quad => quad.predicate === predicate)
-      .map(quad => quad.object);
-
-    if( quads.length === 0 ) return null;
-    return quads[0];
-  }
-
-  /**
    * @method getBinarySha256
    * @description get the binary sha256 from the fin quads.  Helper method for
    * getQuadCachePredicate filtering for urn:sha-256: prefix
    * 
    * @returns {Promise<String>}
    */
-  async getBinarySha256() {
-    let quads = await this.getFinQuadCache();
+  async getFinCacheDigest(name) {
+    let quads = await this.getFinQuadCacheDigests();
     if( !quads ) return null;
 
+    let re = new RegExp('^urn:'+name+':');
+
     quads = quads
-      .filter(quad => quad.predicate === FIN_CACHE_PREDICATES.BINARY_HASH)
-      .filter(quad => quad.object.match(/^urn:sha-256:/))
-      .map(quad => quad.object.replace(/^urn:sha-256:/, ''));
+      .filter(quad => quad.predicate === FIN_DIGEST_PREDICATE)
+      .filter(quad => quad.object.match(re))
+      .map(quad => quad.object.replace(re, ''));
 
     if( quads.length === 0 ) return null;
     return quads[0];
@@ -383,16 +364,22 @@ class FinImportContainer {
    * @param {String} finPath path the fetch cached quads for
    * @returns {Promise<Array>}
    */
-  async getFinQuadCache() {
+  async getFinQuadCacheDigests() {
+    if( this.quadCacheRequest ) {
+      await this.quadCacheRequest;
+    }
+
     if( this.quadCache ) {
       return this.quadCache;
     }
     
-    let resp = await this.api.get({
+    this.quadCacheRequest = this.api.get({
       path: this.fcrepoPath,
-      fcBasePath : '/fin/rest',
-      headers : {accept: 'application/fin-cache'}
+      fcBasePath : '/fin/subject'
     });
+
+    let resp = await this.quadCacheRequest;
+    this.quadCacheRequest = null;
 
     if( resp.last.statusCode !== 200 ) {
       return null;

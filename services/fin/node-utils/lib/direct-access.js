@@ -258,8 +258,17 @@ class DirectAccess {
       let agentClasses = this.propAsArray(node, this.ACL_PROPERTIES.AGENT_CLASS);
       if( agentClasses.find(agentClass => agentClass === this.ACL_PROPERTIES.PUBLIC_AGENT) ) {
         accessTo.forEach(path => {
+          // init path
+          if( !aclImpl.paths[path] ) {
+            aclImpl.paths[path] = {
+              agents : {},
+              agentClasses : {}
+            };
+          }
+
           // set modes for public agent class
           modes.forEach(mode => {
+            console.log('mode', mode)
             if( !aclImpl.paths[path].agentClasses.public ) {
               aclImpl.paths[path].agentClasses.public = new Set();
             }

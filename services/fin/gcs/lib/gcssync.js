@@ -55,7 +55,7 @@ class GcsSync {
   }
 
   async onFcMessage(msg) {
-    let isActivityStream = msg.getMessageTypes().find(type => type.match('https://www.w3.org/ns/activitystreams)'))
+    let isActivityStream = msg.getMessageTypes().find(type => type.match('https://www.w3.org/ns/activitystreams'))
     if( !isActivityStream ) {
       return;
     }

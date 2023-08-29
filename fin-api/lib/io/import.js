@@ -216,7 +216,7 @@ class FinIoImport {
 
     let vIndirectContainers = null;    
     let agShaManifest = await container.getAgShaManifest();
-
+    let digests = [];
 
     // maybe required below
     if( container.agTypeConfig && container.agTypeConfig.virtualIndirectContainers ) {
@@ -230,7 +230,7 @@ class FinIoImport {
       agShaManifest._vIndirectContainers = {
         metadata : {
           local : vIndirectContainerSha,
-          ldp : await container.getQuadCachePredicate(utils.PROPERTIES.FIN_IO.INDIRECT_REFERENCE_SHA)
+          ldp : await container.getFinCacheDigest('finio-virtual-indirect-containers-sha256')
         }
       }
 
@@ -238,10 +238,11 @@ class FinIoImport {
         agShaManifest._vIndirectContainers.metadata.match = true;
       }
       
-      let finIoNode = this.createFinIoNode();
-      finIoNode['@id'] += '-virtual-indirect-containers';
-      finIoNode[utils.PROPERTIES.FIN_IO.INDIRECT_REFERENCE_SHA] = [{'@value': vIndirectContainerSha}];
-      container.graph.instance.push(finIoNode);
+      digests.push('finio-virtual-indirect-containers-sha256='+vIndirectContainerSha);
+      // let finIoNode = this.createFinIoNode();
+      // finIoNode['@id'] += '-virtual-indirect-containers';
+      // finIoNode[utils.PROPERTIES.FIN_IO.INDIRECT_REFERENCE_SHA] = [{'@value': vIndirectContainerSha}];
+      // container.graph.instance.push(finIoNode);
     }
 
     let foundChanges = false;
@@ -320,7 +321,7 @@ class FinIoImport {
     // }  
 
     let forceUpdate = agShaManifest?._vIndirectContainers?.match !== true;
-    await this.putContainer(container, forceUpdate);
+    await this.putContainer(container, forceUpdate, digests);
 
     if( container.dir ) {
       await this.putAgDir(container.dir);
@@ -384,7 +385,7 @@ class FinIoImport {
    * @param {Object} container 
    * @returns {Promise}
    */
-  async putContainer(container, force=false) {
+  async putContainer(container, force=false, digests=[]) {
     if( this.sigInt ) return;
 
     console.log(`PUT CONTAINER: ${container.fcrepoPath}\n -> ${container.metadata.fsfull}`);      
@@ -412,7 +413,7 @@ class FinIoImport {
     // collections might have already created the node in the manifest check set
     // let finIoNode = container.finIoNode || this.createFinIoNode();
     // let finTag = container.finTag || {};
-    let finIoNode = this.createFinIoNode();
+    // let finIoNode = this.createFinIoNode();
 
     // check if d exists and if there is the ucd metadata sha.
     let forceUpdate = this.options.forceMetadataUpdate || force;
@@ -423,13 +424,13 @@ class FinIoImport {
         return;
       }
 
-      headers.digest = ['finio-metadata-sha256='+container.shaManifest.metadata.fs,
-                        'finio-metadata-sha512='+container.shaManifest.metadata.fsSha512,
-                        'finio-metadata-md5='+container.shaManifest.metadata.fsMd5].join(', ')
+      digests.push('finio-metadata-sha256='+container.shaManifest.metadata.fs);
+      digests.push('finio-metadata-sha512='+container.shaManifest.metadata.fsSha512);
+      digests.push('finio-metadata-md5='+container.shaManifest.metadata.fsMd);
 
-      finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.fs}];
-      finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH_SHA512] = [{'@value': container.shaManifest.metadata.fsSha512}];
-      finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH_MD5] = [{'@value': container.shaManifest.metadata.fsMd5}];
+      // finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.fs}];
+      // finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH_SHA512] = [{'@value': container.shaManifest.metadata.fsSha512}];
+      // finIoNode[this.FIN_CACHE_PREDICATES.METADATA_HASH_MD5] = [{'@value': container.shaManifest.metadata.fsMd5}];
     }
 
     // set ldp headers for types that must be specified there and not in @type
@@ -443,9 +444,15 @@ class FinIoImport {
 
     // check for gitinfo, add container
     if( container.metadata.gitInfo ) {
-      this.addNodeToGraph(container.graph.instance, this.createGitNode(container.metadata.gitInfo));
+      digests.push('finio-git-source='+btoa(JSON.stringify(container.metadata.gitInfo)));
+      // this.addNodeToGraph(container.graph.instance, this.createGitNode(container.metadata.gitInfo));
     }
-    this.addNodeToGraph(container.graph.instance, finIoNode);
+
+    if( digests.length ) {
+      headers.digest = digests.join(', ');
+    }
+
+    // this.addNodeToGraph(container.graph.instance, finIoNode);
 
     if( this.options.dryRun !== true ) {
       let response = await this.write('put', {
@@ -454,8 +461,6 @@ class FinIoImport {
         partial : true,
         headers
       }, container.fsfull);
-
-      console.log(response.last.headers);
 
       if( response.error ) {
         throw new Error(response.error);
@@ -532,7 +537,7 @@ class FinIoImport {
       'content-type' : api.RDF_FORMATS.JSON_LD
     }
 
-    let finIoContainer = this.createFinIoNode();
+    // let finIoContainer = this.createFinIoNode();
 
     // check if d exists and if there is the ucd metadata sha.
     if( this.options.forceMetadataUpdate !== true ) {
@@ -545,20 +550,26 @@ class FinIoImport {
 
     headers.digest = ['finio-metadata-sha256='+container.shaManifest.metadata.fs,
       'finio-metadata-sha512='+container.shaManifest.metadata.fsSha512,
-      'finio-metadata-md5='+container.shaManifest.metadata.fsMd5].join(', ')
+      'finio-metadata-md5='+container.shaManifest.metadata.fsMd5];
 
 
-    finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.fs}];
-    finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH_SHA512] = [{'@value': container.shaManifest.metadata.fsSha512}];
-    finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH_MD5] = [{'@value': container.shaManifest.metadata.fsMd5}];
+    // finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH] = [{'@value': container.shaManifest.metadata.fs}];
+    // finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH_SHA512] = [{'@value': container.shaManifest.metadata.fsSha512}];
+    // finIoContainer[this.FIN_CACHE_PREDICATES.METADATA_HASH_MD5] = [{'@value': container.shaManifest.metadata.fsMd5}];
 
     utils.cleanupContainerNode(container.graph.mainNode);
 
     // check for gitinfo, add container
     if( container.binary.gitInfo ) {
-      this.addNodeToGraph(container.graph.instance, this.createGitNode(container.binary.gitInfo));
+      if( !headers.digest ) headers.digest = [];
+      headers.digest.push('finio-git-source='+btoa(JSON.stringify(container.metadata.gitInfo)));
+      // this.addNodeToGraph(container.graph.instance, this.createGitNode(container.binary.gitInfo));
     }
-    this.addNodeToGraph(container.graph.instance, finIoContainer);
+    // this.addNodeToGraph(container.graph.instance, finIoContainer);
+
+    if( headers.digest && Array.isArray(headers.digest) ) {
+      headers.digest = headers.digest.join(', ');
+    }
 
     let content = this.replaceBaseContext(container.graph.instance, containerPath);
 

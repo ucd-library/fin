@@ -75,6 +75,11 @@ return html`
 </div>
 
 <div style="margin-bottom: 20px">
+  <h2 class="heading--weighted-underline">Messaging</h2>
+  <a href="/fin/rabbitmq/" target="_blank">RabbitMQ Admin UI</a> <span>Username/password: guest/guest</span>
+</div>
+
+<div style="margin-bottom: 20px">
   <h2 id="fcrepo-type-stats" class="heading--weighted-underline">Fcrepo - Type Stats</h2>
   <!-- <fin-admin-data-table 
     name="dashboard-fcrepo-stats"

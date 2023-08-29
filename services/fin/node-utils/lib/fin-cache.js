@@ -5,9 +5,6 @@ const URIS = require('./common-rdf-uris.js');
 const config = require('../config.js');
 const SCHEMA = 'fin_cache';
 
-const ACTIVE_MQ_HEADER_ID = 'org.fcrepo.jms.identifier';
-const ACTIVE_MQ_HEADER_TYPES = 'org.fcrepo.jms.resourceType';
-
 class FinCache {
 
   constructor() {
@@ -29,14 +26,12 @@ class FinCache {
    * 
    * @param {*} event 
    */
-  async onFcrepoEvent(event) {
-    let id = event.headers[ACTIVE_MQ_HEADER_ID] || '';
-    let types = (event.headers[ACTIVE_MQ_HEADER_TYPES] || '')
-      .split(',')
-      .map(item => item.trim())
-      .filter(item => item)
+  async onFcrepoEvent(msg) {
+    let id = msg.getFinId();
+    let types = msg.getContainerTypes();
+    let updateType = msg.getMessageTypes()
+      .map(type => type.replace('https://www.w3.org/ns/activitystreams#', ''));
 
-    let updateType = event.body.type || '';
     if( !Array.isArray(updateType) ) {
       updateType = [updateType];
     }
@@ -88,6 +83,23 @@ class FinCache {
 
     let params = [graph];
     let query = `SELECT * FROM ${SCHEMA}.quads_view WHERE fedora_id = $1`;
+
+    let resp = await pg.query(query, params);
+    return resp.rows;
+  }
+
+  /**
+   * @method getSubject
+   * @description get all quads for a subject, regardless of container/graph
+   * 
+   * @param {String} graph 
+   * @returns 
+   */
+  async getSubject(graph) {
+    graph = this._formatFedoraId(graph);
+
+    let params = [graph];
+    let query = `SELECT * FROM ${SCHEMA}.quads_view WHERE subject = $1`;
 
     let resp = await pg.query(query, params);
     return resp.rows;

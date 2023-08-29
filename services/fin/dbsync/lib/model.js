@@ -191,6 +191,7 @@ class DbSync {
     // update elasticsearch
     try {
       // check for integration test
+      // send data model update event
       if (e.container_types.includes(activeMqTest.TYPES.TEST_CONTAINER) ||
         e.path.startsWith(config.activeMq.fcrepoTestPath)) {
         await this.messaging.sendMessage(

@@ -120,6 +120,19 @@ router.all(/^\/pg(\/.*)$/, keycloak.protect(['admin']), async (req, res) => {
   });
 });
 
+router.all(/^\/rabbitmq(\/.*)$/, keycloak.protect(['admin']), async (req, res) => {
+  let url = 'http://rabbitmq:15672'+req.originalUrl.replace('/fin/rabbitmq', '');
+
+  // TODO: see if we can auto-login
+  // req.headers.authorization = 'Basic '+Buffer.from(config.rabbitmq.username+':'+config.rabbitmq.password).toString('base64');
+  // console.log(config.rabbitmq.username+':'+config.rabbitmq.password);
+  // console.log(req.headers);
+
+  proxy.web(req, res, {
+    target : url
+  });
+});
+
 router.post('/test/activemq', keycloak.protect(['admin']), async (req, res) => {
   try {
     let id = await activeMqTest.start();
@@ -127,6 +140,23 @@ router.post('/test/activemq', keycloak.protect(['admin']), async (req, res) => {
     res.json({
       status : 'started',
       id
+    });
+  } catch(e) {
+    res.status(500).json({
+      error : true,
+      message : e.message
+    });
+  }
+});
+router.get('/test/activemq/status', async (req, res) => {
+  try {
+    let result = await activeMqTest.getLastTestErrors();
+    if( result.length === 0 ) {
+      return res.json({ok: true});
+    }
+    res.status(503).json({
+      ok: false,
+      errors : result
     });
   } catch(e) {
     res.status(500).json({
@@ -146,6 +176,7 @@ router.get('/test/activemq/:id', keycloak.protect(['admin']), async (req, res) =
     });
   }
 });
+
 
 router.get('/archive', async (req, res) => {
   try {
@@ -217,6 +248,38 @@ router.get(/\/rest\/.*/, async (req, res) => {
       response = await finCache.get(finPath);
     } else {
       response = await directAccess.getContainer(finPath, roles);
+    }
+    
+    res.json(response);
+  } catch(e) {
+    handleFinRestError(res, e, finPath);
+  }
+});
+
+router.get(/\/subject\/.*/, async (req, res) => {
+  let finPath = decodeURIComponent(req.originalUrl.replace('/fin/subject', ''));
+  let roles = getRoles(req);
+
+  try {
+    let response = await finCache.getSubject(finPath);    
+
+    // now given the response quads, check the user has access to the containers
+    // strip all quads the user doesn't have access to
+    let containers = new Set();
+    response.forEach(quad => containers.add(quad.fedora_id));
+    let noAccess = [];
+    containers = Array.from(containers);
+
+    for( let container of containers ) {
+      try {
+        await directAccess.checkAccess(container, roles);
+      } catch(e) {
+        noAccess.push(container);
+      }
+    }
+
+    for( let container of noAccess ) {
+      response = response.filter(quad => quad.fedora_id !== container);
     }
     
     res.json(response);

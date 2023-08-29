@@ -18,6 +18,9 @@ return html`
       Latest Tests
       <a href="${this.baseDocsUrl}/docs/integration-health-tests.md" target="_blank">Documentation</a>
     </h2>
+    <div style="margin-bottom: 20px; font-size: 16px">
+      <a href="/fin/rabbitmq/" target="_blank">RabbitMQ Admin UI</a> <span>Username/password: guest/guest</span>
+    </div>
     <div style="display:flex">
       <div>All times in milliseconds</div>
       <div style="flex:1"></div>

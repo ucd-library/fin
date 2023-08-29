@@ -18,7 +18,10 @@ class FinDigests {
       .split(',')
       .map(d => d.trim())
       .filter(d => d)
-      .map(d => d.split('='))
+      .map(d => {
+        let parts = d.split('=');
+        return [parts.shift(), parts.join('=')];
+      });
   }
 
   async onFcrepoResponse(req, res) {
@@ -31,9 +34,7 @@ class FinDigests {
     let finPath = orgFinPath.replace(/\/fcr:metadata$/, '/fcr-metadata');
     finPath = path.join(CONFIG.BASE_PATH, finPath);
 
-    console.log(finPath);
-
-    if( req.finDigests ) {
+    if( req.finDigests && req.method !== 'DELETE' ) {
 
       let body = {
         '@id' : path.join('info:fedora', orgFinPath.replace(/\/fcr:metadata$/, '')),
@@ -43,8 +44,6 @@ class FinDigests {
           '@id' : 'urn:'+d.join(':') 
         }))
       }
-
-      console.log(body);
 
       let response = await api.put({
         path : finPath,
@@ -56,7 +55,7 @@ class FinDigests {
       });
 
       let statusCode = response.last.statusCode;
-      console.log(response.last.body);
+
       logger.info('Set fin digest container, status='+statusCode+' path='+finPath+' digests='+req.finDigests.map(d => d[0]).join(','));
 
     } else {

@@ -32,12 +32,11 @@ class MessagingIntegrationTest {
         DELETE : 'HttpDelete',
         DELETE_TOMBSTONE : 'HttpDeleteTombstone',
       }
-      // event : {
-      //   CREATE : 'Create',
-      //   UPDATE : 'Update',
-      //   DELETE : 'Delete',
-      //   PURGE : 'Purge'
-      // }
+    }
+
+    this.TEST_ORDER = {
+      gateway : ['CreateMessage', 'UpdateMessage', 'DeleteMessage', 'PurgeMessage'],
+      dbsync : ['CreateMessage', 'UpdateMessage', 'DeleteMessage', 'PurgeMessage', 'DataModelUpdate'],
     }
 
     this.wireAutomaticChecks(opts);
@@ -114,35 +113,34 @@ class MessagingIntegrationTest {
       }
 
       return;
-    } else if( updateTypes ) {
-      return; // no op on other ucd events
     }
 
-    updateTypes = msg.body.type;
     updateTypes = updateTypes.map(type => {
       return type.replace('https://www.w3.org/ns/activitystreams#', '')
-        .toLowerCase()
     });
     
     let startTime = new Date(msg.getTimestamp());
     let endTime = new Date();
     for( let updateType of updateTypes ) {
-      let action = 'fcrepo-event-'+updateType;
+      if( ['Create', 'Update', 'Delete', 'Purge'].indexOf(updateType) === -1 ) continue;
+
+      let action = updateType+'Message';
 
       // check for duplicate events.  ActiveMQ can have a message read twice
       let exists = await this.actionExists(id, this.agent, action);
 
-      // still log even if exists
+      // log the gateway saw the http action message
+      // still log even if duplicate.  we want to know this.
       await this.updateAction(id, this.agent, action, false, startTime, endTime);
 
       // but don't run next step if exists
       if( exists ) continue;
 
-      if( updateType === 'UpdateMessage' ) {
+      if( updateType === 'Update' ) {
         await this.delete(id);
-      } else if ( updateType === 'CreateMessage' ) {
+      } else if ( updateType === 'Create' ) {
         await this.update(id);
-      } else if ( updateType === 'DeleteMessage' ) {
+      } else if ( updateType === 'Delete' ) {
         await this.purge(id);
       }
     }
@@ -429,6 +427,58 @@ class MessagingIntegrationTest {
     `, [id]);
     return result.rows;
   }
+
+  /**
+   * @method getLastTestErrors
+   * @description Get the last test errors
+   * 
+   * @returns {Promise<Object>}
+   */
+  async getLastTestErrors() {
+    let result = await pg.query(`
+      SELECT * FROM ${this.schema}.integration_test
+      ORDER BY created DESC
+      LIMIT 1
+    `);
+    if( !result.rows.length ) return [];
+
+    let id = result.rows[0].id;
+
+    let actions = await pg.query(`
+      SELECT * FROM ${this.schema}.integration_test_action
+      WHERE integration_test_id = $1
+    `, [id]);
+
+    let agentActions = {};
+    actions.rows.forEach(action => {
+      if( !agentActions[action.agent] ) agentActions[action.agent] = new Set();
+      agentActions[action.agent].add(action.action);
+    });
+
+    let errors = [];
+    for( let agent in this.TEST_ORDER ) {
+      if( !agentActions[agent] ) {
+        errors.push({
+          agent,
+          error : 'Missing agent'
+        });
+        continue;
+      }
+
+      for( let action of this.TEST_ORDER[agent] ) {
+        if( !agentActions[agent].has(action) ) {
+          errors.push({
+            agent,
+            error : 'Missing action: '+action
+          });
+        }
+      }
+    }
+
+    return errors;
+  }
+
+
 
   async clean() {
     await pg.query(`
