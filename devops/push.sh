@@ -19,6 +19,8 @@ docker push $INIT_IMAGE_NAME:$APP_TAG
 
 docker push $PGREST_IMAGE_NAME:$APP_TAG
 
+docker push $RABBITMQ_IMAGE_NAME:$APP_TAG
+
 for image in "${ALL_DOCKER_BUILD_IMAGES[@]}"; do
   docker push $image:$DOCKER_CACHE_TAG || true
 done
