@@ -8,12 +8,11 @@ program
   .option('-m, --force-metadata-update', 'Always re-PUT metadata, ignore sha check')
   .option('-b, --force-binary-update', 'Always re-PUT binary, ignore sha check')
   .option('-r, --dry-run', 'do not write any containers')
-  .option('--import-from-root', 'import data starting at given fs path, instead of ArchivalGroups')
+  .option('--import-from-root', 'import data starting at given fs path, instead of looking for ArchivalGroups')
   .option('--fcrepo-path-type <type>', 'import relative to ArchivalGroups + subpath + id (id, default) or subpath + id (subpath)')
   .option('--ag-import-strategy <strategy>', 'import strategy for ArchivalGroups.  Options are transaction, delete or version-all (default, transaction)')
   .option('--log-to-disk', 'Generate a csv log file of all operations')
-  .option('-s, --sync-deletes', 'Remove files from fedora that do not exist on disk')
-  .description('Import a collection from Fin filesystem representation. root-fs-path should be the folder containing the .fin and collection-name.ttl files')
+  .description('Import a from Fin filesystem representation. root-fs-path should be the folder containing the LDP files')
   .action((rootFsPath, options) => {
     fileIo.import({rootFsPath, options})
   });

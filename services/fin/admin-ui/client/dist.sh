@@ -8,7 +8,7 @@ rm -rf dist
 mkdir dist
 
 
-# cp -r public/img dist/
+cp -r public/img dist/
 # cp -r public/fonts dist/
 cp -R -L public/loader dist/
 cp -R -L public/css dist/

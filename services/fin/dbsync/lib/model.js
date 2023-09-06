@@ -155,24 +155,8 @@ class DbSync {
     };
 
     // for integration health tests, send ack message
-    if (e.container_types.includes(activeMqTest.TYPES.TEST_CONTAINER) ||
-      e.path.startsWith(config.activeMq.fcrepoTestPath)) {
-      await this.messaging.sendMessage(
-        MessageWrapper.createMessage(
-          [activeMqTest.PING_EVENT_TYPE],
-          {
-            '@id': e.path,
-            '@type': e.container_types,
-            'http://schema.org/agent': 'dbsync',
-            'http://schema.org/startTime': e.event_timestamp,
-            'http://schema.org/endTime': new Date().toISOString(),
-            'https://www.w3.org/ns/activitystreams': e.update_types.map(t => {
-              return {'@id': 'http://digital.ucdavis.edu/schema#' + t + 'Message'}
-            })
-          }
-        )
-      );
-    }
+    // this checks that message is a test, ignores otherwise
+    await activeMqTest.sendPing(msg, 'dbsync', this.messaging);
 
     await postgres.queue(e);
   }

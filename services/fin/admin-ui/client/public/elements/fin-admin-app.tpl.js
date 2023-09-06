@@ -28,6 +28,8 @@ return html`
   prevent-fixed>
 
   <ucdlib-branding-bar
+    figure="custom"
+    figure-url="/fin/admin/img/logo/fin-whale-color-primary-web.svg"
     site-name="${this.projectName} Admin">
   </ucdlib-branding-bar>
 

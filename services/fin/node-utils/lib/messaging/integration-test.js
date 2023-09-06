@@ -4,6 +4,7 @@ const api = require('@ucd-lib/fin-api');
 const keycloak = require('../keycloak.js');
 const RabbitMqClient = require('./rabbitmq.js');
 const pg = require('../pg.js');
+const MessageWrapper = require('./MessageWrapper.js');
 const {getContainerHostname} = require('../utils.js');
 const uuid = require('uuid').v4;
 
@@ -494,6 +495,43 @@ class MessagingIntegrationTest {
 
   getActionLabel(action) {
     return action.split(/(\/|#)/g).pop();
+  }
+
+  /**
+   * @method sendPing
+   * @description Send a ping message to the integration test queue
+   * 
+   * @param {MessageWrapper} msg incoming message 
+   * @param {String} serviceName name of service sending ping
+   * @param {Object} client service RabbitMq client
+   */
+  async sendPing(msg, serviceName, client) {
+    let containerTypes = msg.getContainerTypes();
+    let finPath = msg.getFinId();
+
+    if (
+      !containerTypes.includes(this.TYPES.TEST_CONTAINER) &&
+      !finPath.startsWith(config.activeMq.fcrepoTestPath) ) {
+      return;
+    }
+
+    let startTime = new Date(msg.getTimestamp()).toISOString()
+    let updateTypes = msg.getMessageTypes().map(t => t.split(/(#|\/)/).pop());
+
+    let pingMsg = {
+      '@id': finPath,
+      '@type': containerTypes,
+      'http://schema.org/agent': serviceName,
+      'http://schema.org/startTime': startTime,
+      'http://schema.org/endTime': new Date().toISOString(),
+      'https://www.w3.org/ns/activitystreams': updateTypes.map(t => {
+        return {'@id': 'http://digital.ucdavis.edu/schema#' + t + 'Message'}
+      })
+    }
+
+    await client.sendMessage(
+      MessageWrapper.createMessage([this.PING_EVENT_TYPE], pingMsg)
+    );
   }
 
 }

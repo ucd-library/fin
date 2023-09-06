@@ -16,7 +16,7 @@ return html`
   <div>
     <h2 class="heading--weighted-underline">
       Latest Tests
-      <a href="${this.baseDocsUrl}/docs/integration-health-tests.md" target="_blank">Documentation</a>
+      <a href="${this.baseDocsUrl}/integration-health-tests.md" target="_blank">Documentation</a>
     </h2>
     <div style="margin-bottom: 20px; font-size: 16px">
       <a href="/fin/rabbitmq/" target="_blank">RabbitMQ Admin UI</a> <span>Username/password: guest/guest</span>

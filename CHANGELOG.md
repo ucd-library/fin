@@ -1,3 +1,14 @@
+# 2.3.1
+  
+  - doc updates
+  - added wrapper method to activemq tests to simplify ping 
+  - added logo to admin console
+
+# 2.3.0
+  
+  - Switched to RabbitMQ for messaging
+  - Added AMPQ jars to fcrepo
+  - Changed messaging format to be jsonld and no longer using headers.
 # 2.2.7
 
   - admin ui updates
