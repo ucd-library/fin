@@ -42,14 +42,27 @@ steps:
     - name: 'config'
       path: '/config'
 
-  - name: gcr.io/cloud-builders/docker
-    entrypoint: "bash"
-    args: ["-c", "./devops/pull.sh"]
-    env:
-      - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
-      - 'SHORT_SHA=$SHORT_SHA'
-      - 'TAG_NAME=$TAG_NAME'
-      - 'BRANCH_NAME=$BRANCH_NAME'
+  - name: 'gcr.io/cloud-builders/git'
+    secretEnv: ['ARM_BUILDER_SSH_KEY', 'ARM64_MACHINE_IP']
+    entrypoint: 'bash'
+    args:
+    - -c
+    - |
+      echo "$$ARM_BUILDER_SSH_KEY" >> /root/.ssh/ci-bot
+      chmod 400 /root/.ssh/ci-bot
+      ssh-keyscan -t rsa $$ARM64_MACHINE_IP > /root/.ssh/known_hosts
+    volumes:
+    - name: 'ssh'
+      path: /root/.ssh
+
+  # - name: gcr.io/cloud-builders/docker
+  #   entrypoint: "bash"
+  #   args: ["-c", "./devops/pull.sh"]
+  #   env:
+  #     - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
+  #     - 'SHORT_SHA=$SHORT_SHA'
+  #     - 'TAG_NAME=$TAG_NAME'
+  #     - 'BRANCH_NAME=$BRANCH_NAME'
 
   - name: gcr.io/cloud-builders/docker
     entrypoint: "bash"
@@ -60,21 +73,35 @@ steps:
       - 'SHORT_SHA=$SHORT_SHA'
       - 'TAG_NAME=$TAG_NAME'
       - 'BRANCH_NAME=$BRANCH_NAME'
+    secretEnv: ['ARM64_MACHINE_IP']
     volumes:
     - name: 'config'
       path: '/config'
+    - name: 'ssh'
+      path: /root/.ssh
 
-  - name: gcr.io/cloud-builders/docker
-    entrypoint: "bash"
-    args: ["-c", "./devops/push.sh"]
-    env: 
-      - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
-      - 'SHORT_SHA=$SHORT_SHA'
-      - 'TAG_NAME=$TAG_NAME'
-      - 'BRANCH_NAME=$BRANCH_NAME'
-    volumes:
-    - name: 'config'
-      path: '/config'  
+  # - name: gcr.io/cloud-builders/docker
+  #   entrypoint: "bash"
+  #   args: ["-c", "./devops/push.sh"]
+  #   env: 
+  #     - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
+  #     - 'SHORT_SHA=$SHORT_SHA'
+  #     - 'TAG_NAME=$TAG_NAME'
+  #     - 'BRANCH_NAME=$BRANCH_NAME'
+  #   volumes:
+  #   - name: 'config'
+  #     path: '/config'  
+
+options:
+  pool:
+    name: projects/digital-ucdavis-edu/locations/us-central1/workerPools/ucd-lib-arm-builds
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/digital-ucdavis-edu/secrets/arm64-builder-ci-bot-ssh-key/versions/latest
+    env: 'ARM_BUILDER_SSH_KEY'
+  - versionName: projects/digital-ucdavis-edu/secrets/arm64-builder-ip/versions/latest
+    env: 'ARM64_MACHINE_IP'
 
 substitutions:
   _CONFIG_BUCKET: ci-build-config
@@ -86,4 +113,4 @@ substitutions:
   _GITHUB_PR_USER: ''
   _GITHUB_PR_MERGED_BY: ''
 
-timeout: 1800s
+timeout: 3600s
