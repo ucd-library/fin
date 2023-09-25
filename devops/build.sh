@@ -17,7 +17,7 @@ DOCKER_BUILD="docker buildx build"
 
 # for google cloud multi-arch builds
 if [[ $LOCAL_DEV == 'true' ]]; then
-  DOCKER_BUILD="$DOCKER_BUILD --pull --output=type=docker"
+  DOCKER_BUILD="$DOCKER_BUILD --output=type=docker"
 else
   echo "Setting up docker buildx using arm machine: $ARM64_MACHINE_IP"
   docker context create amd_node --docker "host=unix:///var/run/docker.sock"
@@ -41,7 +41,7 @@ echo    "Postgres      : $POSTGRES_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
 echo    "Apache LB     : $LB_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
 echo    "Base Service  : $SERVER_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
 echo    "ElasticSearch : $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
-echo    "RabbitMQ      : $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
+echo    "RabbitMQ      : $RABBITMQ_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
 echo    "PG Rest       : $PGREST_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG"
 echo -e "Init          : $INIT_IMAGE_NAME:$APP_TAG and :$DOCKER_CACHE_TAG\n"
 

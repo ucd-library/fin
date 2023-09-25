@@ -1,4 +1,4 @@
-FROM node:16-bullseye
+FROM node:18-bullseye
 
 
 ENV FIN_SERVICE_ROOT=/fin/services
