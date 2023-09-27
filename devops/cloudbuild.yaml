@@ -68,6 +68,7 @@ steps:
       echo "adding key to ssh agent"
       ssh-keyscan -t rsa $$ARM64_MACHINE_IP > /root/.ssh/known_hosts
       echo "ssh setup complete"
+      sleep 60
     volumes:
     - name: 'ssh'
       path: /root/.ssh
@@ -96,6 +97,7 @@ steps:
       path: '/config'
     - name: 'ssh'
       path: /root/.ssh
+    timeout: 7200s
 
   # - name: gcr.io/cloud-builders/docker
   #   entrypoint: "bash"
@@ -130,4 +132,4 @@ substitutions:
   _GITHUB_PR_USER: ''
   _GITHUB_PR_MERGED_BY: ''
 
-timeout: 3600s
+timeout: 7200s

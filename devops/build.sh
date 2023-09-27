@@ -13,7 +13,20 @@ else
   FIN_SERVER_REPO_HASH=$SHORT_SHA
 fi
 
+export DOCKER_BUILDKIT=1
 DOCKER_BUILD="docker buildx build"
+
+function gcloud_build() {
+  ARGS=$*
+
+  CMD="docker buildx build --platform linux/amd64,linux/arm64 --pull $ARGS"
+  echo "Running docker build: $CMD"
+  $CMD
+
+  echo "Pushing images to gcr.io"
+  CMD="$CMD --push --cache-to=type=inline"
+  $CMD
+}
 
 # for google cloud multi-arch builds
 if [[ $LOCAL_DEV == 'true' ]]; then
@@ -26,7 +39,7 @@ else
   docker buildx create --use --name ucd-lib-builder --platform linux/amd64 amd_node
   docker buildx create --append --name ucd-lib-builder --platform linux/arm64 arm_node
 
-  DOCKER_BUILD="$DOCKER_BUILD --platform linux/amd64,linux/arm64 --push --pull"
+  DOCKER_BUILD="gcloud_build"
 fi
 
 
@@ -56,7 +69,6 @@ $DOCKER_BUILD \
   -t $FCREPO_IMAGE_NAME:$APP_TAG \
   -t $FCREPO_IMAGE_NAME:$DOCKER_CACHE_TAG \
   --cache-from $FCREPO_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  --cache-to=type=inline \
   services/fcrepo
 
 # Core Server - postgres
@@ -68,7 +80,6 @@ $DOCKER_BUILD \
   -t $POSTGRES_IMAGE_NAME:$APP_TAG \
   -t $POSTGRES_IMAGE_NAME:$DOCKER_CACHE_TAG \
   --cache-from $POSTGRES_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  --cache-to=type=inline \
   services/postgres
 
 # Core Server - apache lb
@@ -80,7 +91,6 @@ $DOCKER_BUILD \
   -t $LB_IMAGE_NAME:$APP_TAG \
   -t $LB_IMAGE_NAME:$DOCKER_CACHE_TAG \
   --cache-from $LB_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  --cache-to=type=inline \
   services/load-balancer
 
 # Core Server - server
@@ -92,7 +102,6 @@ $DOCKER_BUILD \
   -t $SERVER_IMAGE_NAME:$APP_TAG \
   -t $SERVER_IMAGE_NAME:$DOCKER_CACHE_TAG \
   --cache-from $SERVER_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  --cache-to=type=inline \
   -f services/fin/Dockerfile \
   .
 
@@ -105,7 +114,6 @@ $DOCKER_BUILD \
   -t $ELASTIC_SEARCH_IMAGE_NAME:$APP_TAG \
   -t $ELASTIC_SEARCH_IMAGE_NAME:$DOCKER_CACHE_TAG \
   --cache-from $ELASTIC_SEARCH_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  --cache-to=type=inline \
   services/elastic-search
 
 # Core Server - rabbitmq
@@ -117,7 +125,6 @@ $DOCKER_BUILD \
   -t $RABBITMQ_IMAGE_NAME:$APP_TAG \
   -t $RABBITMQ_IMAGE_NAME:$DOCKER_CACHE_TAG \
   --cache-from $RABBITMQ_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  --cache-to=type=inline \
   services/rabbitmq
 
 # Core - Init services
@@ -130,7 +137,6 @@ $DOCKER_BUILD \
   -t $INIT_IMAGE_NAME:$APP_TAG \
   -t $INIT_IMAGE_NAME:$DOCKER_CACHE_TAG \
   --cache-from $INIT_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  --cache-to=type=inline \
   services/init
 
 # Core - PG REST
@@ -142,5 +148,4 @@ $DOCKER_BUILD \
   -t $PGREST_IMAGE_NAME:$APP_TAG \
   -t $PGREST_IMAGE_NAME:$DOCKER_CACHE_TAG \
   --cache-from $PGREST_IMAGE_NAME:$DOCKER_CACHE_TAG \
-  --cache-to=type=inline \
   services/pg-rest
