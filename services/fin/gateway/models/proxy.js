@@ -286,6 +286,10 @@ class ProxyModel {
 
     finDigests.onFcrepoRequest(req);
 
+    if( req.headers['cookie'] ) {
+      delete req.headers['cookie'];
+    }
+
     proxy.web(req, res, {
       target : url
     });
@@ -372,7 +376,10 @@ class ProxyModel {
     // hijack response, setting redirect to desired location
     res.statusCode = 302;
     res.headers['location'] = url;
-    res.headers['set-cookie'] = config.jwt.cookieName+'='+token+'; Path=/; HttpOnly';
+    res.headers['set-cookie'] = [
+      config.jwt.cookieName+'='+token+'; Path=/; HttpOnly',
+      'JSESSIONID=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/fcrepo; HttpOnly'
+    ];
   }
 
   /**
