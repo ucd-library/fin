@@ -304,7 +304,7 @@ class DirectAccess {
 
     let result = await pg.query(`select * from ocfl_id_map where fedora_id = $1`, [fcPath]);
     if( !result.rows.length ) {
-      return null;
+      return {};
     }
     result = result.rows[0];
 
@@ -346,6 +346,7 @@ class DirectAccess {
   async readOcfl(fcPath, opts={}) {
     fcPath = this.cleanPath(fcPath);
     let {ocflId, file, orgFile, isBinary} = await this.getOcflPathInfo(fcPath, opts);
+    if( !ocflId ) return null;
 
     let object, fileContent;
 

@@ -8,8 +8,8 @@ const compression = require('compression');
 
 
 // global catch alls for errors
-process.on('uncaughtException', (e) => logger.fatal(e));
-process.on('unhandledRejection', (e) => logger.fatal(e));
+// process.on('uncaughtException', (e) => logger.fatal(e));
+// process.on('unhandledRejection', (e) => logger.fatal(e));
 
 
 // wire up fin api for direct server
