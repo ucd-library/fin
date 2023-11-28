@@ -194,7 +194,7 @@ class ServiceProxy {
 
     // if we don't get a 200 range status code from fcrepo, 
     // requesting agent does not have access to this container
-    if( !api.isSuccess(response) && !this._isAdminPutPost(req) ) {    
+    if( !api.isSuccess(response) && !this._isAdminPutPostDelete(req) ) {    
       req.finContainer = {access : false, response};
       return;
     }
@@ -214,14 +214,14 @@ class ServiceProxy {
   }
 
   /**
-   * @method _isAdminPutPost
+   * @method _isAdminPutPostDelete
    * @description check if the requesting agent is an admin and if the request is a PUT or POST
    * 
    * @param {Object} req express request 
    * @returns {Boolean}
    */
-  _isAdminPutPost(req) {
-    if( !['PUT', 'POST'].includes(req.method) ) {
+  _isAdminPutPostDelete(req) {
+    if( !['PUT', 'POST', 'DELETE'].includes(req.method) ) {
       return false;
     }
 
