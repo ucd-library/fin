@@ -1,4 +1,5 @@
 import {BaseStore} from '@ucd-lib/cork-app-utils';
+import config from '../config';
 
 class DataViewStore extends BaseStore {
 
@@ -23,6 +24,8 @@ class DataViewStore extends BaseStore {
   }
 
   setCoreDataLoad(result) {
+    result.env = Object.assign({}, config.env);
+
     this._setCoreData({
       state : 'loaded',
       payload: result

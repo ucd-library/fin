@@ -25,8 +25,8 @@ return html`
 
   <h2 class="heading--weighted-underline">
     Fin Config
-    <a href="${this.baseDocsUrl}/docs/env-config.md" target="_blank">Documentation</a>
-    <a href="${this.baseDocsUrl}/services/fin/node-utils/config.js" target="_blank">Code Reference</a>
+    <a href="${this.baseVersionUrl}/docs/env-config.md" target="_blank">Documentation</a>
+    <a href="${this.baseVersionUrl}/services/fin/node-utils/config.js" target="_blank">Code Reference</a>
   </h2>
 
   ${unsafeHTML(this._renderConfig(this.env,      undefined, 

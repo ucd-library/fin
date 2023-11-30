@@ -25,7 +25,9 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       workflowPath : {type: String},
       fcrepoTypeStats : {type: Array},
       deletingWorkflows : {type: Boolean},
-      baseDocsUrl : {type: String}
+      baseDocsUrl : {type: String},
+      env : {type: Object},
+      buildTime : {type: Date}
     }
   }
 
@@ -46,6 +48,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.workflowPath = '';
     this.deletingWorkflows = false;
     this.fcrepoTypeStats = [];
+    this.env = {};
+    this.buildTime = new Date();
 
     this.baseDocsUrl = '';
 
@@ -107,6 +111,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.openTransactions = e.payload.openTransactions || [];
 
     this.baseDocsUrl = config.baseDocsUrl;
+    this.env = e.payload.env;
+    this.buildTime = new Date(this.env.BUILD_DATETIME);
 
     this.dataModels = Object.values(e.payload.registeredModels || {});
     this.dataModels = clone(this.dataModels);

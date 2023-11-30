@@ -30,7 +30,22 @@ return html`
     text-align: center;
     font-size: 14px;
   }
+  .env {
+    margin-bottom: 20px;
+    margin-top: -10px;
+    text-align: right;
+    font-size: 14px;
+    color: var(--ucd-black-50);
+  }
 </style>
+
+<div class="env">
+  Fin Build: 
+  <span>${this.env.FIN_VERSION}</span> |
+  <span><a href="${this.env.REPO_URL}/tree/${this.env.FIN_BRANCH_NAME}" target="_blank">${this.env.FIN_BRANCH_NAME}</a></span> |
+  <span><a href="${this.env.REPO_URL}/tree/${this.env.FIN_SERVER_REPO_HASH}" target="_blank">${this.env.FIN_SERVER_REPO_HASH}</a></span> |
+  <span>${this.buildTime.toLocaleString()}</span>
+</div>
 
 <div>
   <h2 id="data-models" class="heading--weighted-underline">

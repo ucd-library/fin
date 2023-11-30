@@ -14,7 +14,8 @@ export default class FinAdminConfig extends Mixin(LitElement)
       serviceAccountError : {type: Boolean},
       serviceAccount : {type: Object},
       env : {type: Object},
-      baseDocsUrl : {type: String}
+      baseDocsUrl : {type: String},
+      baseVersionUrl : {type: String}
     }
   }
 
@@ -43,6 +44,7 @@ export default class FinAdminConfig extends Mixin(LitElement)
     this.env = e.payload.env;
     this.env.REPO_URL = config.repoUrl;
     this.baseDocsUrl = config.baseDocsUrl;
+    this.baseVersionUrl = config.baseVersionUrl;
 
     let serviceAccount = e.payload.finServiceAccount;
 
