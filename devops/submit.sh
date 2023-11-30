@@ -11,5 +11,5 @@ echo "Submitting build to Google Cloud..."
 gcloud builds submit \
   --config ./devops/cloudbuild.yaml \
   --region us-central1 \
-  --substitutions=REPO_NAME=fin,TAG_NAME=$(git describe --tags --abbrev=0),BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD),SHORT_SHA=$(git log -1 --pretty=%h) \
+  --substitutions=REPO_NAME=fin,TAG_NAME=$(git tag --points-at HEAD),BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD),SHORT_SHA=$(git log -1 --pretty=%h) \
   .

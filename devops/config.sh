@@ -18,7 +18,7 @@ else
 fi
 
 if [[ -z "$TAG_NAME" ]]; then
-  FIN_TAG_NAME=$(git describe --tags --abbrev=0) || true
+  FIN_TAG_NAME=$(git tag --points-at HEAD)
 else
   FIN_TAG_NAME=$TAG_NAME
 fi
@@ -58,7 +58,7 @@ if [[ -z $A6T_REG_HOST ]]; then
   fi
 fi
 
-DOCKER_CACHE_TAG=$FIN_BRANCH_NAME
+# DOCKER_CACHE_TAG=$FIN_BRANCH_NAME
 
 # Docker Images
 FCREPO_IMAGE_NAME=$A6T_REG_HOST/fin-fcrepo
