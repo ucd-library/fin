@@ -65,6 +65,7 @@ CREATE OR REPLACE VIEW dbsync_validate_response_view AS
     vr.error_count,
     vr.warning_count,
     vr.comment_count,
+    vr.labels,
     array_agg(us.path) as paths
   FROM 
     dbsync.validate_response_view vr
@@ -76,9 +77,25 @@ CREATE OR REPLACE VIEW dbsync_validate_response_view AS
     vr.db_id,
     vr.model, 
     vr.response,
+    vr.labels,
     vr.error_count,
     vr.warning_count,
     vr.comment_count;
+
+CREATE OR REPLACE VIEW validate_response_stats AS
+  SELECT * FROM dbsync.validate_response_stats;
+
+CREATE OR REPLACE VIEW validate_response_stats_labels AS
+  SELECT label, count(*) as count FROM dbsync.validate_response_stats
+  GROUP BY label;
+
+CREATE OR REPLACE VIEW validate_response_stats_model_labels AS
+  SELECT label, model, count(*) as count FROM dbsync.validate_response_stats
+  GROUP BY label, model;
+
+CREATE OR REPLACE VIEW validate_response_stats_type_labels AS
+  SELECT label, type, count(*) as count FROM dbsync.validate_response_stats
+  GROUP BY label, type;
 
 CREATE OR REPLACE VIEW dbsync_stats AS
   SELECT action, count(*) as count FROM dbsync.update_status GROUP BY action;

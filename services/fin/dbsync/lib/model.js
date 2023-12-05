@@ -574,6 +574,15 @@ class DbSync {
       }
     }
 
+    // update validation string arrays
+    ['errors', 'warnings', 'comments'].forEach(key => {
+      if (!validateResponse[key]) return;
+      validateResponse[key] = validateResponse[key].map(value => {
+        if( typeof value !== 'string' ) return value;
+        return {label: value};
+      });
+    });
+
     let pgParams = {
       db_id: dbId,
       model: modelId,

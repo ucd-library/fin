@@ -46,6 +46,20 @@ class DataViewModel extends BaseModel {
     return this.pgQuery('gcssync_disk_cache_stats', {}, opts);
   }
 
+  dbSyncValidateLabels(query = {}, opts = {}) {
+    // postgrest doesn't support group by, so we need to do this manually
+    // picking which pre-cooked view based on query params
+    let table = 'validate_response_stats_labels';
+    if( query.model && query.type ) {
+      table = 'validate_response_stats_labels';
+    } else if ( query.model ) {
+      table = 'validate_response_stats_model_labels';
+    } else if ( query.type ) {
+      table = 'validate_response_stats_type_labels';
+    }
+
+    return this.pgQuery(table, query, {refresh: true}, 'validate_response_stats_labels');
+  }
 
   async pgQuery(table, query={}, opts={}, name) {
     if( !name ) name = table;

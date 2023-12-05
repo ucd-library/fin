@@ -34,9 +34,16 @@ const viewConfig = {
     }
   },
 
+  'data-validation-stats' : {
+    table : 'validate_response_stats',
+    renderCellValue : (row, key) => {
+      return standardRender(row, key);
+    }
+  },
+
   'data-validation-main' : {
     table : 'dbsync_validate_response_view',
-    ignoreKeys : ['comment_count', 'error_count', 'warning_count'],
+    ignoreKeys : ['comment_count', 'error_count', 'warning_count', 'labels'],
     renderCellValue : (row, key) => {
       if( key === 'paths' ) {
         row[key].sort((a, b) => a < b ? -1 : 1);
@@ -65,6 +72,10 @@ const viewConfig = {
           {label: 'Has Warnings', query : {warning_count: 'gt.0'}},
           {label: 'Has Comments', query : {comment_count: 'gt.0'}}
         ]
+      },
+      label : {
+        type : 'custom',
+        options : []
       }
     },
     renderCellClass : (row, key) => {

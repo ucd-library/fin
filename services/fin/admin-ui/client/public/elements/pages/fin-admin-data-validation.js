@@ -13,6 +13,7 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
   static get properties() {
     return {
       query : {type: Object}, 
+      statsQuery : {type: Object},
     }
   }
 
@@ -28,16 +29,44 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
       limit : 10,
       order : 'db_id.asc'
     };
+    this.statsQuery = {
+      order : 'count.desc'
+    };
 
     this.tableConfig = viewConfig['data-validation-main'];
 
     this._injectModel('AppStateModel', 'DataViewModel');
   }
 
+  firstUpdated() {
+    this.mainDataTable = this.querySelector('fin-admin-data-table[name=data-validation-main]');
+  }
+
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
     let dataModels = Object.keys(e.payload.registeredModels || {});
     this.tableConfig.filters.model.options = dataModels;
+  }
+
+  _loadLabels() {
+    let query = {};
+
+    if( this.query.model ) {
+      query.model = this.query.model;
+    }
+    if( this.query.error_count ) statsQuery.type = 'eq.error';
+    else if ( this.query.warning_count ) statsQuery.type = 'eq.warning';
+    else if ( this.query.comment_count ) statsQuery.type = 'eq.comment';
+
+    this.DataViewModel.dbSyncValidateLabels(query).then(e => {
+      this.tableConfig.filters.label.options = e.payload.map(item => {
+        return {
+          label : item.label,
+          query : { labels : 'cs.{"'+item.label+'"}'}
+        }
+      });
+      this.mainDataTable.requestUpdate();
+    });
   }
 
   _onAppStateUpdate(e) {
@@ -47,7 +76,16 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
     if( !query.limit ) query.limit = 10;
     if( !query.order ) query.order = 'db_id.asc';
 
+    let statsQuery = {order: 'count.desc'};
+    if( query.model ) statsQuery.model = query.model;
+    if( query.error_count ) statsQuery.type = 'eq.error';
+    else if ( query.warning_count ) statsQuery.type = 'eq.warning';
+    else if ( query.comment_count ) statsQuery.type = 'eq.comment';
+
+    this.statsQuery = statsQuery;
     this.query = query;
+
+    this._loadLabels();
   }
 
 }

@@ -85,9 +85,9 @@ CREATE TABLE IF NOT EXISTS validate_response (
 );
 CREATE INDEX IF NOT EXISTS validate_response_model_idx ON validate_response (model);
 CREATE INDEX IF NOT EXISTS validate_response_db_id_idx ON validate_response (db_id);
-CREATE INDEX IF NOT EXISTS  validate_response_errors_idx ON validate_response (jsonb_array_length(response->'errors'));
-CREATE INDEX IF NOT EXISTS  validate_response_warnings_idx ON validate_response (jsonb_array_length(response->'warnings'));
-CREATE INDEX IF NOT EXISTS  validate_response_comments_idx ON validate_response (jsonb_array_length(response->'comments'));
+CREATE INDEX IF NOT EXISTS validate_response_error_label_idx ON validate_response_view (response->'errors'->>'label');
+CREATE INDEX IF NOT EXISTS validate_response_warning_label_idx ON validate_response_view (response->'warnings'->>'label');
+CREATE INDEX IF NOT EXISTS validate_response_comment_label_idx ON validate_response_view (response->'comments'->>'label');
 
 CREATE TABLE IF NOT EXISTS update_status (
   update_status_id SERIAL PRIMARY KEY,
@@ -117,17 +117,120 @@ CREATE INDEX IF NOT EXISTS update_status_db_id_idx ON update_status (db_id);
 CREATE INDEX IF NOT EXISTS update_status_update_types_idx ON update_status (update_types);
 
 CREATE OR REPLACE VIEW validate_response_view AS
+  WITH response_error_labels AS (
+    SELECT 
+      validate_response_id,
+      jsonb_array_elements(response->'errors')->>'label' as label
+    FROM 
+      validate_response
+  ),
+  response_warning_labels AS (
+    SELECT 
+      validate_response_id,
+      jsonb_array_elements(response->'warnings')->>'label' as label
+    FROM 
+      validate_response
+  ),
+  response_comments_labels AS (
+    SELECT 
+      validate_response_id,
+      jsonb_array_elements(response->'comments')->>'label' as label
+    FROM 
+      validate_response
+  ),
+  response_labels AS (
+    SELECT validate_response_id, label
+    FROM response_error_labels
+    UNION ALL
+    SELECT validate_response_id, label
+    FROM response_warning_labels
+    UNION ALL
+    SELECT validate_response_id, label
+    FROM response_comments_labels
+  ),
+  response_labels_array AS (
+    SELECT validate_response_id, array_agg(label) as labels
+    FROM response_labels
+    GROUP BY validate_response_id
+  )
   SELECT 
     validate_response_id, 
     updated, 
     db_id, 
     model, 
     response, 
+    labels,
     jsonb_array_length(response->'errors') as error_count, 
     jsonb_array_length(response->'warnings') as warning_count, 
     jsonb_array_length(response->'comments') as comment_count
   FROM 
-    validate_response;
+    validate_response
+  LEFT JOIN 
+    response_labels_array USING (validate_response_id);
+
+CREATE OR REPLACE VIEW validate_response_stats AS
+  WITH response_error_labels AS (
+    SELECT 
+      model,
+      jsonb_array_elements(response->'errors') as error
+    FROM 
+      validate_response
+  ),
+  response_error_stats AS (
+    SELECT 
+      'error' as type,
+      error->>'label' as label, 
+      model,
+      count(*) as count
+    FROM 
+      response_error_labels
+    GROUP BY 
+      error->>'label', model
+  ),
+  response_warning_labels AS (
+    SELECT 
+      model,
+      jsonb_array_elements(response->'warnings') as warning
+    FROM 
+      validate_response
+  ),
+  response_warning_stats AS (
+    SELECT 
+      'warning' as type,
+      warning->>'label' as label,
+      model,
+      count(*) as count
+    FROM 
+      response_warning_labels
+    GROUP BY 
+      warning, model
+  ),
+  response_comment_labels AS (
+    SELECT 
+      model,
+      jsonb_array_elements(response->'comments') as comment
+    FROM 
+      validate_response
+  ),
+  response_comment_stats AS (
+    SELECT 
+      'comment' as type,
+      comment->>'label' as label, 
+      model,
+      count(*) as count
+    FROM 
+      response_comment_labels
+    GROUP BY 
+      comment, model
+  )
+  SELECT type, model, label, count
+  FROM response_error_stats
+  UNION ALL
+  SELECT type, model, label, count
+  FROM response_warning_stats
+  UNION ALL
+  SELECT type, model, label, count
+  FROM response_comment_stats;
 
 -- upsert function for update_status
 CREATE OR REPLACE FUNCTION upsert_update_status (

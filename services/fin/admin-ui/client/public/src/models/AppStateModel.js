@@ -21,7 +21,7 @@ class AppStateModelImpl extends AppStateModel {
   set(update) {
     
     if( update.location ) {
-      let [hashBase, hashQuery] = update.location.hash.split('?');
+      let [hashBase, hashQuery] = decodeURIComponent(update.location.hash).split('?');
 
       if( hashQuery ) {
         hashQuery = hashQuery.split('&').reduce((obj, item) => {
