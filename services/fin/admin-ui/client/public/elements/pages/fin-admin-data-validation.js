@@ -76,7 +76,7 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
     if( !query.limit ) query.limit = 10;
     if( !query.order ) query.order = 'db_id.asc';
 
-    let statsQuery = {order: 'count.desc'};
+    let statsQuery = {order: 'cdcount.desc'};
     if( query.model ) statsQuery.model = query.model;
     if( query.error_count ) statsQuery.type = 'eq.error';
     else if ( query.warning_count ) statsQuery.type = 'eq.warning';

@@ -6,6 +6,8 @@ class DbSyncPostgresUtils {
     this.schema = 'dbsync';
     this.pg = pg;
     this.enums = ['fcrepo_update_type', 'dbsync_message_status', 'dbsync_reindex_crawl_state']
+    this.VALIDATE_TYPES = ['error', 'warning', 'comment'];
+    this.VALIDATE_ITEM_PROPS = ['id', 'label'];
   }
 
   async connect() {
@@ -211,16 +213,38 @@ class DbSyncPostgresUtils {
     let result = await this.pg.query(
       `SELECT * from ${this.schema}.upsert_validate_response(
         $1::TEXT, 
-        $2::TEXT, 
-        $3::JSONB
+        $2::TEXT
       );`, 
       [
         args.model, 
-        args.db_id,
-        args.response
+        args.db_id
       ]
     );
     let validate_response_id = result.rows[0].upsert_validate_response;
+
+    let items, tableProps;
+    for( let type of this.VALIDATE_TYPES ) {
+      items = args.response[type+'s'] || [];
+      for( let item of items ) {
+        tableProps = {type};
+        for( let prop of this.VALIDATE_ITEM_PROPS ) {
+          tableProps[prop] = item[prop] || null;
+          delete item[prop];
+        }
+        
+        await this.pg.query(`
+          INSERT INTO ${this.schema}.validate_response_item (
+            validate_response_id,
+            type,
+            id,
+            label,
+            additional_info,
+          ) VALUES (
+            $1, $2, $3, $4, $5
+          )
+        `, [validate_response_id, tableProps.type, tableProps.id, tableProps.label, JSON.stringify(item)]);
+      }
+    }
 
     await this.pg.query(`
       UPDATE ${this.schema}.update_status

@@ -56,6 +56,7 @@ steps:
       - 'gcloud compute instances describe arm64-build-instance --zone=us-central1-a --format="yaml(name,status)"'
 
   - name: 'gcr.io/cloud-builders/git'
+    id: 'setup-ssh'
     secretEnv: ['ARM_BUILDER_SSH_KEY', 'ARM64_MACHINE_IP']
     entrypoint: 'bash'
     args:
@@ -73,19 +74,12 @@ steps:
     - name: 'ssh'
       path: /root/.ssh
 
-  # - name: gcr.io/cloud-builders/docker
-  #   entrypoint: "bash"
-  #   args: ["-c", "./devops/pull.sh"]
-  #   env:
-  #     - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
-  #     - 'SHORT_SHA=$SHORT_SHA'
-  #     - 'TAG_NAME=$TAG_NAME'
-  #     - 'BRANCH_NAME=$BRANCH_NAME'
-
   - name: gcr.io/cloud-builders/docker
+    waitFor: ['setup-ssh']
     entrypoint: "bash"
-    args: ["-c", "./devops/build.sh"]
+    args: ["-c", "./devops/build-context.sh"]
     env: 
+      - 'BUILD_ARCHITECTURE=amd'
       - 'GCLOUD_BUILD=true'
       - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
       - 'SHORT_SHA=$SHORT_SHA'
@@ -99,17 +93,31 @@ steps:
       path: /root/.ssh
     timeout: 7200s
 
-  # - name: gcr.io/cloud-builders/docker
-  #   entrypoint: "bash"
-  #   args: ["-c", "./devops/push.sh"]
-  #   env: 
-  #     - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
-  #     - 'SHORT_SHA=$SHORT_SHA'
-  #     - 'TAG_NAME=$TAG_NAME'
-  #     - 'BRANCH_NAME=$BRANCH_NAME'
-  #   volumes:
-  #   - name: 'config'
-  #     path: '/config'  
+  - name: gcr.io/cloud-builders/docker
+    waitFor: ['setup-ssh']
+    entrypoint: "bash"
+    args: ["-c", "./devops/build-context.sh"]
+    env: 
+      - 'BUILD_ARCHITECTURE=arm'
+      - 'GCLOUD_BUILD=true'
+      - 'GIT_DISCOVERY_ACROSS_FILESYSTEM=1'
+      - 'SHORT_SHA=$SHORT_SHA'
+      - 'TAG_NAME=$TAG_NAME'
+      - 'BRANCH_NAME=$BRANCH_NAME'
+    secretEnv: ['ARM64_MACHINE_IP']
+    volumes:
+    - name: 'config'
+      path: '/config'
+    - name: 'ssh'
+      path: /root/.ssh
+    timeout: 7200s
+
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: "bash"
+    args: ["-c", "./devops/create-manifest.sh"]
+    volumes:
+    - name: 'config'
+      path: '/config'  
 
 options:
   pool:
