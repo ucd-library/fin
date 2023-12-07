@@ -364,6 +364,10 @@ function dbsync(row, key) {
 function validation_responses(responses) {
   if( !responses ) return '';
 
+  // TODO: fix up query so we can remove this
+  responses = responses.filter(item => item !== null);
+  if( responses.length === 0 ) return '';  
+
   return html`
     <div class="responsive-table" style="background-color: white">
       <table>
