@@ -570,7 +570,12 @@ class DbSync {
     } catch (e) {
       logger.error('Error running data validation for ' + modelId + ' ' + dbId, e);
       validateResponse = {
-        errors: ['Error running data validation for ' + modelId + ' ' + dbId + '. ' + e.message + ' ' + e.stack]
+        errors: [{
+          label : 'Error running data validation for ' + modelId,
+          id : dbId,
+          message: e.message,
+          stack : e.stack
+        }]
       }
     }
 

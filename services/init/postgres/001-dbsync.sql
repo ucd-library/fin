@@ -130,13 +130,21 @@ CREATE OR REPLACE VIEW validate_response_view AS
     db_id, 
     model, 
     labels,
-    json_agg(i) as responses,
+    responses,
     errors.count as error_count, 
     warnings.count as warning_count, 
     comments.count as comment_count
   FROM 
     validate_response vr
-  LEFT JOIN validate_response_item i ON vr.validate_response_id = i.validate_response_id 
+  LEFT JOIN (
+    SELECT 
+      i.validate_response_id,
+      json_agg(row_to_json(i.*)) as responses
+    FROM 
+      validate_response_item i
+    GROUP BY 
+      validate_response_id
+  ) AS responses ON vr.validate_response_id = responses.validate_response_id
   LEFT JOIN (
     SELECT 
       i.validate_response_id,
@@ -178,16 +186,7 @@ CREATE OR REPLACE VIEW validate_response_view AS
       type = 'comment'
     GROUP BY 
       validate_response_id
-  ) AS comments ON vr.validate_response_id = comments.validate_response_id
-  GROUP BY 
-    vr.validate_response_id, 
-    updated, 
-    db_id, 
-    model, 
-    labels,
-    errors.count, 
-    warnings.count, 
-    comments.count;
+  ) AS comments ON vr.validate_response_id = comments.validate_response_id;
 
 
 CREATE OR REPLACE VIEW validate_response_stats AS
