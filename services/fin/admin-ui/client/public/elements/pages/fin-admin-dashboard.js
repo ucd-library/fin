@@ -143,17 +143,14 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     );
 
     for( let row of dtData ) {
-      let stats = results.payload.find(item => item.model === row.name);
-      if( !stats ) {
-        row.validation_error_count = '';
-        row.validation_warning_count = '';
-        row.validation_comment_count = '';;
-        continue;
-      }
+      let stat = results.payload.find(item => item.model === row.name && item.type === 'error') || {};
+      row.validation_error_count = stat.count || '';
 
-      row.validation_error_count = stats.error_count || '';
-      row.validation_warning_count = stats.warning_count || '';
-      row.validation_comment_count = stats.comment_count || '';
+      stat = results.payload.find(item => item.model === row.name && item.type === 'warning') || {};
+      row.validation_warning_count = stat.count || '';
+
+      stat = results.payload.find(item => item.model === row.name && item.type === 'comment') || {};
+      row.validation_comment_count = stat.count || '';
     }
 
     this.dataModelsDtData = dtData;

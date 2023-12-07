@@ -51,7 +51,7 @@ class DataViewModel extends BaseModel {
     // picking which pre-cooked view based on query params
     let table = 'validate_response_stats_labels';
     if( query.model && query.type ) {
-      table = 'validate_response_stats_labels';
+      table = 'validate_response_stats';
     } else if ( query.model ) {
       table = 'validate_response_stats_model_labels';
     } else if ( query.type ) {

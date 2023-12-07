@@ -46,14 +46,14 @@ CREATE OR REPLACE VIEW dbsync_validate_queue_size AS
 CREATE OR REPLACE VIEW dbsync_update_status AS
   SELECT 
     us.*, 
-    vr.response as validation_response,
+    vr.responses as validation_responses,
     vr.error_count as validation_error_count,
     vr.warning_count as validation_warning_count,
     vr.comment_count as validation_comment_count
   FROM 
     dbsync.update_status us
   LEFT JOIN 
-    dbsync.validate_response_view vr on us.validate_response_id = vr.validate_response_id; 
+    dbsync.validate_response_view vr on us.validate_response_id = vr.validate_response_id;
 
 CREATE OR REPLACE VIEW dbsync_validate_response_view AS
   SELECT 
@@ -61,26 +61,23 @@ CREATE OR REPLACE VIEW dbsync_validate_response_view AS
     vr.updated,
     vr.db_id,
     vr.model, 
-    vr.response,
+    vr.responses,
     vr.error_count,
     vr.warning_count,
     vr.comment_count,
     vr.labels,
-    array_agg(us.path) as paths
+    us.paths
   FROM 
     dbsync.validate_response_view vr
-  LEFT JOIN 
-    dbsync.update_status us on vr.validate_response_id = us.validate_response_id
-  GROUP BY
-    vr.validate_response_id, 
-    vr.updated,
-    vr.db_id,
-    vr.model, 
-    vr.response,
-    vr.labels,
-    vr.error_count,
-    vr.warning_count,
-    vr.comment_count;
+  LEFT JOIN (
+    SELECT 
+      validate_response_id,
+      array_agg(path) as paths
+    FROM 
+      dbsync.update_status
+    GROUP BY 
+      validate_response_id
+  ) AS us on vr.validate_response_id = us.validate_response_id;
 
 CREATE OR REPLACE VIEW validate_response_stats AS
   SELECT * FROM dbsync.validate_response_stats;
@@ -101,45 +98,7 @@ CREATE OR REPLACE VIEW dbsync_stats AS
   SELECT action, count(*) as count FROM dbsync.update_status GROUP BY action;
 
 CREATE OR REPLACE VIEW dbsync_model_item_stats AS 
-  WITH models AS (
-    SELECT distinct model FROM dbsync.validate_response
-  ),
-  errors AS (
-    SELECT 
-      model, 
-      sum(error_count) AS count 
-    FROM 
-      dbsync.validate_response_view 
-    WHERE error_count > 0
-    GROUP BY model
-  ),
-  warnings AS (
-    SELECT 
-      model, 
-      sum(warning_count) AS count 
-    FROM 
-      dbsync.validate_response_view 
-    WHERE warning_count > 0
-    GROUP BY model
-  ),
-  comments AS (
-    SELECT 
-      model, 
-      sum(comment_count) AS count 
-    FROM 
-      dbsync.validate_response_view 
-    WHERE comment_count > 0
-    GROUP BY model
-  )
-  SELECT 
-    models.model, 
-    errors.count AS error_count, 
-    warnings.count AS warning_count, 
-    comments.count AS comment_count
-  FROM models
-  LEFT JOIN errors ON models.model = errors.model
-  LEFT JOIN warnings ON models.model = warnings.model
-  LEFT JOIN comments ON models.model = comments.model;
+  SELECT model, type, count(*) as count FROM dbsync.validate_response_stats GROUP BY model, type;
 
 CREATE OR REPLACE VIEW dbsync_reindex_crawl_status AS
   SELECT * FROM dbsync.reindex_crawl_status;

@@ -21,7 +21,11 @@ fi
 
 export DOCKER_BUILDKIT=1
 
-DOCKER_BUILD="$DOCKER buildx build --pull --output=type=docker --cache-to=type=inline,mode=max "
+DOCKER_BUILD="$DOCKER buildx build --output=type=docker --cache-to=type=inline,mode=max "
+if [[ $LOCAL_DEV != 'true' ]]; then
+  DOCKER_BUILD="$DOCKER_BUILD --pull "
+fi
+
 DOCKER_PUSH="$DOCKER push "
 
 function get_tags() {

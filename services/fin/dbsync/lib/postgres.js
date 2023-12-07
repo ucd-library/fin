@@ -238,7 +238,7 @@ class DbSyncPostgresUtils {
             type,
             id,
             label,
-            additional_info,
+            additional_info
           ) VALUES (
             $1, $2, $3, $4, $5
           )

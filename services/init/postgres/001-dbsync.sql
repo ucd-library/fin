@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS validate_response (
   validate_response_id SERIAL PRIMARY KEY,
   updated timestamp NOT NULL DEFAULT NOW(),
   db_id TEXT NOT NULL,
-  model TEXT NOT NULL
+  model TEXT NOT NULL,
   UNIQUE(db_id, model)
 );
 CREATE INDEX IF NOT EXISTS validate_response_model_idx ON validate_response (model);
@@ -124,68 +124,34 @@ CREATE INDEX IF NOT EXISTS update_status_db_id_idx ON update_status (db_id);
 CREATE INDEX IF NOT EXISTS update_status_update_types_idx ON update_status (update_types);
 
 CREATE OR REPLACE VIEW validate_response_view AS
-  -- WITH response_error_labels AS (
-  --   SELECT 
-  --     validate_response_id,
-  --     jsonb_array_elements(response->'errors')->>'label' as label
-  --   FROM 
-  --     validate_response
-  -- ),
-  -- response_warning_labels AS (
-  --   SELECT 
-  --     validate_response_id,
-  --     jsonb_array_elements(response->'warnings')->>'label' as label
-  --   FROM 
-  --     validate_response
-  -- ),
-  -- response_comments_labels AS (
-  --   SELECT 
-  --     validate_response_id,
-  --     jsonb_array_elements(response->'comments')->>'label' as label
-  --   FROM 
-  --     validate_response
-  -- ),
-  -- response_labels AS (
-  --   SELECT validate_response_id, label
-  --   FROM response_error_labels
-  --   UNION ALL
-  --   SELECT validate_response_id, label
-  --   FROM response_warning_labels
-  --   UNION ALL
-  --   SELECT validate_response_id, label
-  --   FROM response_comments_labels
-  -- ),
-  -- response_labels_array AS (
-  --   SELECT validate_response_id, array_agg(label) as labels
-  --   FROM response_labels
-  --   GROUP BY validate_response_id
-  -- )
   SELECT 
-    validate_response_id, 
+    vr.validate_response_id, 
     updated, 
     db_id, 
     model, 
-    response, 
     labels,
+    json_agg(i) as responses,
     errors.count as error_count, 
     warnings.count as warning_count, 
-    coments.count as comment_count
+    comments.count as comment_count
   FROM 
     validate_response vr
+  LEFT JOIN validate_response_item i ON vr.validate_response_id = i.validate_response_id 
   LEFT JOIN (
     SELECT 
-      validate_response_id,
+      i.validate_response_id,
       array_agg(label) as labels
     FROM 
-      validate_response_item
+      validate_response_item i
     GROUP BY 
       validate_response_id
   ) AS labels ON vr.validate_response_id = labels.validate_response_id
   LEFT JOIN (
     SELECT 
-      count(*) as count,
+      i.validate_response_id,
+      count(*) as count
     FROM 
-      validate_response_item
+      validate_response_item i
     WHERE 
       type = 'error'
     GROUP BY 
@@ -193,9 +159,10 @@ CREATE OR REPLACE VIEW validate_response_view AS
   ) AS errors ON vr.validate_response_id = errors.validate_response_id
   LEFT JOIN (
     SELECT 
-      count(*) as count,
+      i.validate_response_id,
+      count(*) as count
     FROM 
-      validate_response_item
+      validate_response_item i
     WHERE 
       type = 'warning'
     GROUP BY 
@@ -203,14 +170,24 @@ CREATE OR REPLACE VIEW validate_response_view AS
   ) AS warnings ON vr.validate_response_id = errors.validate_response_id
   LEFT JOIN (
     SELECT 
-      count(*) as count,
+      i.validate_response_id,
+      count(*) as count
     FROM 
-      validate_response_item
+      validate_response_item i
     WHERE 
       type = 'comment'
     GROUP BY 
       validate_response_id
-  ) AS comments ON vr.validate_response_id = comments.validate_response_id;
+  ) AS comments ON vr.validate_response_id = comments.validate_response_id
+  GROUP BY 
+    vr.validate_response_id, 
+    updated, 
+    db_id, 
+    model, 
+    labels,
+    errors.count, 
+    warnings.count, 
+    comments.count;
 
 
 CREATE OR REPLACE VIEW validate_response_stats AS
@@ -223,7 +200,7 @@ CREATE OR REPLACE VIEW validate_response_stats AS
       validate_response_item vri
     LEFT JOIN
       validate_response vr ON vri.validate_response_id = vr.validate_response_id
-  ),
+  )
   SELECT 
     type,
     label, 
@@ -284,19 +261,17 @@ $$ LANGUAGE plpgsql;
 -- upsert function for update_status
 CREATE OR REPLACE FUNCTION upsert_validate_response (
   model_in TEXT,
-  db_id_in TEXT,
-  response_in JSONB
+  db_id_in TEXT
 ) RETURNS INTEGER AS $$
 DECLARE
   vrid INTEGER;
 BEGIN
 
   INSERT INTO 
-    validate_response (model, db_id, response)
+    validate_response (model, db_id)
   VALUES 
-    (model_in, db_id_in, response_in)
+    (model_in, db_id_in)
   ON CONFLICT (model, db_id) DO UPDATE SET
-    response = response_in,
     updated = NOW()
   RETURNING validate_response_id INTO vrid;
 

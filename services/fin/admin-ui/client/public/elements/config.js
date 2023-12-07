@@ -16,7 +16,8 @@ const viewConfig = {
       validation_error_count : 'Errors',
       validation_warning_count : 'Warnings'
     },
-    actions : [{      type : 'view-info',
+    actions : [{      
+      type : 'view-info',
       label : 'View Info'
     }],
     renderCellValue : (row, key) => {
@@ -51,11 +52,15 @@ const viewConfig = {
           return html`<div><a href="#path-info${path}">${path}</a></div>`;
         });
       }
+      if( key === 'responses' ) {
+        return validation_responses(row[key]);
+      }
       return standardRender(row, key);
     },
     columnLabels : {
       'db_id' : 'Database ID',
-      'paths' : 'Fcrepo Paths'
+      'paths' : 'Fcrepo Paths',
+      'responses' : 'Validation',
     },
     filters : {
       db_id : {
@@ -129,7 +134,6 @@ const viewConfig = {
     },
     keySort : ['path', 'model', 'action', 'message', 'updated', 'container_types', 'workflow_types',
     'transform_service', 'update_types', 'db_response', 'update_count'],
-  renderCellValue : dbsync,
     ignoreKeys : ['validate_response_id', 'validation_comment_count', 'validation_error_count', 'validation_warning_count'],
     renderCellValue : dbsync,
     keySort : ['path', 'model', 'action', 'message', 'updated', 'container_types', 'workflow_types',
@@ -351,8 +355,31 @@ function dbsync(row, key) {
       return html`${unsafeHTML(replaceWhitespace(row[key]))}`;
   } else if ( key === 'transform_service' && row[key] ) {
     return html`<a href="${row[key]}" target="_blank">${row[key]}</a>`;
+  } else if( key === 'validation_responses' ) {
+    return validation_responses(row[key]);
   }
   return standardRender(row, key);
+}
+
+function validation_responses(responses) {
+  if( !responses ) return '';
+
+  return html`
+    <div class="responsive-table" style="background-color: white">
+      <table>
+        <tbody>
+        ${responses.map(item => html`
+          <tr>
+            <td>${item.type}</td>
+            <td>${item.model}</td>
+            <td>${item.label}</td>
+            <td>${unsafeHTML(formatJson(item.additional_info))}</td>
+          </tr>
+        `)}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 export default viewConfig;

@@ -54,9 +54,18 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
     if( this.query.model ) {
       query.model = this.query.model;
     }
-    if( this.query.error_count ) statsQuery.type = 'eq.error';
-    else if ( this.query.warning_count ) statsQuery.type = 'eq.warning';
-    else if ( this.query.comment_count ) statsQuery.type = 'eq.comment';
+
+    console.log('this.query', this.query)
+    if( this.query.error_count ) {
+      this.statsQuery.type = 'eq.error';
+      query.type = 'eq.error';
+    } else if ( this.query.warning_count ) {
+      this.statsQuery.type = 'eq.warning';
+      query.type = 'eq.warning';
+    } else if ( this.query.comment_count ) {
+      this.statsQuery.type = 'eq.comment';
+      query.type = 'eq.comment';
+    }
 
     this.DataViewModel.dbSyncValidateLabels(query).then(e => {
       this.tableConfig.filters.label.options = e.payload.map(item => {
@@ -76,7 +85,7 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
     if( !query.limit ) query.limit = 10;
     if( !query.order ) query.order = 'db_id.asc';
 
-    let statsQuery = {order: 'cdcount.desc'};
+    let statsQuery = {order: 'count.desc'};
     if( query.model ) statsQuery.model = query.model;
     if( query.error_count ) statsQuery.type = 'eq.error';
     else if ( query.warning_count ) statsQuery.type = 'eq.warning';
