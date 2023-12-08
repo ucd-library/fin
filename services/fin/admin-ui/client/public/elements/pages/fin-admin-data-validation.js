@@ -61,7 +61,7 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
 
     if( this.query.model_in ) {
       this.statsQuery.model = 'eq.'+this.query.model_in;
-      query.model = this.query.model_in;
+      query.model = 'eq.'+this.query.model_in;
     }
 
     if( this.query.type_in ) {
