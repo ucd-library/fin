@@ -4,6 +4,8 @@ import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
 import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 import AutoRefresh from '../mixins/page-refresh.js';
 
+import "@ucd-lib/theme-elements/brand/ucd-theme-collapse/ucd-theme-collapse.js"
+
 import "../widgets/fin-admin-data-table.js"
 import viewConfig from '../config.js'
 
@@ -45,7 +47,13 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
     let dataModels = Object.keys(e.payload.registeredModels || {});
-    this.tableConfig.filters.model.options = dataModels;
+
+    this.tableConfig.filters.model.options = dataModels.map(model => {
+      return {
+        label : model,
+        query : { model_in : model }
+      }
+    });
   }
 
   _loadLabels() {
@@ -55,7 +63,6 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
       query.model = this.query.model;
     }
 
-    console.log('this.query', this.query)
     if( this.query.error_count ) {
       this.statsQuery.type = 'eq.error';
       query.type = 'eq.error';
@@ -71,7 +78,7 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
       this.tableConfig.filters.label.options = e.payload.map(item => {
         return {
           label : item.label,
-          query : { labels : 'cs.{"'+item.label+'"}'}
+          query : { label_in : item.label}
         }
       });
       this.mainDataTable.requestUpdate();

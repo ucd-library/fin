@@ -79,6 +79,24 @@ CREATE OR REPLACE VIEW dbsync_validate_response_view AS
       validate_response_id
   ) AS us on vr.validate_response_id = us.validate_response_id;
 
+CREATE OR REPLACE FUNCTION query_validate_response (
+  model_in TEXT,
+  type_in TEXT,
+  label_in TEXT
+) RETURNS TABLE (
+  validate_response_id INTEGER,
+  updated TIMESTAMP,
+  db_id TEXT,
+  model TEXT,
+  labels TEXT[],
+  responses JSON,
+  error_count BIGINT,
+  warning_count BIGINT,
+  comment_count BIGINT
+) AS $$
+  SELECT * from dbsync.query_validate_response(model_in, type_in, label_in);
+$$ LANGUAGE SQL;
+
 CREATE OR REPLACE VIEW validate_response_stats AS
   SELECT * FROM dbsync.validate_response_stats;
 
@@ -148,4 +166,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE
 ON ALL TABLES IN SCHEMA restapi 
 TO admin_rest_api;
 GRANT USAGE ON SCHEMA restapi TO admin_rest_api;
-grant execute on all functions in schema restapi to admin_rest_api;
+grant execute on all functions in schema restapi to admin_rest_api
+
+GRANT USAGE ON SCHEMA dbsync TO admin_rest_api;
+GRANT SELECT ON TABLE dbsync.validate_response_item TO admin_rest_api;
+GRANT SELECT ON TABLE dbsync.validate_response TO admin_rest_api;
+GRANT EXECUTE ON FUNCTION dbsync.query_validate_response(TEXT, TEXT, TEXT) TO admin_rest_api;

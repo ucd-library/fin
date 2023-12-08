@@ -17,19 +17,23 @@ return html`
   .stats {
     overflow: auto;
     max-height: 275px;
+  }
+  ucd-theme-collapse[title="stats"] {
     margin-bottom: 20px;
   }
 </style>
 
-<div class="stats">
-  <fin-admin-data-table 
-    name="data-validation-stats"
-    render-type="table"
-    ?auto-refresh="${this.autoRefresh}"
-    .query="${this.statsQuery}"
-    hide-total>
-  </fin-admin-data-table>
-</div>
+<ucd-theme-collapse title="Validation Stats" opened>
+  <div class="stats">
+    <fin-admin-data-table 
+      name="data-validation-stats"
+      render-type="table"
+      ?auto-refresh="${this.autoRefresh}"
+      .query="${this.statsQuery}"
+      hide-total>
+    </fin-admin-data-table>
+  </div>
+</ucd-theme-collapse>
 
 <fin-admin-data-table 
   name="data-validation-main"

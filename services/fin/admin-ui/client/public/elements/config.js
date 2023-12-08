@@ -43,7 +43,7 @@ const viewConfig = {
   },
 
   'data-validation-main' : {
-    table : 'dbsync_validate_response_view',
+    table : 'rpc/query_validate_response',
     ignoreKeys : ['comment_count', 'error_count', 'warning_count', 'labels'],
     renderCellValue : (row, key) => {
       if( key === 'paths' ) {
@@ -63,25 +63,27 @@ const viewConfig = {
       'responses' : 'Validation',
     },
     filters : {
-      db_id : {
-        type : 'text'
-      },
       model : {
-        type : 'keyword',
+        type : 'custom',
         options : []
       },
       validation : {
         type : 'custom',
         options : [
-          {label: 'Has Errors', query : {error_count: 'gt.0'}},
-          {label: 'Has Warnings', query : {warning_count: 'gt.0'}},
-          {label: 'Has Comments', query : {comment_count: 'gt.0'}}
+          {label: 'Has Errors', query : {type_in: 'error'}},
+          {label: 'Has Warnings', query : {type_in: 'warning'}},
+          {label: 'Has Comments', query : {type_in: 'comment'}}
         ]
       },
       label : {
         type : 'custom',
         options : []
       }
+    },
+    beforeQuery(query) {
+      if( !query.label_in ) query.label_in = '';
+      if( !query.type_in ) query.type_in = '';
+      if( !query.model_in ) query.model_in = '';
     },
     renderCellClass : (row, key) => {
       if( key === 'paths' ) return 'scrollable';

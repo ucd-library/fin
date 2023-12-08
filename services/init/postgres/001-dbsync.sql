@@ -123,6 +123,93 @@ CREATE INDEX IF NOT EXISTS update_status_model_idx ON update_status (model);
 CREATE INDEX IF NOT EXISTS update_status_db_id_idx ON update_status (db_id);
 CREATE INDEX IF NOT EXISTS update_status_update_types_idx ON update_status (update_types);
 
+
+CREATE OR REPLACE FUNCTION query_validate_response (
+  model_in TEXT,
+  type_in TEXT,
+  label_in TEXT
+) RETURNS TABLE (
+  validate_response_id INTEGER,
+  updated TIMESTAMP,
+  db_id TEXT,
+  model TEXT,
+  labels TEXT[],
+  responses JSON,
+  error_count BIGINT,
+  warning_count BIGINT,
+  comment_count BIGINT
+) AS $$
+DECLARE
+  vrids INTEGER[];
+BEGIN
+  if model_in = '' then
+    model_in := null;
+  end if;
+
+  if type_in = '' then
+    type_in := null;
+  end if;
+
+  if label_in = '' then
+    label_in := null;
+  end if;
+
+  SELECT 
+    array_agg(distinct vri.validate_response_id) INTO vrids
+  FROM
+    dbsync.validate_response_item vri 
+  WHERE 
+    (label_in IS NULL OR vri.label = label_in) AND
+    (type_in IS NULL OR vri.type = type_in);
+
+  RETURN QUERY
+  SELECT 
+    vr.validate_response_id, 
+    vr.updated, 
+    vr.db_id, 
+    vr.model, 
+    array_agg(vri.label) as labels,
+    json_agg(row_to_json(vri.*)) as responses,
+    count(*) FILTER (WHERE type = 'error') as error_count,
+    count(*) FILTER (WHERE type = 'warning') as warning_count,
+    count(*) FILTER (WHERE type = 'comment') as comment_count
+  FROM
+    dbsync.validate_response vr
+  LEFT JOIN
+    dbsync.validate_response_item vri ON vr.validate_response_id = vri.validate_response_id
+  WHERE
+    vr.validate_response_id = ANY(vrids) AND
+    (model_in IS NULL OR vr.model = model_in)
+  GROUP BY
+    vr.validate_response_id, 
+    vr.updated, 
+    vr.db_id, 
+    vr.model;
+
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE VIEW validate_response_view AS
+  SELECT 
+    vr.validate_response_id, 
+    vr.updated, 
+    vr.db_id, 
+    vr.model, 
+    array_agg(vri.label) as labels,
+    json_agg(row_to_json(vri.*)) as responses,
+    count(*) FILTER (WHERE type = 'error') as error_count,
+    count(*) FILTER (WHERE type = 'warning') as warning_count,
+    count(*) FILTER (WHERE type = 'comment') as comment_count 
+  FROM 
+    validate_response_item vri
+  LEFT JOIN
+    validate_response vr ON vri.validate_response_id = vr.validate_response_id
+  GROUP BY
+    vr.validate_response_id, 
+    vr.updated, 
+    vr.db_id, 
+    vr.model;
+
 CREATE OR REPLACE VIEW validate_response_view AS
   SELECT 
     vr.validate_response_id, 

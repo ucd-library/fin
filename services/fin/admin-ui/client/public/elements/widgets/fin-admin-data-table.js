@@ -111,6 +111,10 @@ export default class FinAdminDataTable extends Mixin(LitElement)
     if( this.query ) {
       query = (typeof this.query === 'string') ? JSON.parse(this.query) : this.query;
     }
+
+    if( typeof this.beforeQuery === 'function' ) {
+      this.beforeQuery(query);
+    }
     
     this.dataOpts.queryCount++;
     this.DataViewModel.pgQuery(this.table, query, this.dataOpts, this.name);
@@ -288,12 +292,24 @@ export default class FinAdminDataTable extends Mixin(LitElement)
   renderCustomFilter(key, query) {
     let options = this.filters[key].options || [];
 
+    // let currentQueryKeys = Object.keys(query);
+
     // find selected option
-    let currentQuery = '';
-    for( let qkey in query ) {
-      let exists = options.find(option => option.query[qkey]);
-      if( exists ) {
-        currentQuery = JSON.stringify(exists.query);
+    let selectedIndex = -1;
+    for( let i = 0; i < options.length; i++ ) {
+      let opt = options[i];
+      let currentQueryKeys = Object.keys(opt.query);
+
+      let match = true;
+      for( let key of currentQueryKeys ) {
+        if( opt.query[key] !== query[key] ) {
+          match = false;
+          break;
+        }
+      }
+
+      if( match ) {
+        selectedIndex = i;
         break;
       }
     }
@@ -303,10 +319,10 @@ export default class FinAdminDataTable extends Mixin(LitElement)
       <div class="field-container">
         <label for="${key}-picker">${key}</label>
         <select id="${key}-picker" key="${key}" @change="${this._onCustomFilterChange}">
-          <option value="">All</option>
-          ${options.map(option => html`
+          <option value="" ?selected="${selectedIndex === -1}">All</option>
+          ${options.map((option, i) => html`
             <option value="${JSON.stringify(option.query)}" 
-              ?selected="${JSON.stringify(option.query) === currentQuery}">
+              ?selected="${selectedIndex === i}">
               ${option.label}
             </option>
           `)}
