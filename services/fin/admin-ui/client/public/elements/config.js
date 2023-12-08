@@ -23,9 +23,9 @@ const viewConfig = {
     renderCellValue : (row, key) => {
       if ( ['validation_error_count', 'validation_warning_count', 'validation_comment_count'].includes(key) ) {
         if( row[key] === undefined || row[key] === null ) return '';
-        let filterKey = key.replace('validation_', '');
+        let filterKey = key.replace('validation_', '').replace('_count', '');
         return html`<visual-change>
-          <a href="#data-validation?limit=10&order=db_id.asc&${filterKey}=gt.0&model=eq.${row.name}">${row[key]}</a>
+          <a href="#data-validation?limit=10&order=db_id.asc&type_in=${filterKey}&model_in=${row.name}">${row[key]}</a>
         </visual-change>`;
       }
       if( key === 'dbItemCount' ) {
