@@ -116,7 +116,7 @@ CREATE OR REPLACE VIEW dbsync_stats AS
   SELECT action, count(*) as count FROM dbsync.update_status GROUP BY action;
 
 CREATE OR REPLACE VIEW dbsync_model_item_stats AS 
-  SELECT model, type, count(*) as count FROM dbsync.validate_response_stats GROUP BY model, type;
+  SELECT model, type, sum(count) as count FROM dbsync.validate_response_stats GROUP BY model, type;
 
 CREATE OR REPLACE VIEW dbsync_reindex_crawl_status AS
   SELECT * FROM dbsync.reindex_crawl_status;
