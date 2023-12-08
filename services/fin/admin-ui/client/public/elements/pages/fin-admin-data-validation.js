@@ -59,19 +59,13 @@ export default class FinAdminDataValidation extends Mixin(LitElement)
   _loadLabels() {
     let query = {};
 
-    if( this.query.model ) {
-      query.model = this.query.model;
+    if( this.query.model_in ) {
+      query.model = this.query.model_in;
     }
 
-    if( this.query.error_count ) {
-      this.statsQuery.type = 'eq.error';
-      query.type = 'eq.error';
-    } else if ( this.query.warning_count ) {
-      this.statsQuery.type = 'eq.warning';
-      query.type = 'eq.warning';
-    } else if ( this.query.comment_count ) {
-      this.statsQuery.type = 'eq.comment';
-      query.type = 'eq.comment';
+    if( this.query.type_in ) {
+      this.statsQuery.type = 'eq.'+this.query.type_in;
+      query.type = 'eq.'+this.query.type_in;
     }
 
     this.DataViewModel.dbSyncValidateLabels(query).then(e => {

@@ -371,14 +371,14 @@ function validation_responses(responses) {
   if( responses.length === 0 ) return '';  
 
   return html`
-    <div class="responsive-table" style="background-color: white">
+    <div class="responsive-table" style="background-color: white; overflow-x: auto">
       <table>
         <tbody>
         ${responses.map(item => html`
           <tr>
             <td>${item.type}</td>
-            <td>${item.model}</td>
             <td>${item.label}</td>
+            <td>${item.id}</td>
             <td>${unsafeHTML(formatJson(item.additional_info))}</td>
           </tr>
         `)}
