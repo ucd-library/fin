@@ -166,7 +166,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE
 ON ALL TABLES IN SCHEMA restapi 
 TO admin_rest_api;
 GRANT USAGE ON SCHEMA restapi TO admin_rest_api;
-grant execute on all functions in schema restapi to admin_rest_api
+grant execute on all functions in schema restapi to admin_rest_api;
 
 GRANT USAGE ON SCHEMA dbsync TO admin_rest_api;
 GRANT SELECT ON TABLE dbsync.validate_response_item TO admin_rest_api;
