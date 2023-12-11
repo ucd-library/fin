@@ -168,6 +168,12 @@ const viewConfig = {
     }
   },
 
+  'path-info-fin-cache' : {
+    table : 'fin_cache_quads',
+    ignoreKeys : ['quads_id', 'fedora_id'],
+    renderCellValue : standardRender
+  },
+
   'workflows-main' : {
     table : 'workflow_lastest',
     query : {

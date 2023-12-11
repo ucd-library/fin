@@ -13,6 +13,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
       dbsyncTable : {type: String},
       dbsyncQuery : {type: Object},
       workflowQuery : {type: Object},
+      finCacheQuery : {type: Object},
       gcsQuery : {type: Object},
       children : {type: Array},
       ldpLinks : {type: Array},
@@ -42,6 +43,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     this.dbsyncQuery = {limit: 0, order: 'path.asc'};
     this.workflowQuery = {limit: 0};
     this.gcsQuery = {limit: 0};
+    this.finCacheQuery = {limit: 0};
     this.children = [];
     this.properties = [];
     this.ldpLinks = [];
@@ -69,6 +71,7 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     this.queryDbSync();
     this.queryWorkflows();
     this.queryGcs();
+    this.queryFinCache();
 
     try {
       this.children = [];
@@ -205,6 +208,20 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     };
 
     this.gcsQuery = query;
+  }
+
+  async queryFinCache() {
+    if( !this.path ) return;
+
+    let fedora_id = 'info:fedora'+this.path.replace('/fcr:metadata', '');
+
+    let query = {
+      limit : this.finCacheQuery.limit || 10,
+      order : 'predicate.asc',
+      fedora_id : `eq.${fedora_id}`
+    };
+
+    this.finCacheQuery = query;
   }
 
   _onRunWorkflowClick(e) {

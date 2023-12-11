@@ -162,6 +162,9 @@ CREATE OR REPLACE VIEW workflow_workflow_gcs AS
 CREATE OR REPLACE VIEW workflow_stats AS
   SELECT name, state, count(*) as count from workflow_lastest GROUP BY name, state ORDER BY name, count;
 
+CREATE OR REPLACE VIEW fin_cache_quads AS
+  SELECT * FROM fin_cache.quads_view;
+
 GRANT SELECT, INSERT, UPDATE, DELETE
 ON ALL TABLES IN SCHEMA restapi 
 TO admin_rest_api;

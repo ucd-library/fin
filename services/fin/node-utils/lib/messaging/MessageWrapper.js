@@ -75,7 +75,15 @@ class MessageWrapper {
   }
 
   getObject() {
-    return this.getValue(this.body, 'https://www.w3.org/ns/activitystreams#object');
+    if( !this.body ) return null;
+    if( this.body['https://www.w3.org/ns/activitystreams#object'] ) {
+      let stream =  this.body['https://www.w3.org/ns/activitystreams#object'];
+      if( Array.isArray(stream) ) {
+        return stream[0];
+      }
+      return stream;
+    }
+    return null;
   }
 
   getTimestamp() {

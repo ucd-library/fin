@@ -30,7 +30,8 @@ class FinCache {
     let id = msg.getFinId();
     let types = msg.getContainerTypes();
     let updateType = msg.getMessageTypes()
-      .map(type => type.replace('https://www.w3.org/ns/activitystreams#', ''));
+      .map(type => type.replace('https://www.w3.org/ns/activitystreams#', ''))
+      .map(type => type.replace('http://digital.ucdavis.edu/schema#', ''));
 
     if( !Array.isArray(updateType) ) {
       updateType = [updateType];

@@ -115,6 +115,13 @@ return html`
   .query="${this.workflowQuery}">
 </fin-admin-data-table>
 
+<h1 class="heading--weighted-underline">Fin Cache</h1>
+<fin-admin-data-table 
+  name="path-info-fin-cache"
+  ?auto-refresh="${this.autoRefresh}"
+  .query="${this.finCacheQuery}">
+</fin-admin-data-table>
+
 <h1 class="heading--weighted-underline">GCS Sync</h1>
 <fin-admin-data-table 
   name="path-info-gcssync"
