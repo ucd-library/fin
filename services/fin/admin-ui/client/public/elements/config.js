@@ -171,7 +171,16 @@ const viewConfig = {
   'path-info-fin-cache' : {
     table : 'fin_cache_quads',
     ignoreKeys : ['quads_id', 'fedora_id'],
-    renderCellValue : standardRender
+    renderCellValue : (row, key) => {
+      if( key === 'subject' ) {
+        if( row[key].match(row.fedora_id) ) {
+          let short = row[key].replace(row.fedora_id, '');
+          return '<'+short+'>';
+        }
+        return row[key];
+      }
+      return standardRender(row, key);
+    }
   },
 
   'workflows-main' : {

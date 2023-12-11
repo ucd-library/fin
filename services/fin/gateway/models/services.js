@@ -1,5 +1,5 @@
 const api = require('@ucd-lib/fin-api');
-const {logger, config, models, MessagingClients, FinCache} = require('@ucd-lib/fin-service-utils');
+const {logger, config, models, MessagingClients, FinCache, utils} = require('@ucd-lib/fin-service-utils');
 const request = require('request');
 const {URL} = require('url');
 const jsonld = require('jsonld');
@@ -60,13 +60,18 @@ class ServiceModel {
   async init() {
     this.clientService = null;
 
-    // listen for service definition updates
-    this.messaging = new RabbitMqClient('gateway');
-    this.messaging.subscribe(
-      // config.activeMq.fcrepoTopic,
-      this.messaging.EXCLUSIVE_QUEUE,
-      e => this._onFcrepoEvent(e)
-    );
+    let hostname = await utils.getContainerHostname();
+    if( hostname.match(/-1$/) ) {
+      logger.info('Listening for fcrepo events to update fin-cache');
+
+      // listen for service definition updates
+      this.messaging = new RabbitMqClient('gateway');
+      this.messaging.subscribe(
+        // config.activeMq.fcrepoTopic,
+        this.messaging.EXCLUSIVE_QUEUE,
+        e => this._onFcrepoEvent(e)
+      );
+    }
 
     // load model services
     let modelNames = await models.names();

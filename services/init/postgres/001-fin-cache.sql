@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS quads (
   predicate_id INTEGER REFERENCES quads_uri_ref(uri_ref_id),
   object_value TEXT,
   object_type_id INTEGER REFERENCES quads_uri_ref(uri_ref_id),
-  last_modified TIMESTAMP
+  last_modified TIMESTAMP,
+  cache_time TIMESTAMP DEFAULT NOW()
 );
 
 CREATE OR REPLACE VIEW quads_view AS 
@@ -25,7 +26,8 @@ CREATE OR REPLACE VIEW quads_view AS
     p.uri AS predicate,
     o.uri AS object_type,
     object_value as object,
-    last_modified
+    last_modified,
+    cache_time
   FROM quads
   LEFT JOIN quads_uri_ref f ON f.uri_ref_id = fedora_id
   LEFT JOIN quads_uri_ref s ON s.uri_ref_id = subject_id
@@ -60,8 +62,8 @@ BEGIN
   INSERT INTO fin_cache.quads_uri_ref (uri) VALUES (object_type_in) ON CONFLICT DO NOTHING;
   SELECT uri_ref_id INTO otid FROM fin_cache.quads_uri_ref WHERE uri = object_type_in;
 
-  INSERT INTO fin_cache.quads (fedora_id, subject_id, predicate_id, object_value, object_type_id, last_modified)
-  VALUES (fid, sid, pid, object_value_in, otid, modified_in);
+  INSERT INTO fin_cache.quads (fedora_id, subject_id, predicate_id, object_value, object_type_id, last_modified, cache_time)
+  VALUES (fid, sid, pid, object_value_in, otid, modified_in, NOW());
 
 END;
 $$ LANGUAGE plpgsql;

@@ -41,10 +41,13 @@ class FinCache {
     for( let ut of updateType ) {
       try {
         if( this.UPDATE_TYPES.DELETE.includes(ut) ) {
+          logger.info('fin-cache deleting: '+id);
           await this.delete(id);
         } else if( this.UPDATE_TYPES.CREATE === ut || this.UPDATE_TYPES.UPDATE === ut ) {
+          logger.info('fin-cache updating: '+id);
           await this.update(id, types);
         } else if( this.UPDATE_TYPES.REINDEX === ut ) {
+          logger.info('fin-cache reindexing: '+id);
           await this.reindex(id);
         }
       } catch(e) {
