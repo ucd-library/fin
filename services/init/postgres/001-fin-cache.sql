@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS quads (
   last_modified TIMESTAMP,
   cache_time TIMESTAMP DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS quads_fedora_id_idx ON quads(fedora_id);
+CREATE INDEX IF NOT EXISTS quads_subject_id_idx ON quads(subject_id);
+CREATE INDEX IF NOT EXISTS quads_predicate_id_idx ON quads(predicate_id);
 
 CREATE OR REPLACE VIEW quads_view AS 
   SELECT
