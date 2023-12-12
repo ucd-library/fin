@@ -133,8 +133,7 @@ class DbSync {
       return;
     }
 
-
-    if( msgTypes.includes('http://digital.ucdavis.edu/schema#Reindex') ) {
+    if( msgTypes.includes('Reindex') || msgTypes.includes('http://digital.ucdavis.edu/schema#Reindex') ) {
       await postgres.queue({
         event_id: msg.body['@id'],
         event_timestamp: new Date(msg.getTimestamp()).toISOString(),

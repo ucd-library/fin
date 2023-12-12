@@ -1,11 +1,12 @@
-const {logger, config, RDF_URIS} = require('@ucd-lib/fin-service-utils');
+const {logger, config, RDF_URIS, MessagingClients} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
-const postgres = require('./postgres.js');
 const clone = require('clone');
-const uuid = require('uuid');
 
 const FC_BASE_RE = new RegExp('^'+api.getConfig().fcBasePath);
 const FC_HOST_RE = new RegExp('^'+config.fcrepo.host+api.getConfig().fcBasePath);
+
+
+const { RabbitMqClient, MessageWrapper } = MessagingClients;
 
 /**
  * @class ReindexCrawler
@@ -23,8 +24,10 @@ class ReindexCrawler {
 
     this.options = options;
 
-
+    this.messaging = new RabbitMqClient('reindex-crawler');
+    console.log('reindex crawler', this.messaging);
   }
+  
 
   getCrawlData(startTime) {
     return {
@@ -163,13 +166,21 @@ class ReindexCrawler {
    * @param {String} writeIndex Optional.  Index to write to. mostly used for reindex
    */
   sendReindexEvent(node, writeIndex) {
-    return postgres.queue({
-      event_id : 'reindex:'+uuid.v4(),
-      event_timestamp : new Date().toISOString(),
-      path : this.cleanPath(node['@id']),
-      container_types : node['@type'] || [],
-      update_types : ['Reindex']
-    });
+    return this.messaging.sendMessage(MessageWrapper.createMessage(
+      ['http://digital.ucdavis.edu/schema#Reindex'],
+      {
+        '@id': node['@id'],
+        '@type': node['@type'],
+        'http://digital.ucdavis.edu/schema#writeIndex': writeIndex || ''
+      }
+    ));
+    // return postgres.queue({
+    //   event_id : 'reindex:'+uuid.v4(),
+    //   event_timestamp : new Date().toISOString(),
+    //   path : this.cleanPath(node['@id']),
+    //   container_types : node['@type'] || [],
+    //   update_types : ['Reindex']
+    // });
   }
 }
 

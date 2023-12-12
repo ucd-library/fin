@@ -2,6 +2,33 @@ const jsonld = require('jsonld');
 const uuid = require('uuid');
 const logger = require('../logger.js');
 
+/**
+ * @class MessageWrapper
+ * 
+ * @description Wrapper for messages that come in from the message queue.  Example
+ * Structure:
+ * 
+ * {
+ *   "@id": "urn:uuid:60aa6b5b-116b-4b05-a07a-3f6b1e0254f3",
+ *   "@type": ["IntegrationTestPing"],
+ *   "https://www.w3.org/ns/activitystreams#object": {
+ *     "@id": "/activemq/de34bd78-4539-43f5-954e-31ccdde39f26",
+ *     "@type": [
+ *       "http://www.w3.org/ns/prov#Entity"
+ *     ],
+ *     "http://schema.org/agent": "dbsync",
+ *     "http://schema.org/startTime": {
+ *       "@value": "2023-12-12T17:13:49.930Z"
+ *     },
+ *     "http://schema.org/endTime": {
+ *       "@value": "2023-12-12T17:13:51.339Z"
+ *     },
+ *     "https://www.w3.org/ns/activitystreams": {
+ *       "@id": "http://digital.ucdavis.edu/schema#DataModelUpdate"
+ *     }
+ *   }
+ * }
+ */
 class MessageWrapper {
 
   constructor(raw, headers={}, body={}) {
@@ -24,6 +51,10 @@ class MessageWrapper {
   }
 
   static createMessage(types, object) {
+    if( !object['https://www.w3.org/ns/activitystreams#published'] ) {
+      object['https://www.w3.org/ns/activitystreams#published'] = new Date().toISOString();
+    }
+
     return {
       '@id' : 'urn:uuid:'+uuid.v4(),
       '@type' : types,

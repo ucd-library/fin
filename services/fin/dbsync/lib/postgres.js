@@ -91,6 +91,8 @@ class DbSyncPostgresUtils {
     // let resp = await this.pg.query(`SELECT path FROM ${this.schema}.event_queue where path = $1;`, [args.path]);
     if( !args.container_types ) args.container_types = [];
 
+    args.update_types = args.update_types.map(t => t.replace(/.*(\/|#)/g, ''));
+
     await this.pg.query(`
       SELECT * from ${this.schema}.upsert_event_queue(
         $1::TEXT,
