@@ -107,6 +107,14 @@ module.exports = {
     }
   },
 
+  metrics : {
+    enabled : env.FIN_METRICS_ENABLED === 'true',
+    expressEnabled : env.FIN_METRICS_EXPRESS_ENABLED === 'true',
+    export : {
+      gc : env.FIN_METRICS_EXPORT_GC === 'true'
+    }
+  },
+
   activeMq : {
     hostname : fcrepoHostname,
     fcrepoTopic : '/topic/fedora',

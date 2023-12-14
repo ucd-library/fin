@@ -28,5 +28,6 @@ module.exports = {
   workflow : require('./lib/workflow/index.js'),
   keycloak : require('./lib/keycloak.js'),
   models : require('./lib/models.js'),
-  gc : require('./lib/gc/index.js')
+  gc : require('./lib/gc/index.js'),
+  metrics : require('./lib/metrics/index.js'),
 }
