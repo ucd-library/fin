@@ -60,18 +60,20 @@ class ServiceModel {
   async init() {
     this.clientService = null;
 
+    this.finCacheEnabled = false;
     let hostname = await utils.getContainerHostname();
     if( hostname.match(/-1$/) ) {
       logger.info('Listening for fcrepo events to update fin-cache');
-
-      // listen for service definition updates
-      this.messaging = new RabbitMqClient('gateway');
-      this.messaging.subscribe(
-        // config.activeMq.fcrepoTopic,
-        this.messaging.EXCLUSIVE_QUEUE,
-        e => this._onFcrepoEvent(e)
-      );
+      this.finCacheEnabled = true;
     }
+
+    // listen for service definition updates
+    this.messaging = new RabbitMqClient('gateway');
+    this.messaging.subscribe(
+      // config.activeMq.fcrepoTopic,
+      this.messaging.EXCLUSIVE_QUEUE,
+      e => this._onFcrepoEvent(e)
+    );
 
     // load model services
     let modelNames = await models.names();
@@ -391,11 +393,12 @@ class ServiceModel {
       .map(item => item.trim())
       .filter(item => item)
 
-    // let fin search see events
-    try {
-      await finCache.onFcrepoEvent(event);
-    } catch(e) {
-      logger.error(e);
+    if( this.finCacheEnabled ) {
+      try {
+        await finCache.onFcrepoEvent(event);
+      } catch(e) {
+        logger.error(e);
+      }
     }
 
     if( !types.includes(SERVICE_TYPE) ) {
