@@ -1,5 +1,4 @@
 const {logger, config, keycloak, metrics} = require('@ucd-lib/fin-service-utils');
-metrics.init();
 
 const express = require('express');
 const bodyParser = require('body-parser');

@@ -1,5 +1,4 @@
 const fs = require('fs');
-const path = require('path');
 const env = process.env;
 const COMMON_URI = require('./lib/common-rdf-uris');
 
@@ -62,6 +61,7 @@ if( finCachePredicates.length === 0 ) {
 module.exports = {
 
   projectName : env.PROJECT_NAME || 'fin',
+  serviceName : env.FIN_SERVICE_NAME || 'unknown',
 
   serviceAccount : {
     username : env.FIN_SERVICE_ACCOUNT_NAME,
@@ -109,9 +109,10 @@ module.exports = {
 
   metrics : {
     enabled : env.FIN_METRICS_ENABLED === 'true',
-    expressEnabled : env.FIN_METRICS_EXPRESS_ENABLED === 'true',
+    harvestInterval : env.FIN_METRICS_HARVEST_INTERVAL ? parseInt(env.FIN_METRICS_HARVEST_INTERVAL) : (1000 * 15),
     export : {
-      gc : env.FIN_METRICS_EXPORT_GC === 'true'
+      gc : env.FIN_METRICS_EXPORT_GC === 'true',
+      stdout : env.FIN_METRICS_EXPORT_STDOUT === 'true'
     }
   },
 
@@ -178,7 +179,12 @@ module.exports = {
     cookieName : process.env.JWT_COOKIE_NAME || 'fin-jwt'
   },
 
+  api : {
+    port : env.FIN_API_PORT || 3005
+  },
+
   oidc : {
+    port : env.OIDC_PORT || 3004,
     clientId : env.OIDC_CLIENT_ID,
     baseUrl : env.OIDC_BASE_URL,
     secret : env.OIDC_SECRET,
@@ -205,6 +211,7 @@ module.exports = {
   },
 
   finac : {
+    port : env.FINAC_PORT || 3002,
     agents : {
       admin : 'admin',
       discover : 'discover',
@@ -247,6 +254,10 @@ module.exports = {
         '@graph.image', '@graph.textIndexable', '@graph.lastModified'
       ]
     }
+  },
+
+  esIndexManagement : {
+    port : env.ES_INDEX_MANAGEMENT_PORT || 3001,
   },
 
   redis : {

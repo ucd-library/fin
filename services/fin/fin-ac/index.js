@@ -1,6 +1,7 @@
+const {config, logger, FinAC} = require('@ucd-lib/fin-service-utils');
+
 const express = require('express');
 const api = require('@ucd-lib/fin-api');
-const {config, logger, FinAC} = require('@ucd-lib/fin-service-utils');
 const model = new FinAC();
 
 api.setConfig({
@@ -93,7 +94,7 @@ function cleanPath(path) {
   return path.replace(/\/fcrepo\/rest/, '');
 }
 
-app.listen(3000, () => {
-  logger.info('fin ac listening on port 3000');
+app.listen(config.finac.port, () => {
+  logger.info('fin ac listening on port '+config.finac.port);
 });
 

@@ -1,6 +1,5 @@
-const express = require('express');
-const os = require('os');
 const {config, logger, keycloak} = require('@ucd-lib/fin-service-utils');
+const express = require('express');
 const ReindexCrawler = require('./lib/reindex-crawler.js');
 const postgres = require('./lib/postgres.js');
 const api = require('@ucd-lib/fin-api');

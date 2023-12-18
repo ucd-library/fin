@@ -1,3 +1,6 @@
+// Must be required first!
+const metrics = require('./lib/metrics/index.js');
+
 module.exports = {
   config : require('./config'),
   jsonld : require('./lib/jsonld'),
@@ -29,5 +32,5 @@ module.exports = {
   keycloak : require('./lib/keycloak.js'),
   models : require('./lib/models.js'),
   gc : require('./lib/gc/index.js'),
-  metrics : require('./lib/metrics/index.js'),
+  metrics
 }

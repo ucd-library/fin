@@ -4,6 +4,8 @@ const os = require('os');
 const {exec} = require('child_process');
 const logger = require('./logger.js');
 
+let hostname = '';
+
 /**
  * @method getRootDomain
  * @description given a url string, return the root domain name. So for
@@ -22,6 +24,8 @@ function getRootDomain(url) {
 }
 
 function getContainerHostname() {
+  if( hostname ) return hostname;
+
   return new Promise((resolve, reject) => {
     logger.info('getting container hostname',os.hostname());
     dns.lookup(os.hostname(), (err, address, family) => {
@@ -30,7 +34,8 @@ function getContainerHostname() {
       exec(`dig -x ${address} +short`, (err, stdout, stderr) => {
           if(err) return reject(err);
           if(stderr) return reject(stderr);
-          resolve(stdout.trim().replace(/\..*$/, ''));
+          hostname = stdout.trim().replace(/\..*$/, '');
+          resolve(hostname);
       });
     });    
   });

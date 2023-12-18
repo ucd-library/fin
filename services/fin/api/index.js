@@ -1,5 +1,5 @@
+const {logger, keycloak, metrics} = require('@ucd-lib/fin-service-utils');
 const express = require('express');
-const {logger, keycloak} = require('@ucd-lib/fin-service-utils');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
@@ -32,6 +32,6 @@ app.use(keycloak.setUser);
  */
 app.use('/api', require('./controllers'));
  
-app.listen(3000, () => {
-  logger.info('server ready on port 3000');
+app.listen(config.api.port, () => {
+  logger.info('api service ready on port '+config.api.port);
 });

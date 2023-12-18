@@ -4,7 +4,7 @@
     "http://digital.ucdavis.edu/schema#Service",
     "http://digital.ucdavis.edu/schema#GlobalService"
   ],
-  "urlTemplate": "http://api:3000{{svcPath}}",
+  "urlTemplate": "http://uber:3005{{svcPath}}",
   "description": "UCD Api for frontend client",
   "identifier": "api",
   "title": "api",

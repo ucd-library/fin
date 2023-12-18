@@ -4,7 +4,7 @@
     "http://digital.ucdavis.edu/schema#Service",
     "http://digital.ucdavis.edu/schema#ProxyService"
   ],
-  "urlTemplate": "http://finac:3000{{fcPath}}{{svcPath}}",
+  "urlTemplate": "http://uber:3002{{fcPath}}{{svcPath}}",
   "description": "Fin WebAC wrapper",
   "identifier": "finac",
   "title": "finac",

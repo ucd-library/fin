@@ -24,7 +24,7 @@ RUN mkdir -p $FIN_CONFIG_ROOT
 WORKDIR ${FIN_API_ROOT}
 COPY ${FIN_REPO_API_ROOT}/package.json .
 COPY ${FIN_REPO_API_ROOT}/package-lock.json .
-RUN npm ci && npm link
+RUN npm install && npm link
 # The npm link doesn't always properly set this :/
 RUN ln -s /fin/api/cli/bin/fin.js /usr/local/bin/fin
 
@@ -56,7 +56,7 @@ COPY ${FIN_REPO_SERVICE_ROOT}/workflow workflow
 
 # Admin UI
 COPY ${FIN_REPO_SERVICE_ROOT}/admin-ui admin-ui
-RUN cd admin-ui/client/public && npm ci
+RUN cd admin-ui/client/public && npm install
 RUN npm run admin-ui-build
 RUN npm run admin-ui-dist
 

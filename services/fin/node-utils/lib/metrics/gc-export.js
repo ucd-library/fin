@@ -13,16 +13,35 @@
 const { MeterProvider, PeriodicExportingMetricReader } = require("@opentelemetry/sdk-metrics");
 const { Resource } = require("@opentelemetry/resources");
 const { MetricExporter } = require("@google-cloud/opentelemetry-cloud-monitoring-exporter");
+const { TraceExporter } = require('@google-cloud/opentelemetry-cloud-trace-exporter');
 const { GcpDetectorSync } = require("@google-cloud/opentelemetry-resource-util");
-const config = require("../../config");
-const logger = require("../logger");
+const resourceAttributes = require("./resource-attributes");
+const fs = require('fs');
+
+const env = process.env;
+let serviceAccountFile = process.env.GOOGLE_APPLICATION_CREDENTIALS || '/etc/fin/service-account.json';
+let serviceAccountExists = fs.existsSync(serviceAccountFile) && fs.lstatSync(serviceAccountFile).isFile();
+if( serviceAccountExists && !env.GOOGLE_APPLICATION_CREDENTIALS ) {
+  env.GOOGLE_APPLICATION_CREDENTIALS = serviceAccountFile;
+}
+
 
 function setup() {
 
-  if( !config.google.serviceAccountExists ) {
-    logger.warn('Google service account not found, not setting up metrics');
+  if( !serviceAccountExists ) {
+    console.log('Google service account not found, not setting up metrics');
     return;
   }
+
+  console.log('Setting up Google Cloud OpenTelemetry metrics exporter');
+
+
+  let metricExporter = new MetricExporter({
+    keyFilename: env.GOOGLE_APPLICATION_CREDENTIALS
+  });
+  let traceExporter = new TraceExporter({
+    keyFilename: env.GOOGLE_APPLICATION_CREDENTIALS
+  });
 
   // Create MeterProvider
   const meterProvider = new MeterProvider({
@@ -31,21 +50,25 @@ function setup() {
     // running on GCP. These resource attributes will be translated to a specific GCP monitored
     // resource if running on GCP. Otherwise, metrics will be sent with monitored resource
     // `generic_task`.
-    resource: new Resource({
-      "service.name": "example-metric-service",
-      "service.namespace": "samples",
-      "service.instance.id": "12345",
-    }).merge(new GcpDetectorSync().detect()),
+    resource: new Resource(resourceAttributes())
+      .merge(new GcpDetectorSync().detect()),
   });
+
   // Register the exporter
   meterProvider.addMetricReader(
     new PeriodicExportingMetricReader({
       // Export metrics every 10 seconds. 5 seconds is the smallest sample period allowed by
       // Cloud Monitoring.
-      exportIntervalMillis: 10_000,
-      exporter: new MetricExporter(),
+      exportIntervalMillis: 10000,
+      exporter: metricExporter,
     })
   );
+
+  return {
+    metricExporter,
+    traceExporter,
+    meterProvider
+  }
 
 }
 

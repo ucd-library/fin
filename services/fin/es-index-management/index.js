@@ -1,6 +1,7 @@
+const {config, logger, keycloak, models, dataModels} = require('@ucd-lib/fin-service-utils');
+
 const express = require('express');
 const bodyParser = require('body-parser');
-const {config, logger, keycloak, models, dataModels} = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const elasticsearch = require('./elasticsearch.js');
 
@@ -191,8 +192,8 @@ async function init() {
   }
 }
 
-app.listen(3000, () => {
-  logger.info('es-index-management service ready on port 3000');
+app.listen(config.esIndexManagement.port, () => {
+  logger.info('es-index-management service ready on port '+config.esIndexManagement.port);
   init();
 });
 

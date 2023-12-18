@@ -4,7 +4,7 @@
     "http://digital.ucdavis.edu/schema#Service",
     "http://digital.ucdavis.edu/schema#GlobalService"
   ],
-  "urlTemplate": "http://es-index-management:3000{{svcPath}}",
+  "urlTemplate": "http://uber:3001{{svcPath}}",
   "description": "Manage Elastic Search aliases and indexes",
   "identifier": "es-index-management",
   "title": "Elastic Search",

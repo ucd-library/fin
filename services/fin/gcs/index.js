@@ -1,7 +1,8 @@
+const {gc, logger, config} = require('@ucd-lib/fin-service-utils');
+
 const express = require('express');
 const gcsConfig = require('./lib/config.js');
 const path = require('path');
-const {gc, logger, config} = require('@ucd-lib/fin-service-utils');
 const diskCache = require('./lib/disk-cache.js');
 const fs = require('fs-extra');
 const {gcs} = gc;
