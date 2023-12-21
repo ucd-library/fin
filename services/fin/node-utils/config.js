@@ -118,6 +118,9 @@ module.exports = {
       },
       fcrepo : {
         enabled : env.FIN_METRICS_FCREPO_ENABLED === 'true'
+      },
+      fin : {
+        enabled : env.FIN_METRICS_FIN_ENABLED === 'true'
       }
     },
     export : {
@@ -190,11 +193,11 @@ module.exports = {
   },
 
   api : {
-    port : env.FIN_API_PORT || 3005
+    port : env.FIN_API_PORT || 3004
   },
 
   oidc : {
-    port : env.OIDC_PORT || 3004,
+    port : env.OIDC_PORT || 3003,
     clientId : env.OIDC_CLIENT_ID,
     baseUrl : env.OIDC_BASE_URL,
     secret : env.OIDC_SECRET,

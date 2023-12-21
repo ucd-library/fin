@@ -13,13 +13,6 @@ for( let i = 0; i < BUFFER_SIZE; i++ ) {
   RANDOM_DATA[i] = Math.round(Math.random() * 255);
 }
 
-if( !config.metrics.enabled ) {
-  return;
-}
-if( !config.metrics.instruments.fs.enabled ) {
-  return;
-}
-
 async function init() {
   const meter = metrics.meterProvider.getMeter('default');
 

@@ -7,13 +7,6 @@ let INTERVAL = 5000;
 const URL = config.fcrepo.host+'/fcrepo/prometheus';
 const TOKEN = Buffer.from(config.fcrepo.admin.username+':'+config.fcrepo.admin.password).toString('base64');
 
-if( !config.metrics.enabled ) {
-  return;
-}
-// if( !config.metrics.instruments.fcrepo.enabled ) {
-  // return;
-// }
-
 let meters = {};
 
 async function fetchMetrics() {
@@ -28,7 +21,7 @@ async function fetchMetrics() {
     }
     let raw = await res.text();
     
-    // hack for parser
+    // hack for parser not liking empty help
     raw = raw.replace(/# HELP (\w+)/g, '# HELP $1 _');
     
     data = parsePrometheusTextFormat(raw);
@@ -60,11 +53,12 @@ function ensureInstruments() {
       });
       meters[key].addCallback(async result => {
         for( let metric of data[key].metrics ) {
-          // console.log(metric)
           result.observe(metric.value, metric.labels);
         }
       });
     }
+
+    // TODO: add other types
   }
 }
 
