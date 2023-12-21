@@ -19,8 +19,10 @@ var esPort = process.env.ES_PORT || 9200;
 let serviceAccountFile = process.env.GOOGLE_APPLICATION_CREDENTIALS || '/etc/fin/service-account.json';
 let serviceAccountExists = fs.existsSync(serviceAccountFile) && fs.lstatSync(serviceAccountFile).isFile();
 let gcServiceAccount = {};
-if( serviceAccountExists && !env.GOOGLE_APPLICATION_CREDENTIALS ) {
-  env.GOOGLE_APPLICATION_CREDENTIALS = serviceAccountFile;
+if( serviceAccountExists ) {
+  if( !env.GOOGLE_APPLICATION_CREDENTIALS ) {
+    env.GOOGLE_APPLICATION_CREDENTIALS = serviceAccountFile;
+  }
   gcServiceAccount = JSON.parse(fs.readFileSync(serviceAccountFile, 'utf-8'));
 }
 
