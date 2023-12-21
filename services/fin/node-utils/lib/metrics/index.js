@@ -18,6 +18,7 @@ const { NodeTracerProvider,  ConsoleSpanExporter,
     SimpleSpanProcessor } = require('@opentelemetry/sdk-trace-node');
 const { HostMetrics } = require('@opentelemetry/host-metrics');
 const gcExport = require('./gc-export');
+// const fsInstrument = require('./fs.js');
 const resourceAttributes = require('./resource-attributes');
 const env = process.env;
 
@@ -67,8 +68,8 @@ function init() {
     // instrumentations: [getNodeAutoInstrumentations()],
     instrumentations : [
       // Express instrumentation expects HTTP layer to be instrumented
-      new HttpInstrumentation(),
-      new ExpressInstrumentation(),
+      // new HttpInstrumentation(),
+      // new ExpressInstrumentation(),
       // new PgInstrumentation(),
       // new FsInstrumentation()
     ],
@@ -78,11 +79,13 @@ function init() {
   
   sdk.start();
 
-  const hostMetrics = new HostMetrics({ 
-    meterProvider, 
-    name: serviceName
-  });
-  hostMetrics.start();
+  // fsInstrument(meterProvider);
+
+  // const hostMetrics = new HostMetrics({ 
+  //   meterProvider, 
+  //   name: serviceName
+  // });
+  // hostMetrics.start();
 }
 
 init();

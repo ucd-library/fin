@@ -110,6 +110,16 @@ module.exports = {
   metrics : {
     enabled : env.FIN_METRICS_ENABLED === 'true',
     harvestInterval : env.FIN_METRICS_HARVEST_INTERVAL ? parseInt(env.FIN_METRICS_HARVEST_INTERVAL) : (1000 * 15),
+    instruments : {
+      fs : {
+        enabled : env.FIN_METRICS_FS_ENABLED === 'true',
+        basePath : env.FIN_METRICS_FS_PATH || '/fs-tests',
+        fileSize : env.FIN_METRICS_FS_FILE_SIZE ? parseInt(env.FIN_METRICS_FS_FILE_SIZE) : (1024*128)
+      },
+      fcrepo : {
+        enabled : env.FIN_METRICS_FCREPO_ENABLED === 'true'
+      }
+    },
     export : {
       gc : env.FIN_METRICS_EXPORT_GC === 'true',
       stdout : env.FIN_METRICS_EXPORT_STDOUT === 'true'

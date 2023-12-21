@@ -37,10 +37,10 @@ function setup() {
 
 
   let metricExporter = new MetricExporter({
-    keyFilename: env.GOOGLE_APPLICATION_CREDENTIALS
+    keyFile: env.GOOGLE_APPLICATION_CREDENTIALS
   });
   let traceExporter = new TraceExporter({
-    keyFilename: env.GOOGLE_APPLICATION_CREDENTIALS
+    keyFile: env.GOOGLE_APPLICATION_CREDENTIALS
   });
 
   // Create MeterProvider

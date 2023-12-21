@@ -49,10 +49,12 @@ COPY ${FIN_REPO_SERVICE_ROOT}/dbsync dbsync
 COPY ${FIN_REPO_SERVICE_ROOT}/es-index-management es-index-management
 COPY ${FIN_REPO_SERVICE_ROOT}/fin-ac fin-ac
 COPY ${FIN_REPO_SERVICE_ROOT}/gateway gateway
+COPY ${FIN_REPO_SERVICE_ROOT}/monitoring monitoring
 COPY ${FIN_REPO_SERVICE_ROOT}/gcs gcs
 COPY ${FIN_REPO_SERVICE_ROOT}/node-utils node-utils
 COPY ${FIN_REPO_SERVICE_ROOT}/oidc oidc
 COPY ${FIN_REPO_SERVICE_ROOT}/workflow workflow
+COPY ${FIN_REPO_SERVICE_ROOT}/uber uber
 
 # Admin UI
 COPY ${FIN_REPO_SERVICE_ROOT}/admin-ui admin-ui
