@@ -198,7 +198,6 @@ const viewConfig = {
     keySort : ['path', 'name', 'state', 'workflow_id', 'updated', 
               'created', 'error', 'data', 'type'],
     renderCellValue : (row, key) => {
-      console.log(row);
       if( key === 'path' ) {
         let path = (row[key] || '').replace(/\/fcr:metadata$/, '');
         return html`<a href="#path-info${path}">${row[key]}</a>`;
