@@ -516,7 +516,7 @@ class FinGcWorkflowModel {
       logger.warn('Unable to load workflow file from gcs: '+workflowFile);
     }
 
-    // if the workflow was not found in gcs, try to load it from postgress
+    // if the workflow was not found in gcs, try to load it from postgres
     if( !workflow ) {
       workflow = await pg.getLatestWorkflowByPath(finPath, workflowName);
       if( !workflow ) {

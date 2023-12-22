@@ -23,6 +23,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       reindexing : {type: Boolean},
       workflowName : {type: String},
       workflowPath : {type: String},
+      workflowDeleteErrors : {type: Array},
       fcrepoTypeStats : {type: Array},
       deletingWorkflows : {type: Boolean},
       baseDocsUrl : {type: String},
@@ -204,8 +205,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     if( !confirm('Are you sure you want to delete all '+name+' workflows with state = '+state+'?') ) return;
 
     // double check!!
-    if( state !== 'error' ) {
-      return alert('Only workflows with state = error can be deleted');
+    if( state !== 'error' && state !== 'init' ) {
+      return alert('Only workflows with state = error or init can be deleted');
     }
 
     this.workflowPath = '';
@@ -219,7 +220,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     let query = {
       state: 'eq.'+state,
       name: 'eq.'+name,
-      select: 'path,name',
+      select: 'path,name,updated',
       limit,
       offset,
       order: 'path.asc'
@@ -236,11 +237,37 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     for( let row of results.payload ) {
       this.workflowPath = row.path;
       this.workflowName = row.name;
-      let {response} = await this.FinApiModel.deleteWorkflow(row.path, row.name);
-      // TODO: need error ui.  Cant use simple alert for this.
-      // if( response.status !== 200 ) {
-      //   alert('Error deleting workflow: '+response.status);
-      // }
+
+      // if workflow is in init state for less than 30 minutes, skip delete
+      if( typeof row.updated === 'string' ) {
+        row.updated = new Date(row.updated);
+      }
+      if( row.updated.getTime() > Date.now() - 1000*60*30 ) {
+        this.workflowErrors.push({
+          workflow: row.path+' '+row.name,
+          error: 'Workflow with state "init" updated in last 30 minutes, skipping delete'
+        });
+        continue;
+      }
+
+      try {
+        let {response, body} = await this.FinApiModel.deleteWorkflow(row.path, row.name);
+
+        if( response.status !== 200 ) {
+          this.workflowErrors.push({
+            workflow: row.path+' '+row.name,
+            error: response.status+': '+body
+          });
+          this.requestUpdate();
+        }
+      } catch(e) {
+        console.error('Error deleting workflow', e);
+        this.workflowErrors.push({
+          workflow: row.path+' '+row.name,
+          error: e.message
+        });
+        this.requestUpdate();
+      }
     }
 
     let rs = results.resultSet;
@@ -251,6 +278,11 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       this.deletingWorkflows = false;
       this.querySelector('fin-admin-data-table[name="dashboard-workflow-stats"]').runQuery();
     }
+  }
+
+  _clearWorkflowErrors() {
+    this.workflowDeleteErrors = [];
+    this.requestUpdate();
   }
 
   _onFcrepoTypeStatsUpdate(e) {

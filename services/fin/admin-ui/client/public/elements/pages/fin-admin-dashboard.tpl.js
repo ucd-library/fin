@@ -37,6 +37,10 @@ return html`
     font-size: 14px;
     color: var(--ucd-black-50);
   }
+  .workflow-errors {
+    max-height: 200px;
+    overflow-y: auto;
+  }
 </style>
 
 <div class="env">
@@ -80,6 +84,16 @@ return html`
   </h2>
   <div ?hidden="${!this.deletingWorkflows}">
     <div>Deleting worflow <b>${this.workflowName}</b> for path <b>${this.workflowPath}</b></div>
+  </div>
+
+  <div ?hidden="${!this.workflowDeleteErrors.length}" class="workflow-errors">
+    <div class="error">Error Deleting Workflows:</div>
+    <ul>
+      ${this.workflowDeleteErrors.map(error => html`
+        <li>${error.workflow}: ${error.message}</li>
+      `)}
+    </ul>
+    <div><button class="btn btn--primary btn--round" @click="${this._clearWorkflowErrors}">Clear Errors</button></div>
   </div>
   <fin-admin-data-table
     name="dashboard-workflow-stats"
