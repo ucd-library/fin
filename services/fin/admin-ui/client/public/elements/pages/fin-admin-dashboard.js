@@ -47,6 +47,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.reindexPath = '';
     this.workflowName = '';
     this.workflowPath = '';
+    this.workflowDeleteErrors = [];
     this.deletingWorkflows = false;
     this.fcrepoTypeStats = [];
     this.env = {};
