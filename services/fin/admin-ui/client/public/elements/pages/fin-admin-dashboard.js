@@ -217,7 +217,11 @@ export default class FinAdminDashboard extends Mixin(LitElement)
   }
 
   async deleteWorkflows(state, name, offset, limit) {
-    state = 'error'; // triple check :)
+    // double check!!
+    if( !['error', 'init'].includes(state) ) {
+      throw new Error('Only workflows with state = error or init can be deleted');
+    }
+
     let query = {
       state: 'eq.'+state,
       name: 'eq.'+name,
