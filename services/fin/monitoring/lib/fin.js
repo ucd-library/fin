@@ -3,7 +3,7 @@ const {ValueType} = require('@opentelemetry/api');
 
 const meter = metrics.meterProvider.getMeter('default');
 
-const dbsSyncQueueGauge = meter.createObservableGauge('fin.dbsync.queueLength',  {
+const dbsSyncQueueGauge = meter.createObservableGauge('fin.dbsync.queue-length',  {
   description: 'Number of events in the dbsync queue table',
   unit: '',
   valueType: ValueType.INT,
@@ -15,7 +15,7 @@ dbsSyncQueueGauge.addCallback(async result => {
 });
 
 
-const dataModelStats = meter.createObservableGauge('fin.dbsync.dataModelStats',  {
+const dataModelStats = meter.createObservableGauge('fin.dbsync.data-model-stats',  {
   description: 'Counts of known data model items in the fin database',
   unit: '',
   valueType: ValueType.INT,

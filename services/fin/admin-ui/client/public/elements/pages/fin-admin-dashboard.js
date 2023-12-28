@@ -28,7 +28,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       deletingWorkflows : {type: Boolean},
       baseDocsUrl : {type: String},
       env : {type: Object},
-      buildTime : {type: Date}
+      buildTime : {type: Date},
+      cloudDashboardUrl : {type: String},
     }
   }
 
@@ -52,6 +53,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.fcrepoTypeStats = [];
     this.env = {};
     this.buildTime = new Date();
+    this.cloudDashboardUrl = config.env.CLOUD_DASHBOARD_URL || '';
 
     this.baseDocsUrl = '';
 

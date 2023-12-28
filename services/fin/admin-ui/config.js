@@ -28,7 +28,8 @@ config.client = {
     FIN_SERVER_REPO_HASH : process.env.FIN_SERVER_REPO_HASH || '',
     APP_VERSION : process.env.APP_VERSION || '',
     BUILD_DATETIME : process.env.BUILD_DATETIME || '',
-    FIN_SERVER_IMAGE : process.env.FIN_SERVER_IMAGE || ''
+    FIN_SERVER_IMAGE : process.env.FIN_SERVER_IMAGE || '',
+    CLOUD_DASHBOARD_URL : process.env.CLOUD_DASHBOARD_URL || '',
   }
 };
 

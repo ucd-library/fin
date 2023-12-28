@@ -1,5 +1,6 @@
-const { config, logger, tests, waitUntil, MessagingClients, models, RDF_URIS, workflow } = require('@ucd-lib/fin-service-utils');
+const { config, logger, tests, waitUntil, MessagingClients, models, RDF_URIS, workflow, metrics } = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
+const {ValueType} = require('@opentelemetry/api');
 const postgres = require('./postgres');
 const clone = require('clone');
 
@@ -13,6 +14,11 @@ class DbSync {
     this.READ_LOOP_WAIT = 2000;
     this.PROCESS_QUEUE_CHECK_WAIT = 1000 * 60 * 5;
     this.PROCESS_QUEUE_EXPIRE_TIME = 1000 * 60 * 10;
+
+    this.metrics = {
+      messagesProcessed : 0,
+      validateMessagesProcessed : 0
+    }
 
     this.UPDATE_TYPES = {
       UPDATE: ['Create', 'Update'],
@@ -43,6 +49,28 @@ class DbSync {
     // cleanup deleted containers
     setInterval(() => this.cleanupDeletedContainers(), 1000 * 60 * 60 * 24);
     this.cleanupDeletedContainers();
+
+    // setup metrics
+    const meter = metrics.meterProvider.getMeter('default');
+    const readGauge = meter.createObservableGauge('fin.dbsync.messages-processed',  {
+      description: 'Messages processed by dbsync from PG queue',
+      unit: '',
+      valueType: ValueType.INT,
+    });
+    readGauge.addCallback(async result => {
+      result.observe(this.metrics.messagesProcessed);
+      this.metrics.messagesProcessed = 0;
+    });
+
+    const validateGauge = meter.createObservableGauge('fin.dbsync.validate-messages-processed',  {
+      description: 'Messages processed by dbsync from PG validate queue',
+      unit: '',
+      valueType: ValueType.INT,
+    });
+    validateGauge.addCallback(async result => {
+      result.observe(this.metrics.validateMessagesProcessed);
+      this.metrics.validateMessagesProcessed = 0;
+    });
   }
 
   async cleanupDeletedContainers() {
@@ -62,6 +90,8 @@ class DbSync {
       }
 
       await this.updateContainer(item);
+      this.metrics.messagesProcessed++;
+
       await postgres.clearMessage(item.event_id);
 
       this.readLoop();
@@ -93,6 +123,7 @@ class DbSync {
       }
 
       await this.runDataValidation(item.model, item.db_id);
+      this.metrics.validateMessagesProcessed++;
 
       this.validateLoop();
     } catch (e) {
