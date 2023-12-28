@@ -5,6 +5,7 @@ export default class VisualChange extends LitElement {
 
   static get properties() {
     return {
+      id : { type: String },
       isNumber : { type: Boolean },
       value : { type: String },
       oldValue : { type: String },
@@ -21,6 +22,7 @@ export default class VisualChange extends LitElement {
     this.changeTimerId = null;
     this.renderTime = 9000;
     this.render = render.bind(this);
+    this.id = '';
   }
 
   firstUpdated() {
@@ -40,6 +42,11 @@ export default class VisualChange extends LitElement {
   }
 
   updated(props) {
+    // don't show change if id has updated
+    if( props.has('id') && this.id !== props.get('id') ) {
+      return;
+    }
+
     if( !props.has('value') ) return;
     if( this.value === null || this.value === undefined ) {
       return;
