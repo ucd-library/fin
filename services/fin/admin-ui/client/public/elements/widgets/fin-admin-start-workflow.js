@@ -92,6 +92,10 @@ export default class FinAdminStartWorkflow extends Mixin(LitElement)
     // and we need to force it to run again
     if( selected.state ) opts.force = true;
 
+    if( this.shadowRoot.querySelector('#debug-workflow').checked ) {
+      opts.gcDebug = true;
+    }
+
     let resp = await this.FinApiModel.startWorkflow(this.path, selected.name, opts);
     let httpResp = resp.response;
     if( httpResp.status !== 200 ) {

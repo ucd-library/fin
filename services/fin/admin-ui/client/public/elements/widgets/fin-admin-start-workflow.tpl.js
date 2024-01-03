@@ -78,6 +78,14 @@ return html`
     </select>
   </div>
   
+  <div class="field-container">
+    
+    <label for="debug-workflow">
+      <input id="debug-workflow" 
+        name="debug-workflow" 
+        type="checkbox">
+      Debug Workflow (run with extra logging)</label>
+  </div>
 
   <div ?hidden="${!this.showStartButton}">
     <button @click="${this.run}" class="btn btn--invert btn--lg  btn--block">Start</button>

@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS workflow_data_updated_idx ON workflow(updated);
 
 CREATE TABLE IF NOT EXISTS workflow_gcs (
   workflow_gcs SERIAL PRIMARY KEY,
-  workflow_id UUID REFERENCES workflow(workflow_id),
+  workflow_id UUID REFERENCES workflow(workflow_id) ON DELETE CASCADE,
   file_hash TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS workflow_gcs_file_hash_idx ON workflow_gcs(file_hash);

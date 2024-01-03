@@ -1,3 +1,8 @@
+# 2.5.0
+
+  - Validation updates (major db schema change)
+  - Admin UI updates
+
 # 2.3.1
   
   - doc updates
