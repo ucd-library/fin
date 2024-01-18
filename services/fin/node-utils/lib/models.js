@@ -2,6 +2,8 @@ const config = require('../config.js');
 const logger = require('./logger.js');
 const fs = require('fs-extra');
 const path = require('path');
+const YAML = require('yaml');
+const swaggerJsdoc = require('swagger-jsdoc');
 
 /**
  * @class FinModelLoader
@@ -65,7 +67,101 @@ class FinModelLoader {
       throw new Error('Unknown model: '+model);
     }
 
-    return this.models[model];
+    model = this.models[model];
+
+    // load in swagger base file
+    let extensions = ['json', 'yaml', 'yml'];
+    let swaggerBase;
+    let definition = {
+      openapi: '3.0.0',
+      info: {
+        title: 'FIN API',
+        version: '1.0.0',
+        description:
+          'This is the Swagger documentation for FIN.',
+        license: {
+          name: 'Licensed Under MIT',
+          url: 'https://spdx.org/licenses/MIT.html'
+        },
+        contact: {
+          name: 'Online Strategy - UC Davis Library',
+          url: 'https://library.ucdavis.edu/online-strategy/'
+        },
+      }
+    };
+
+    for( let ext of extensions ) {
+      let filePath = path.join(config.models.rootDir, `swagger-spec.${ext}`);
+      if( fs.existsSync(filePath) ) {
+        swaggerBase = fs.readFileSync(filePath, 'utf8');
+        if( ext.match(/\.yaml|\.yml$/) ) {
+          swaggerBase = Object.assign(definition, YAML.parse(swaggerBase));
+        } else {
+          swaggerBase = Object.assign(definition, JSON.parse(swaggerBase));
+        }
+        break;
+      }
+    }
+
+    // combine swagger base with model swagger
+    if( typeof model.swagger === 'string' ) {
+      let isJsDoc = model.swagger.trim().toLowerCase() === 'jsdoc';
+      if( isJsDoc ) model.swagger = 'api.js';
+
+      let swaggerPath = path.join(config.models.rootDir, model.model.id,  model.swagger);
+      if( !fs.existsSync(swaggerPath) ) {
+        throw new Error('Swagger file not found: '+swaggerPath);
+      }
+
+      let swagger = {};
+      if( path.parse(swaggerPath).ext.match(/\.json$|\.yaml|\.yml$/) ) {
+        model.swagger = fs.readFileSync(swaggerPath, 'utf8');
+        if( path.parse(swaggerPath).ext.match(/\.yaml|\.yml$/) ) {
+          swagger = YAML.parse(model.swagger);
+        } else {
+          swagger = JSON.parse(model.swagger);
+        }
+
+        // merge swagger with swaggerBase
+        if( !Array.isArray(swagger.paths) ) {
+          swagger.paths = Object.entries(swagger.paths).map(([key, value]) => ({ path : key, docs : value }));
+        }
+        swagger.paths.forEach(path => {
+          let baseMatch = swaggerBase.paths.filter(sb => sb.path === path.path)[0];
+          if( baseMatch ) {
+            baseMatch.docs = path.docs;            
+          } else {
+            swaggerBase.paths.push({
+              path : path.path,
+              docs : path.docs
+            });
+          }
+        });
+
+        if( swagger?.components?.schemas ) {
+          if( !swagger.components ) swagger.components = {};
+          if( !swagger.components.schemas ) swagger.components.schemas = {};
+
+          for( let key in swagger.components.schemas ) {
+            swaggerBase.components.schemas[key] = swagger.components.schemas[key];
+          }
+        }
+
+        model.swagger = swaggerBase;
+
+      } else if( isJsDoc ) {
+        // this returns jsdoc spec in api.js
+        model.swagger = swaggerJsdoc({
+          definition: swaggerBase,
+          apis : [swaggerPath]
+        });
+        if( typeof model.swagger === 'string' ) {
+          model.swagger = YAML.parse(model.swagger);
+        }
+      }
+    }
+
+    return model;
   }
 
 }
