@@ -13,7 +13,7 @@
     "gcs": "node gcs/index.js",
     "gateway": "node gateway/index.js",
     "workflow": "node workflow/index.js",
-    "uber" : "node uber/index.js",
+    "uber": "node uber/index.js",
     "admin-ui-watch": "./admin-ui/client/watch.sh",
     "admin-ui-build": "./admin-ui/client/build.sh",
     "admin-ui-dist": "./admin-ui/client/dist.sh"
@@ -73,8 +73,10 @@
     "redis": "^4.3.1",
     "request": "^2.88.2",
     "stompit": "^1.0.0",
+    "swagger-jsdoc": "^6.2.8",
     "tar-stream": "^2.2.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "yaml": "^2.3.4"
   },
   "devDependencies": {
     "@ucd-lib/cork-app-build": "^0.4.2",
