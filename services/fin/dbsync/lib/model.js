@@ -50,6 +50,12 @@ class DbSync {
     setInterval(() => this.cleanupDeletedContainers(), 1000 * 60 * 60 * 24);
     this.cleanupDeletedContainers();
 
+    this.setupMetrics();
+  }
+
+  async setupMetrics() {
+    if( config.metrics.enabled !== true ) return;
+
     // setup metrics
     const meter = metrics.meterProvider.getMeter('default');
     const readGauge = meter.createObservableGauge('fin.dbsync.messages-processed',  {
