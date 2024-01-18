@@ -123,10 +123,11 @@ class FinModelLoader {
         }
 
         // merge swagger with swaggerBase
+        if( !Array.isArray(swagger.paths) ) {
+          swagger.paths = Object.entries(swagger.paths).map(([key, value]) => ({ path : key, docs : value }));
+        }
         swagger.paths.forEach(path => {
           let baseMatch = swaggerBase.paths.filter(sb => sb.path === path.path)[0];
-          console.log('path', path)
-          console.log('baseMatch', baseMatch)
           if( baseMatch ) {
             baseMatch.docs = path.docs;            
           } else {
