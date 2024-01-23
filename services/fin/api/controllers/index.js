@@ -29,17 +29,22 @@ const swaggerDefinition = {
     if( !api ) continue;
 
     try {
-      if( swagger && swagger.paths ) {
+      if( swagger?.paths ) {
         if( !Array.isArray(swagger.paths) ) {
           swagger.paths = Object.entries(swagger.paths).map(([key, value]) => ({ path : key, docs : value }));
         }
         swagger.paths.forEach(doc => {
           swaggerDefinition.paths[`/api/${doc.path.replace(/\/?api\/?/g, '')}`] = doc.docs;
         });
-
-        if( swagger.components?.schemas ) {
-          swaggerDefinition.components = swagger.components;
-        }
+      }
+      if( swagger?.components?.schemas ) {
+        swaggerDefinition.components = swagger.components;
+      }
+      if( swagger?.openapi ) {
+        swaggerDefinition.openapi = swagger.openapi;
+      }
+      if( swagger?.info ) {
+        swaggerDefinition.info = swagger.info;
       }
       apis.push('api/'+name); 
     } catch (e) {
