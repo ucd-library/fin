@@ -94,7 +94,7 @@ class FinModelLoader {
       let filePath = path.join(config.models.rootDir, `swagger-spec.${ext}`);
       if( fs.existsSync(filePath) ) {
         swaggerBase = fs.readFileSync(filePath, 'utf8');
-        if( ext.match(/\.yaml|\.yml$/) ) {
+        if( ext.match(/yaml|yml$/) ) {
           swaggerBase = Object.assign(definition, YAML.parse(swaggerBase));
         } else {
           swaggerBase = Object.assign(definition, JSON.parse(swaggerBase));
@@ -126,8 +126,13 @@ class FinModelLoader {
         if( !Array.isArray(swagger.paths) ) {
           swagger.paths = Object.entries(swagger.paths).map(([key, value]) => ({ path : key, docs : value }));
         }
-        swagger.paths.forEach(path => {
+        if( !Array.isArray(swaggerBase.paths) ) {
+          swaggerBase.paths = Object.entries(swaggerBase.paths).map(([key, value]) => ({ path : key, docs : value }));
+        } 
+
+        swagger.paths.forEach(path => {          
           let baseMatch = swaggerBase.paths.filter(sb => sb.path === path.path)[0];
+          
           if( baseMatch ) {
             baseMatch.docs = path.docs;            
           } else {
