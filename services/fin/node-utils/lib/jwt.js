@@ -71,10 +71,12 @@ class JwtUtils {
    * @returns {String|null} null if no token found.
    */
   getJwtFromRequest(req) {
-    if( !req.cookies ) return null;
+    let token;
 
-    let token = req.cookies[config.jwt.cookieName];
-    if( token ) return token;
+    if( req.cookies ) {
+      token = req.cookies[config.jwt.cookieName];
+      if( token ) return token;
+    }
     
     token = req.get('Authorization');
     if( token && token.match(/^Bearer /i) ) {

@@ -234,7 +234,7 @@ class KeycloakUtils {
 
   protect(roles=[]) {
     if( !Array.isArray(roles) ) {
-      roles = [];
+      roles = [roles];
     }
 
     let authorize = function (req, res, next)  {
