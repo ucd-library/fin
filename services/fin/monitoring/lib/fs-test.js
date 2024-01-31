@@ -14,6 +14,9 @@ for( let i = 0; i < BUFFER_SIZE; i++ ) {
 }
 
 async function init() {
+  if( !metrics.meterProvider ) {
+    return;
+  }
   const meter = metrics.meterProvider.getMeter('default');
 
   // create read test file

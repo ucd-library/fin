@@ -40,6 +40,10 @@ async function fetchMetrics() {
 }
 
 function ensureInstruments() {
+  if( !metrics.meterProvider ) {
+    return;
+  }
+
   const meter = metrics.meterProvider.getMeter('default');
 
   for( let key in data ) {

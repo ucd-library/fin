@@ -1,76 +1,82 @@
 const {metrics, pg} = require('@ucd-lib/fin-service-utils');
 const {ValueType} = require('@opentelemetry/api');
 
-const meter = metrics.meterProvider.getMeter('default');
-
-const dbsSyncQueueGauge = meter.createObservableGauge('fin.dbsync.queue-length',  {
-  description: 'Number of events in the dbsync queue table',
-  unit: '',
-  valueType: ValueType.INT,
-});
-
-dbsSyncQueueGauge.addCallback(async result => {
-  result.observe(await getDbsyncQueueLength('event'), {table: 'event_queue'});
-  result.observe(await getDbsyncQueueLength('validate'), {table: 'validate_queue'});
-});
-
-
-const dataModelStats = meter.createObservableGauge('fin.dbsync.data-model-stats',  {
-  description: 'Counts of known data model items in the fin database',
-  unit: '',
-  valueType: ValueType.INT,
-});
-
-dataModelStats.addCallback(async result => {
-  let stats = await getDataModelStats();
-  for( let stat of stats ) {
-    result.observe(parseInt(stat.count), {model: stat.model, status: stat.type});
+function init() {
+  if( !metrics.meterProvider ) {
+    return;
   }
+  const meter = metrics.meterProvider.getMeter('default');
 
-  let counts = await getDataModelCounts();
-  for( let count of counts ) {
-    result.observe(parseInt(count.count), {model: count.model, status: 'total'});
-  }
-});
+  const dbsSyncQueueGauge = meter.createObservableGauge('fin.dbsync.queue-length',  {
+    description: 'Number of events in the dbsync queue table',
+    unit: '',
+    valueType: ValueType.INT,
+  });
 
-const dbsyncStats = meter.createObservableGauge('fin.dbsync.stats',  {
-  description: 'Counts of dbsync event actions',
-  unit: '',
-  valueType: ValueType.INT,
-});
+  dbsSyncQueueGauge.addCallback(async result => {
+    result.observe(await getDbsyncQueueLength('event'), {table: 'event_queue'});
+    result.observe(await getDbsyncQueueLength('validate'), {table: 'validate_queue'});
+  });
 
-dbsyncStats.addCallback(async result => {
-  let stats = await getDbsyncStats();
-  for( let stat of stats ) {
-    result.observe(parseInt(stat.count), {action: stat.action});
-  };
-});
 
-const workflowStats = meter.createObservableGauge('fin.workflow.stats',  {
-  description: 'Worflow type and state counts',
-  unit: '',
-  valueType: ValueType.INT,
-});
+  const dataModelStats = meter.createObservableGauge('fin.dbsync.data-model-stats',  {
+    description: 'Counts of known data model items in the fin database',
+    unit: '',
+    valueType: ValueType.INT,
+  });
 
-workflowStats.addCallback(async result => {
-  let stats = await getWorkflowStats();
-  for( let stat of stats ) {
-    result.observe(parseInt(stat.count), {name: stat.name, state: stat.state});
-  };
-});
+  dataModelStats.addCallback(async result => {
+    let stats = await getDataModelStats();
+    for( let stat of stats ) {
+      result.observe(parseInt(stat.count), {model: stat.model, status: stat.type});
+    }
 
-const integrationTestTiming = meter.createObservableGauge('fin.health.integration-test',  {
-  description: 'Integration test timings',
-  unit: 'ms',
-  valueType: ValueType.INT,
-});
+    let counts = await getDataModelCounts();
+    for( let count of counts ) {
+      result.observe(parseInt(count.count), {model: count.model, status: 'total'});
+    }
+  });
 
-integrationTestTiming.addCallback(async result => {
-  let stats = await getLatestTimings();
-  for( let stat of stats ) {
-    result.observe(parseInt(stat.timing), {action: stat.action, agent: stat.agent});
-  };
-});
+  const dbsyncStats = meter.createObservableGauge('fin.dbsync.stats',  {
+    description: 'Counts of dbsync event actions',
+    unit: '',
+    valueType: ValueType.INT,
+  });
+
+  dbsyncStats.addCallback(async result => {
+    let stats = await getDbsyncStats();
+    for( let stat of stats ) {
+      result.observe(parseInt(stat.count), {action: stat.action});
+    };
+  });
+
+  const workflowStats = meter.createObservableGauge('fin.workflow.stats',  {
+    description: 'Worflow type and state counts',
+    unit: '',
+    valueType: ValueType.INT,
+  });
+
+  workflowStats.addCallback(async result => {
+    let stats = await getWorkflowStats();
+    for( let stat of stats ) {
+      result.observe(parseInt(stat.count), {name: stat.name, state: stat.state});
+    };
+  });
+
+  const integrationTestTiming = meter.createObservableGauge('fin.health.integration-test',  {
+    description: 'Integration test timings',
+    unit: 'ms',
+    valueType: ValueType.INT,
+  });
+  
+  integrationTestTiming.addCallback(async result => {
+    let stats = await getLatestTimings();
+    for( let stat of stats ) {
+      result.observe(parseInt(stat.timing), {action: stat.action, agent: stat.agent});
+    };
+  });  
+}
+
 
 async function getDbsyncQueueLength(type) {
   let sql = `SELECT * FROM restapi.dbsync_${type}_queue_size`;
@@ -113,3 +119,5 @@ async function getLatestTimings() {
 
   return result.rows;
 }
+
+init();

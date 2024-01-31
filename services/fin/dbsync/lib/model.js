@@ -55,6 +55,7 @@ class DbSync {
 
   async setupMetrics() {
     if( config.metrics.enabled !== true ) return;
+    if( !metrics.meterProvider ) return;
 
     // setup metrics
     const meter = metrics.meterProvider.getMeter('default');

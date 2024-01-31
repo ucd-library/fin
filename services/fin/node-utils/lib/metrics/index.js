@@ -13,6 +13,7 @@ const { FsInstrumentation } = require('@opentelemetry/instrumentation-fs');
 const {
   PeriodicExportingMetricReader,
   ConsoleMetricExporter,
+  MeterProvider
 } = require('@opentelemetry/sdk-metrics');
 const { NodeTracerProvider,  ConsoleSpanExporter,
     SimpleSpanProcessor } = require('@opentelemetry/sdk-trace-node');
@@ -48,24 +49,22 @@ function init() {
   } else if( env.FIN_METRICS_EXPORT_STDOUT === 'true' ) {
     traceExporter = new ConsoleSpanExporter();
     metricExporter = new ConsoleMetricExporter();
+    meterProvider = new MeterProvider({
+      resource: new Resource(resourceAttributes())
+    });
   }
 
   let serviceName = env.FIN_SERVICE_NAME || 'unknown';
 
+  if( !metricExporter ) {
+    return;
+  }
 
-  const sdk = new NodeSDK({
-    // spanProcessor: new BatchSpanProcessor(traceExporter, {
-    //   exportTimeoutMillis : 15000,
-    //   maxExportBatchSize : 512*2,
-    //   maxQueueSize : 2048*2
-    // }),
-    // traceExporter: traceExporter,
+  let config = {
     metricReader: new PeriodicExportingMetricReader({
       exportIntervalMillis: 15000,
       exporter: metricExporter,
     }),
-    // this doesn't seem to work :(
-    // instrumentations: [getNodeAutoInstrumentations()],
     instrumentations : [
       // Express instrumentation expects HTTP layer to be instrumented
       // new HttpInstrumentation(),
@@ -75,7 +74,10 @@ function init() {
     ],
     resource: new Resource(resourceAttributes()),
     serviceName : serviceName
-  });
+  }
+
+
+  const sdk = new NodeSDK(config);
   
   sdk.start();
 
