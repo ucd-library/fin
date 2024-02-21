@@ -124,10 +124,10 @@ class FinModelLoader {
 
         // merge swagger with swaggerBase
         if( !Array.isArray(swagger.paths) ) {
-          swagger.paths = Object.entries(swagger.paths).map(([key, value]) => ({ path : key, docs : value }));
+          swagger.paths = Object.entries((swagger.paths || {})).map(([key, value]) => ({ path : key, docs : value }));
         }
         if( !Array.isArray(swaggerBase.paths) ) {
-          swaggerBase.paths = Object.entries(swaggerBase.paths).map(([key, value]) => ({ path : key, docs : value }));
+          swaggerBase.paths = Object.entries((swaggerBase.paths || {})).map(([key, value]) => ({ path : key, docs : value }));
         } 
 
         swagger.paths.forEach(path => {          
