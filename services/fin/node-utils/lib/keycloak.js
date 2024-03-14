@@ -188,6 +188,10 @@ class KeycloakUtils {
     if( resp.active !== true ) return next();
     let user = resp.user;
 
+    let finPrinciples = (req.get('fin-principle') || '')
+      .trim().split(' ').map(i => i.trim())
+      .filter(i => i !== '');
+
     req.user = user;
 
     // override roles
@@ -226,6 +230,11 @@ class KeycloakUtils {
 
     user.roles = Array.from(roles)
       .filter(role => config.oidc.roleIgnoreList.includes(role) === false);
+
+    // If admin and fin principles use the principles as the roles
+    if( user.roles.includes(config.finac.agents.admin) && finPrinciples.length ) {
+      user.roles = finPrinciples;
+    }
 
     req.headers['x-fin-user'] = JSON.stringify(user);
 
