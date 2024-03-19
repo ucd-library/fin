@@ -1,4 +1,4 @@
-const { config, logger, tests, waitUntil, MessagingClients, models, RDF_URIS, workflow, metrics } = require('@ucd-lib/fin-service-utils');
+const { config, logger, tests, waitUntil, MessagingClients, keycloak, models, RDF_URIS, workflow, metrics } = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const {ValueType} = require('@opentelemetry/api');
 const postgres = require('./postgres');
@@ -505,11 +505,15 @@ class DbSync {
       return transformCache.get(servicePath || path);
     }
 
+    // make requests as the discovery agent/principal
+    // admins can change principal using this header
+    headers['fin-principal'] = config.finac.agents.discover;
+
     var response = await api.get({
       host: config.gateway.host,
       path: servicePath || path,
       headers,
-      jwt: ''
+      jwt: await keycloak.getServiceAccountToken()
     });
 
     response.service = config.server.url + config.fcrepo.root + (servicePath || path);

@@ -188,7 +188,7 @@ class KeycloakUtils {
     if( resp.active !== true ) return next();
     let user = resp.user;
 
-    let finPrinciples = (req.get('fin-principle') || '')
+    let finPrincipals = (req.get('fin-principal') || '')
       .trim().split(' ').map(i => i.trim())
       .filter(i => i !== '');
 
@@ -231,9 +231,12 @@ class KeycloakUtils {
     user.roles = Array.from(roles)
       .filter(role => config.oidc.roleIgnoreList.includes(role) === false);
 
-    // If admin and fin principles use the principles as the roles
-    if( user.roles.includes(config.finac.agents.admin) && finPrinciples.length ) {
-      user.roles = finPrinciples;
+    // If admin and fin principals use the principals as the roles
+    if( user.roles.includes(config.finac.agents.admin) && finPrincipals.length ) {
+      if( !finPrincipals.includes('fedoraAdmin') && !finPrincipals.includes('fedoraUser') ) {
+        finPrincipals.push('fedoraUser');
+      }
+      user.roles = finPrincipals;
     }
 
     req.headers['x-fin-user'] = JSON.stringify(user);

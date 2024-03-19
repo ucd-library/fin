@@ -1,5 +1,5 @@
 # Reference, syntax can be tricky for the root
-# Default fin implementation removes all access but those with admin principle
+# Default fin implementation removes all access but those with admin principal
 # https://wiki.lyrasis.org/display/FEDORAM6M1P0/Default+Access+Control+List
 
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
