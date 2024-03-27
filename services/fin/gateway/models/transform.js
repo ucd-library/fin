@@ -18,7 +18,9 @@ const BLACK_LIST_LABEL_ATTRS = ['http://schema.org/hasPart', 'http://schema.org/
 
 class TransformUtils {
 
-  constructor() {
+  constructor(req) {
+    this.originalReq = req;
+
     this.TEXT_INDEXABLE = 'textIndexable';
     this.SHORT_CREATIVE_WORK = 'schema:CreativeWork';
     this.SHORT_MEDIA_OBJECT = 'schema:MediaObject';
@@ -574,12 +576,27 @@ class TransformUtils {
       options.uri = this.getFcRepoBaseUrl() + options.uri;
     }
 
+    if( this.originalReq.token ) {
+      options.headers = options.headers || {};
+      options.headers['Authorization'] = 'Bearer '+this.originalReq.token;
+    }
+
     return new Promise((resolve, reject) => {
       request(options, (error, response) => {
         if( error ) reject(error);
         else resolve(response);
       });
     });
+  }
+
+  getAuthHeader(headers={}) {
+    if( this.originalReq.token ) {
+      headers['Authorization'] = 'Bearer '+this.originalReq.token;
+    }
+    if( this.originalReq.finPrincipals ) {
+      headers['fin-principal'] = this.originalReq.finPrincipals.join(' ');
+    }
+    return headers;
   }
 
   _getJsonLdProperty(value, returnFirst=false) {
@@ -631,7 +648,7 @@ class TransformService {
   /**
    * @method exec run transform
    */
-  async exec(name, pathOrData) {
+  async exec(name, pathOrData, req) {
     if( !this.transforms[name] ) throw new Error('Unknown transform: '+name);
 
     let container = pathOrData;
@@ -645,8 +662,18 @@ class TransformService {
         headers : {
           Accept : api.RDF_FORMATS.JSON_LD,
         },
+        directAccess : false,
+        superuser : false,
         host : config.gateway.host
       }
+
+      if( req.token ) {
+        options.headers['Authorization'] = 'Bearer '+req.token;
+      }
+      if( req.finPrincipals ) {
+        options.headers['fin-principal'] = req.finPrincipals.join(' ');
+      }
+
       this.setForwardedHeader(options.headers);
 
       let response = await api.head(options);
@@ -669,7 +696,7 @@ class TransformService {
       path = null;
     } 
 
-    return this.transforms[name](path, container, headers, new TransformUtils());
+    return this.transforms[name](path, container, headers, new TransformUtils(req));
   }
 
   /**

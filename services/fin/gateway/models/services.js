@@ -340,8 +340,8 @@ class ServiceModel {
    * @param {Object} service
    * @param {Object|String} pathOrData
    */
-  renderTransform(service, pathOrData) {
-    return transform.exec(service, pathOrData)
+  renderTransform(service, pathOrData, req) {
+    return transform.exec(service, pathOrData, req)
   }
 
   renderLabel(uri = '') {

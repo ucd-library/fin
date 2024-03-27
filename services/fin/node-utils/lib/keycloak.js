@@ -173,8 +173,8 @@ class KeycloakUtils {
   }
 
   async setUser(req, res, next) {
-    if( req.headers['x-fin-user'] ) {
-      req.user = JSON.parse(req.headers['x-fin-user']);
+    if( req.get('x-fin-user') ) {
+      req.user = JSON.parse(req.get('x-fin-user'));
       if( !req.user.roles ) req.user.roles = [];
 
       return next();
@@ -182,6 +182,7 @@ class KeycloakUtils {
 
     let token = jwt.getJwtFromRequest(req);
     if( !token ) return next();
+    req.token = token;
 
     let resp = await this.verifyActiveToken(token);
 
@@ -191,6 +192,9 @@ class KeycloakUtils {
     let finPrincipals = (req.get('fin-principal') || '')
       .trim().split(' ').map(i => i.trim())
       .filter(i => i !== '');
+    if( finPrincipals.length ) {
+      req.finPrincipals = finPrincipals;
+    }
 
     req.user = user;
 

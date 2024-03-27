@@ -6,9 +6,7 @@ const api = require('@ucd-lib/fin-api');
 require('./lib/model');
 
 api.setConfig({
-  host: config.fcrepo.host,
-  superuser : true,
-  directAccess : true
+  host: config.gateway.host
 });
 
 

@@ -21,7 +21,7 @@ module.exports = (req, res) => {
 
 async function parsed(dataOrPath, req, res) {
   try {
-    let transformed = await serviceModel.renderTransform(req.finService.id, dataOrPath);
+    let transformed = await serviceModel.renderTransform(req.finService.id, dataOrPath, req);
     res.json(transformed);
   } catch (e) {
     res.status(500).json({
