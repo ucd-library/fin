@@ -20,7 +20,12 @@ app.post('/auth/'+config.oidc.finLdpServiceName+'/service-account/token', async 
 
   // strip id_token, don't have 3rd party users bother with this.
   if( loginResp.status === 200 ) {
-    delete loginResp.body.id_token;
+    if( loginResp.body.id_token ) {
+      delete loginResp.body.id_token;
+    }
+    if( loginResp.body.refresh_token ) {
+      delete loginResp.body.refresh_token;
+    }
   }
 
   res
