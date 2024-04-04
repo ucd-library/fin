@@ -19,7 +19,7 @@ class JwtUtils {
           return null;
         }
       });
-      
+
       this.signingKeyFail = false;
       this._getSigningKey = this._getSigningKey.bind(this);
       this.getSigningKey(config.jwt.jwksUri);
@@ -65,9 +65,9 @@ class JwtUtils {
    * @description given a express request object, return a given jwt token.
    * Method will first check the request cookies of the jwt token cookie then
    * checks the Authorization header of the token.
-   * 
+   *
    * @param {Object} req express request object
-   * 
+   *
    * @returns {String|null} null if no token found.
    */
   getJwtFromRequest(req) {
@@ -77,7 +77,7 @@ class JwtUtils {
       token = req.cookies[config.jwt.cookieName];
       if( token ) return token;
     }
-    
+
     token = req.get('Authorization');
     if( token && token.match(/^Bearer /i) ) {
       return token.replace(/^Bearer /i, '');
@@ -86,35 +86,62 @@ class JwtUtils {
     return null;
   }
 
-  /**
-   * @method getUserFromRequest
-   * @description given a express object, return the used object stored 
-   * in the jwt token if exists. Throws error if invalid token found.
-   * 
+    /**
+   * @method getJwtFromRequest
+   * @description given a express request object, return fin-principal override.
+   * Method will first check the request cookies of the jwt token cookie then
+   * checks the header of the token.
+   *
    * @param {Object} req express request object
-   * @returns {Boolean|Object} token payload if valid, otherwise false
+   *
+   * @returns {String|null} null if no token found.
    */
-  getUserFromRequest(req) {
-    let token = this.getJwtFromRequest(req);
-    if( !token ) return null;
-    return this.validate(token);
+  getPrincipalFromRequest(req) {
+    let token;
+
+    if( req.cookies ) {
+      token = req.cookies['fin-principal'];
+      if( token ) return token;
+    }
+
+    token = req.get('fin-principal');
+    if( token ) {
+      return token;
+    }
+    return null;
   }
 
+    /**
+   * @method getAuthorizationFromRequest
+   * @description given a express request object, return fin authorization parameters
+   * Method will first check the request cookies of the jwt token cookie then
+   * checks the header of the token.
+   *
+   * @param {Object} req express request object
+   *
+   * @returns {Object} {jwt,fin-principal}.
+   */
+  getAuthorizationFromRequest(req) {
+    return {
+      jwt: this.getJwtFromRequest(req),
+      fin-principal: this.getPrincipalFromRequest(req)
+    };
+  }
 
   /**
    * @method create
    * @description create a new JWT token
-   * 
+   *
    * @param {String} username username to create token for
-   * @param {Array} roles 
-   * 
+   * @param {Array} roles
+   *
    * @return {String} new jwt token
    */
   create(username, roles = [], expires) {
     var user = { username, roles }
     return jwt.sign(
-      user, 
-      config.jwt.secret, 
+      user,
+      config.jwt.secret,
       {
         issuer: config.jwt.issuer,
         expiresIn: expires || config.jwt.ttl
@@ -125,9 +152,9 @@ class JwtUtils {
   /**
    * @method validate
    * @description validate a JWT token
-   * 
+   *
    * @param {String} token jwt token to validate
-   * 
+   *
    * @return {Boolean|Object} returns false if invalid or token payload if valid.
    */
   async validate(token) {
@@ -163,7 +190,7 @@ class JwtUtils {
     });
   }
 
-  _getSigningKey(header, callback) {    
+  _getSigningKey(header, callback) {
     this.jwksClient.getSigningKey(header.kid, (err, key) => {
       if( err ) {
         return callback(err);
