@@ -196,19 +196,19 @@ class KeycloakUtils {
       req.finPrincipals = finPrincipals;
     }
 
-    // This was my suggestion, not aggreed on
-    //let user_roles = finPrincipals.filter(r => r.match(/@ucdavis.edu$/));
-    //if (user_roles.length === 1) {
-    //  user.preferred_username = user_roles[0];
-    //}
-
     req.user = user;
 
     // override roles
     let roles = new Set();
 
-    if( user.username ) roles.add(user.username);
-    if( user.preferred_username ) roles.add(user.preferred_username);
+    if( user.username ) {
+      roles.add(user.username);
+      roles.add(`${user.username}@ucdavis.edu`);
+    }
+    if( user.preferred_username ) {
+      roles.add(user.preferred_username);
+      roles.add(`${user.preferred_username}@ucdavis.edu`);
+    }
 
     if( user.roles && Array.isArray(user.roles) ) {
       user.roles.forEach(role => roles.add(role));
