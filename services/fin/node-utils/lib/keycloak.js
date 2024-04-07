@@ -180,6 +180,14 @@ class KeycloakUtils {
       return next();
     }
 
+    function fully_qualified_username(user) {
+      if( user.includes('@') ) {
+        return user;
+      } else {
+        return user+'@'+config.principal.defaultDomain;
+      }
+    }
+
     let token = jwt.getJwtFromRequest(req);
     if( !token ) return next();
     req.token = token;
@@ -203,11 +211,11 @@ class KeycloakUtils {
 
     if( user.username ) {
       roles.add(user.username);
-      roles.add(`${user.username}@ucdavis.edu`);
+      roles.add(fully_qualified_username(user.username));
     }
     if( user.preferred_username ) {
       roles.add(user.preferred_username);
-      roles.add(`${user.preferred_username}@ucdavis.edu`);
+      roles.add(fully_qualified_username(user.preferred_username));
     }
 
     if( user.roles && Array.isArray(user.roles) ) {

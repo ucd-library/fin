@@ -87,9 +87,9 @@ class JwtUtils {
   }
 
     /**
-   * @method getJwtFromRequest
+   * @method getPrincipalFromRequest
    * @description given a express request object, return fin-principal override.
-   * Method will first check the request cookies of the jwt token cookie then
+   * Method will first check the request cookies then
    * checks the header of the token.
    *
    * @param {Object} req express request object
@@ -100,11 +100,11 @@ class JwtUtils {
     let token;
 
     if( req.cookies ) {
-      token = req.cookies['fin-principal'];
+      token = req.cookies[config.principal.cookieName];
       if( token ) return token;
     }
 
-    token = req.get('fin-principal');
+    token = req.get(config.principal.headerName);
     if( token ) {
       return token;
     }
