@@ -75,6 +75,11 @@ class ServiceProxy {
       return next();
     }
 
+    if( service.aclAgents && !service.hasAccess(req.user) ) {
+      res.status(403).send('Unauthorized');
+      return;
+    }
+
     req.finServiceInfo = {
       fcUrl : config.server.url+req.originalUrl,
       fcPath : req.originalUrl,

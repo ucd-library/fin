@@ -177,6 +177,13 @@ class ServiceModel {
     let mainNode = graph.find(item => item['@id'].match(nodeId));
     let types = mainNode['@type'];
 
+    let aclNode = graph.find(item => {
+      if( !item['@type'] ) return false;
+      if( !Array.isArray(item['@type']) ) item['@type'] = [item['@type']];
+      return item['@type'].includes('acl:Authorization') ||
+             item['@type'].includes('http://www.w3.org/ns/auth/acl#Authorization');
+    });
+
     if( !types ) {
       logger.warn(`Attempting load service ${uri} but not types found`);
       return;
@@ -188,7 +195,7 @@ class ServiceModel {
       return;
     }
 
-    let service = new ServiceDefinition(mainNode);
+    let service = new ServiceDefinition(mainNode, aclNode);
     this.services[service.id] = service;
 
     if( service.type === api.service.TYPES.TRANSFORM ) {
@@ -524,7 +531,7 @@ class ServiceModel {
 
 class ServiceDefinition {
 
-  constructor(data = {}) {
+  constructor(data={}, acl) {
     for( let prop in data ) {
       data[prop.replace(UCD_SCHEMA_BASE, '')] = data[prop];
     }
@@ -550,6 +557,22 @@ class ServiceDefinition {
     this.supportedTypes = data.supportedTypes || [];
     this.id = data.identifier || data.id || '';
     this.workflow = data.workflow ? JSON.parse(data.workflow) : false;
+
+    this.setAclAgents(data, acl);
+  }
+
+  setAclAgents(node, acl) {
+    if( !acl ) return;
+
+    let accessTo = acl.accessTo || acl['acl:accessTo'] || acl['http://www.w3.org/ns/auth/acl#accessTo'] || '';
+    if( accessTo && node['@id'] !== accessTo ) {
+      logger.warn('Service '+node['@id']+' found acl but accessTo '+accessTo+' do not match. ignoring acl.');
+      return;
+    }
+
+    let agents = acl.agent || acl['acl:agent'] || acl['http://www.w3.org/ns/auth/acl#agent'] || [];
+    if( !Array.isArray(agents) ) agents = [agents];
+    this.aclAgents = agents.map(agent => agent['@id'] || agent);
   }
 
   init(model) {
@@ -602,6 +625,17 @@ class ServiceDefinition {
       url = url.replace(new RegExp(`{{${key}}}`, 'g'), params[key]);
     }
     return url.replace(/{{.*}}/g, '');
+  }
+
+  hasAccess(user={}) {
+    if( !this.aclAgents ) return true;
+    if( !user.roles ) return false;
+
+    for( let agent of this.aclAgents ) {
+      if( user.roles.includes(agent) ) return true;
+    }
+
+    return false;
   }
 
 }
