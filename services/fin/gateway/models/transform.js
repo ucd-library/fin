@@ -13,7 +13,7 @@ const ROOT_DIR = path.join(__dirname, 'loaded-transforms');
 let finUrl = new URL(config.server.url);
 let finUrlRegex = new RegExp(`^https?://${finUrl.hostname}(:\d*)?${config.fcrepo.root}`);
 
-const BLACK_LIST_LABEL_ATTRS = ['http://schema.org/hasPart', 'http://schema.org/associatedMedia', 
+const BLACK_LIST_LABEL_ATTRS = ['http://schema.org/hasPart', 'http://schema.org/associatedMedia',
 'http://www.w3.org/ns/ldp#contains', 'http://schema.org/workExample'];
 
 class TransformUtils {
@@ -101,7 +101,7 @@ class TransformUtils {
     if( !Array.isArray(this.item[opts.attr]) ) {
       this.item[opts.attr] = [this.item[opts.attr]];
     }
-  
+
     this.item[opts.attr] = this.item[opts.attr].concat(val);
   }
 
@@ -117,7 +117,7 @@ class TransformUtils {
     }
 
     let v = await this._getValue(attr, val, opts)
-    return (v === null) ? '' : v; 
+    return (v === null) ? '' : v;
   }
 
   async _getValue(attr, obj, opts) {
@@ -135,7 +135,7 @@ class TransformUtils {
     let val = obj;
     if( typeof val === 'object' && obj['@value'] !== undefined ) {
       val = obj['@value'];
-    } 
+    }
 
     if( val === undefined ) return null;
 
@@ -145,7 +145,7 @@ class TransformUtils {
     if( opts.type === 'number' ) return parseInt(val);
     if( opts.type === 'float' ) return parseFloat(val);
     if( opts.type === 'boolean' ) return ((val+'').toLowerCase().trim() === 'true') ? true : false;
-    
+
     return val;
   }
 
@@ -160,7 +160,7 @@ class TransformUtils {
         uri: config.gateway.host+'/label/'+encodeURIComponent(uri)
       });
       response = JSON.parse(response.body);
-      
+
       // this is the list of graph, grab first
       if( response['@graph'] ) response = response['@graph'];
       if( !Array.isArray(response) ) response = [response];
@@ -170,7 +170,7 @@ class TransformUtils {
 
       // this is the list of responses within the graph
       if( response['@graph'] ) response = response['@graph'];
-      
+
       response.forEach(item => {
         if( item['@id'] !== uri ) return;
 
@@ -196,14 +196,14 @@ class TransformUtils {
     if( typeof opts.value === 'string' ) return opts.value;
     return this.namespace[opts.value[0]]+opts.value[1];
   }
-  
+
   /**
    * @method stripFinHost
    * @description short id's removing fin host and base path.  this also
    * removes empty values
-   * 
+   *
    * @param {Object} json
-   * 
+   *
    * @return {Object}
    */
   stripFinHost(json) {
@@ -247,9 +247,9 @@ class TransformUtils {
    * @description given a JSON-LD frame, set the image resolution.  If there is an workExample,
    * this property will be used otherwise the id of the frame.  The uri will be hit against
    * the iiif service for resolution information.
-   * 
+   *
    * @param {Object} json
-   * 
+   *
    * @returns {Object}
    */
   async _setImageMetadata(json) {
@@ -290,7 +290,7 @@ class TransformUtils {
     } catch(e) {
       logger.error('failed to get image height/width for: '+json['@id'], e,  body);
     }
-    
+
     imgUrl = config.gateway.host+json.image.url+'/fcr:metadata';
     result = await this.request({
       type : 'GET',
@@ -299,7 +299,7 @@ class TransformUtils {
         Accept : api.RDF_FORMATS.JSON_LD
       }
     });
-    
+
     body = result.body;
     try {
       result = JSON.parse(result.body)[0];
@@ -328,7 +328,7 @@ class TransformUtils {
       if( json.image.height > this.MAX_THUMBNAIL_SIZE ) {
         w = Math.floor((this.MAX_THUMBNAIL_SIZE / json.image.height) * json.image.width)
         h = this.MAX_THUMBNAIL_SIZE;
-      } 
+      }
     } else {
       if( json.image.width > this.MAX_THUMBNAIL_SIZE ) {
         h = Math.floor((this.MAX_THUMBNAIL_SIZE / json.image.width) * json.image.height)
@@ -366,9 +366,9 @@ class TransformUtils {
    * @method getImagePath
    * @description return the representative image for record.  The order of lookup is
    * image, record id (if fileFormat is of type image/*), associatedMedia
-   * 
+   *
    * @param {Object} json record
-   * 
+   *
    * @returns {String|null}
    */
   async getImagePath(json) {
@@ -388,7 +388,7 @@ class TransformUtils {
     if( imagePath && imagePath.match(/^image\//i) ) {
       return json['@id'].replace(finUrlRegex, '');
     }
-    
+
     let associatedMedia = this._getJsonLdProperty(json.associatedMedia);
     if( associatedMedia ) {
       for( var i = 0; i < associatedMedia.length; i++ ) {
@@ -434,9 +434,9 @@ class TransformUtils {
    * @description given a JSON-LD frame, set the thumbnail.  If there is an workExample,
    * this property will be used otherwise the id of the frame.  The uri will be hit against
    * the iiif service.
-   * 
+   *
    * @param {Object} json
-   * 
+   *
    * @returns {Object}
    */
   async _setColorPalette(json, width='8') {
@@ -457,10 +457,10 @@ class TransformUtils {
    * @method setIndexableContent
    * @description given a JSON-LD frame, set the file contents if the textIndexable flag
    * is provided.
-   * 
+   *
    * @param {Object} json
-   * 
-   * @return {Object} 
+   *
+   * @return {Object}
    */
   async setIndexableContent(json) {
     let include = json[this.TEXT_INDEXABLE];
@@ -478,9 +478,9 @@ class TransformUtils {
   /**
    * @method isType
    * @description is container of given type
-   * 
-   * @param {String} type 
-   * 
+   *
+   * @param {String} type
+   *
    * @returns {Boolean}
    */
   isType(container, type) {
@@ -490,10 +490,10 @@ class TransformUtils {
   /**
    * @method get
    * @description get a container from JSON-LD graph array by path/id
-   * 
-   * @param {String} path id of container to fetch from array  
-   * @param {Object|Array} container 
-   * 
+   *
+   * @param {String} path id of container to fetch from array
+   * @param {Object|Array} container
+   *
    * @returns {Object}
    */
   get(path, container) {
@@ -518,10 +518,10 @@ class TransformUtils {
   /**
    * @method get
    * @description get a container from JSON-LD graph array by path/id
-   * 
-   * @param {String} type type uri of container to fetch from array  
-   * @param {Object|Array} container 
-   * 
+   *
+   * @param {String} type type uri of container to fetch from array
+   * @param {Object|Array} container
+   *
    * @returns {Object}
    */
   getByType(type, container) {
@@ -542,7 +542,7 @@ class TransformUtils {
    * @method setYearFromDate
    * @description given ISO 8601 Date attributes, map them to a year
    * attribute if the date attribute exits.
-   * 
+   *
    * @param {Object} json record
    */
   setYearFromDate(json) {
@@ -556,10 +556,10 @@ class TransformUtils {
     }
   }
 
-  /** 
+  /**
    * @method getFcRepoBaseUrl
    * @description get the base url for fcrepo
-   *  
+   *
    * @returns {String}
    */
   getFcRepoBaseUrl() {
@@ -594,14 +594,14 @@ class TransformUtils {
       headers['Authorization'] = 'Bearer '+this.originalReq.token;
     }
     if( this.originalReq.finPrincipals ) {
-      headers['fin-principal'] = this.originalReq.finPrincipals.join(' ');
+      headers[config.principal.headerName] = this.originalReq.finPrincipals.join(' ');
     }
     return headers;
   }
 
   _getJsonLdProperty(value, returnFirst=false) {
     if( value === undefined ) return null;
-    
+
     if( !Array.isArray(value) ) {
       value = [value];
     }
@@ -671,7 +671,7 @@ class TransformService {
         options.headers['Authorization'] = 'Bearer '+req.token;
       }
       if( req.finPrincipals ) {
-        options.headers['fin-principal'] = req.finPrincipals.join(' ');
+        options.headers[config.principal.headerName] = req.finPrincipals.join(' ');
       }
 
       this.setForwardedHeader(options.headers);
@@ -691,10 +691,10 @@ class TransformService {
       if( headers.link ) {
         headers.link = api.parseLinkHeader(headers.link);
       }
-    
+
     } else {
       path = null;
-    } 
+    }
 
     return this.transforms[name](path, container, headers, new TransformUtils(req));
   }
@@ -703,7 +703,7 @@ class TransformService {
    * @method getForwardedHeader
    * @description return the forwarded header for fcrepo responses that represent actual domain
    * name and protocol, not docker fcrepo:8080 name.
-   * 
+   *
    * @returns {String}
    */
   setForwardedHeader(headers) {

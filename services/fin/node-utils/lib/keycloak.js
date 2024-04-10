@@ -36,7 +36,7 @@ class KeycloakUtils {
       return this.finServiceAccountToken;
     }
 
-    let resp = await this.loginServiceAccount(config.serviceAccount.username, config.serviceAccount.secret); 
+    let resp = await this.loginServiceAccount(config.serviceAccount.username, config.serviceAccount.secret);
     if( resp.status === 200 ) {
       this.finServiceAccountToken = resp.body.access_token;
 
@@ -44,7 +44,7 @@ class KeycloakUtils {
 
       return this.finServiceAccountToken;
     }
-    
+
     let body = resp.body;
     if( typeof body === 'object' ) {
       body = JSON.stringify(body, null, 2);
@@ -59,7 +59,7 @@ class KeycloakUtils {
       method: 'POST',
       headers:{
         'Content-Type': 'application/x-www-form-urlencoded'
-      },    
+      },
       body: new URLSearchParams({
         grant_type : 'password',
         client_id : config.oidc.clientId,
@@ -96,7 +96,7 @@ class KeycloakUtils {
     try {
       let result;
 
-      // if we get multiple requests at once, just make one 
+      // if we get multiple requests at once, just make one
       // request to the auth server
       if( this.tokenRequestCache.has(token) ) {
         let promise = this.tokenRequestCache.get(token);
@@ -122,7 +122,7 @@ class KeycloakUtils {
         requestReject = reject;
       });
       this.tokenRequestCache.set(token, promise);
-      
+
       let resp = await request;
       let body = await resp.text();
       clearTimeout(timeoutId);
@@ -141,10 +141,10 @@ class KeycloakUtils {
 
       requestResolve(result);
       this.tokenRequestCache.delete(token);
-      
+
       return clone(result);
     } catch(e) {
-      if( requestReject ){ 
+      if( requestReject ){
         requestReject(e);
       }
       this.tokenRequestCache.delete(token);
@@ -180,6 +180,14 @@ class KeycloakUtils {
       return next();
     }
 
+    function fully_qualified_username(user) {
+      if( user.includes('@') || ! config.principal.addDomain ) {
+        return user;
+      } else {
+        return user+'@'+config.principal.addDomain;
+      }
+    }
+
     let token = jwt.getJwtFromRequest(req);
     if( !token ) return next();
     req.token = token;
@@ -189,7 +197,7 @@ class KeycloakUtils {
     if( resp.active !== true ) return next();
     let user = resp.user;
 
-    let finPrincipals = (req.get('fin-principal') || '')
+    let finPrincipals = (jwt.getPrincipalFromRequest(req) || '')
       .trim().split(' ').map(i => i.trim())
       .filter(i => i !== '');
     if( finPrincipals.length ) {
@@ -201,8 +209,18 @@ class KeycloakUtils {
     // override roles
     let roles = new Set();
 
-    if( user.username ) roles.add(user.username);
-    if( user.preferred_username ) roles.add(user.preferred_username);
+    if( user.username ) {
+      roles.add(user.username);
+      if (config.principal.addDomain && ! user.username.includes('@')) {
+        roles.add(fully_qualified_username(user.username));
+      }
+    }
+    if( user.preferred_username ) {
+      roles.add(user.preferred_username);
+      if (config.principal.addDomain && ! user.preferred_username.includes('@')) {
+        roles.add(fully_qualified_username(user.preferred_username));
+      }
+    }
 
     if( user.roles && Array.isArray(user.roles) ) {
       user.roles.forEach(role => roles.add(role));

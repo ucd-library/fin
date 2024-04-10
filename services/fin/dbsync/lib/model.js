@@ -115,7 +115,7 @@ class DbSync {
           logger.error('DbSync readLoop error recording error', e);
         }
       }
-      
+
       setTimeout(() => this.readLoop(), this.READ_LOOP_WAIT);
     }
   }
@@ -162,7 +162,7 @@ class DbSync {
 
   /**
    * @method handleMessage
-   * 
+   *
    */
   async handleMessage(msg) {
     let msgTypes = msg.getMessageTypes();
@@ -205,7 +205,7 @@ class DbSync {
   /**
    * @method item
    * @description called been buffer event timer fires
-   * 
+   *
    * @param {Object} e event payload from log table
    */
   async updateContainer(e) {
@@ -322,7 +322,7 @@ class DbSync {
           }
 
           // JM - Not removing path, as the /fcr:metadata container is also mapped to this path
-          // return indexer.remove(e.path);   
+          // return indexer.remove(e.path);
           return;
         }
       }
@@ -332,7 +332,7 @@ class DbSync {
       // set transform service used.
       event.tranformService = response.service;
 
-      // under this condition, the acl may have been updated.  Remove item and any 
+      // under this condition, the acl may have been updated.  Remove item and any
       // child items in elastic search.  We need to do it here so we can mark PG why we
       // did it.
       if (response.last.statusCode !== 200) {
@@ -433,12 +433,12 @@ class DbSync {
 
   /**
    * @method getContainerTypes
-   * @description given an event, lookup container types from fcrepo, fallback to postgres.  This 
-   * is mostly for delete events, as we don't have the container types in the event. 
-   * 
-   * @param {Object} event 
-   * @param {String} path 
-   * @returns 
+   * @description given an event, lookup container types from fcrepo, fallback to postgres.  This
+   * is mostly for delete events, as we don't have the container types in the event.
+   *
+   * @param {Object} event
+   * @param {String} path
+   * @returns
    */
   async getContainerTypes(event) {
     if (event.container_types && event.container_types.length) {
@@ -478,12 +478,12 @@ class DbSync {
 
   /**
    * @method getTransformedContainer
-   * @description get a es object for container at specified path. 
-   * 
+   * @description get a es object for container at specified path.
+   *
    * @param {Object} event ActiveMQ event
    * @param {FinDataModel} model fin data model
    * @param {Map} transformCache
-   * 
+   *
    * @returns {Promise}
    */
   async getTransformedContainer(event, model, transformCache) {
@@ -507,7 +507,7 @@ class DbSync {
 
     // make requests as the discovery agent/principal
     // admins can change principal using this header
-    headers['fin-principal'] = config.finac.agents.discover;
+    headers[config.principal.headerName] = config.finac.agents.discover;
 
     var response = await api.get({
       host: config.gateway.host,
@@ -566,11 +566,11 @@ class DbSync {
    * @method queueDataValidation
    * @description queue data validation for a model.  Only used if data model
    * has all required methods
-   * 
-   * @param {FinDataModel} model 
-   * @param {String} finPath 
+   *
+   * @param {FinDataModel} model
+   * @param {String} finPath
    * @param {Object} json
-   *  
+   *
    * @returns {Promise}
    */
   async queueDataValidation(model, finPath, json) {
@@ -662,8 +662,8 @@ class DbSync {
    * @method removeInaccessableChildren
    * @description for use when a parent path becomes inaccessible.  Remove all children nodes
    * from elastic search
-   * 
-   * @param {Object} e fcrepo update event 
+   *
+   * @param {Object} e fcrepo update event
    */
   async removeInaccessableChildren(e, model, parentStatusCode) {
     let path = e.path;
@@ -700,10 +700,10 @@ class DbSync {
       if( parentStatusCode === 404 ) {
         fakeEvent.action = 'delete';
         fakeEvent.message = 'parent ' + path + ' not found: '+parentStatusCode;
-      } else {      
+      } else {
         fakeEvent.action = 'ignored';
         fakeEvent.message = 'parent ' + path + ' inaccessible: '+parentStatusCode;
-      }  
+      }
 
       fakeEvent.path = childPath;
 

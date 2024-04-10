@@ -194,6 +194,12 @@ module.exports = {
     cookieName : process.env.JWT_COOKIE_NAME || 'fin-jwt'
   },
 
+  principal: {
+    cookieName : process.env.PRINCIPAL_COOKIE_NAME || process.env.PRINCIPAL_HEADER_NAME || 'fin-principal',
+    headerName : process.env.PRINCIPAL_HEADER_NAME || process.env.PRINCIPAL_COOKIE_NAME || 'fin-principal',
+    addDomain : process.env.PRINCIPAL_ADD_DOMAIN || null
+  },
+
   api : {
     port : env.FIN_API_PORT || 3004
   },
