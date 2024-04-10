@@ -181,10 +181,10 @@ class KeycloakUtils {
     }
 
     function fully_qualified_username(user) {
-      if( user.includes('@') ) {
+      if( user.includes('@') || ! config.principal.addDomain ) {
         return user;
       } else {
-        return user+'@'+config.principal.defaultDomain;
+        return user+'@'+config.principal.addDomain;
       }
     }
 
@@ -211,11 +211,15 @@ class KeycloakUtils {
 
     if( user.username ) {
       roles.add(user.username);
-      roles.add(fully_qualified_username(user.username));
+      if (config.principal.addDomain && ! user.username.includes('@')) {
+        roles.add(fully_qualified_username(user.username));
+      }
     }
     if( user.preferred_username ) {
       roles.add(user.preferred_username);
-      roles.add(fully_qualified_username(user.preferred_username));
+      if (config.principal.addDomain && ! user.preferred_username.includes('@')) {
+        roles.add(fully_qualified_username(user.preferred_username));
+      }
     }
 
     if( user.roles && Array.isArray(user.roles) ) {

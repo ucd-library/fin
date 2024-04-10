@@ -197,7 +197,7 @@ module.exports = {
   principal: {
     cookieName : process.env.PRINCIPAL_COOKIE_NAME || process.env.PRINCIPAL_HEADER_NAME || 'fin-principal',
     headerName : process.env.PRINCIPAL_HEADER_NAME || process.env.PRINCIPAL_COOKIE_NAME || 'fin-principal',
-    defaultDomain : process.env.PRINCIPAL_DEFAULT_DOMAIN || 'ucdavis.edu'
+    addDomain : process.env.PRINCIPAL_ADD_DOMAIN || null
   },
 
   api : {
