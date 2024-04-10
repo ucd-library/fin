@@ -112,23 +112,6 @@ class JwtUtils {
   }
 
   /**
-   * @method getAuthorizationFromRequest
-   * @description given a express request object, return fin authorization parameters
-   * Method will first check the request cookies of the jwt token cookie then
-   * checks the header of the token.
-   *
-   * @param {Object} req express request object
-   *
-   * @returns {Object} {jwt,fin-principal}.
-   */
-  getAuthorizationFromRequest(req) {
-    return {
-      jwt: this.getJwtFromRequest(req),
-      'fin-principal': this.getPrincipalFromRequest(req)
-    };
-  }
-
-  /**
    * @method create
    * @description create a new JWT token
    *
