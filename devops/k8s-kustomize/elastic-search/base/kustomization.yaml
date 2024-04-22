@@ -5,5 +5,5 @@ commonLabels:
   app: fin-base-service
 
 resources:
-- statefuleset.yaml
+- statefulset.yaml
 - service.yaml
