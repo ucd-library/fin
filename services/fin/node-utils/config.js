@@ -1,4 +1,17 @@
 const fs = require('fs');
+const path = require('path');
+
+// load custom .env file if it exists in environment variables
+// this is really useful for k8s environments where individual 
+// env variables from secrets are verbose and hard to manage
+let envPath = '/etc/fin/.env';
+if( process.env.FIN_ENV_FILE ) {
+  envPath = process.env.FIN_ENV_FILE;
+}
+if( fs.existsSync(envPath) && fs.lstatSync(envPath).isFile() ) {
+  require('dotenv').config({ path: envPath });
+}
+
 const env = process.env;
 const COMMON_URI = require('./lib/common-rdf-uris');
 

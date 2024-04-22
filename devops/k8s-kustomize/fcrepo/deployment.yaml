@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fcrepo
+spec:
+  selector:
+    matchLabels:
+      app: fcrepo
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: fcrepo
+    spec:
+      containers:
+      - name: service
+        image: gcr.io/ucdlib-pubreg/fin-fcrepo:sandbox
+        volumeMounts:
+        - name: ocfl-volume
+          mountPath: /usr/local/tomcat/fcrepo-home/data
+        - name: activemq-volume
+          mountPath: /usr/local/tomcat/ActiveMQ
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+        volumes:
+        - name: ocfl-volume
+          persistentVolumeClaim:
+            claimName: ocfl-volume-claim
+            readOnly: true
+  volumeClaimTemplates:
+    - metadata:
+        name: activemq-volume
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi

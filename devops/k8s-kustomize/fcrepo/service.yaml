@@ -1,0 +1,11 @@
+kind: Service
+metadata:
+  name: fcrepo
+spec:
+  type: ClusterIP
+  selector:
+    app: fcrepo
+  ports:
+    - port: 8080s
+      protocol: TCP
+      targetPort: 8080

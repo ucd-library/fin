@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ocfl-volume-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  volumeName: ocfl-volume
+  resources:
+    requests:
+      storage: 4T

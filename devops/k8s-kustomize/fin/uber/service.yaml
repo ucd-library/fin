@@ -1,0 +1,6 @@
+kind: Service
+metadata:
+  name: uber
+spec:
+  selector:
+    app: uber

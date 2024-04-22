@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  replicas: 1
+  serviceName: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: database
+        image: gcr.io/ucdlib-pubreg/fin-postgres:sandbox
+        imagePullPolicy: Always
+        env:
+        - name: POSTGRES_HOST_AUTH_METHOD
+          value: "trust"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: data-volume
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi

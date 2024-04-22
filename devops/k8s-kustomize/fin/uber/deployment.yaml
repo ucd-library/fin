@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uber
+spec:
+  selector:
+    matchLabels:
+      app: uber
+  template:
+    metadata:
+      labels:
+        app: uber
+      containers:
+      - name: service
+        command: ["npm", "run", "uber"]
+        env:
+        - name: FIN_SERVICE_NAME
+          value: "uber"
+        - name: FIN_METRICS_FS_ENABLED
+          value: "true"
+        volumeMounts:
+        - name: fs-tests-volume
+          mountPath: /fs-tests
+      volumes:
+      - name: fs-tests-volume
+        emptyDir: {}

@@ -1,0 +1,11 @@
+kind: Service
+metadata:
+  name: fin-service-deployment
+spec:
+  type: ClusterIP
+  selector:
+    app: fin-service-deployment
+  ports:
+    - port: 3000
+      protocol: TCP
+      targetPort: 3000
