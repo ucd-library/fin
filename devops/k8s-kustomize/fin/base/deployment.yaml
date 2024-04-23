@@ -15,6 +15,8 @@ spec:
       - name: service
         image: gcr.io/ucdlib-pubreg/dams-base-service:sandbox
         imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
         resources:
           requests:
             memory: "500Mi"
@@ -24,26 +26,25 @@ spec:
           value: "true"
         - name: FIN_METRICS_FCREPO_ENABLED
           value: "true"
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /etc/fin/service-account.json
         volumeMounts:
         - name: service-account
-          mountPath: /etc/fin
+          mountPath: /etc/fin/service-account.json
+          subPath: service-account.json
         - name: env-config
-          mountPath: /etc/fin
+          mountPath: /etc/fin/.env
+          subPath: .env
         - name: ocfl-volume
           mountPath: /data
+          readOnly: true
       volumes:
       - name: service-account
         secret:
           secretName: service-account
-          items: 
-            - key: service-account.json
-              path: service-account.json
       - name: env-config
         secret:
           secretName: env-config
-          items: 
-            - key: env
-              path: .env
       - name: ocfl-volume
         persistentVolumeClaim:
           claimName: ocfl-volume-claim

@@ -10,9 +10,11 @@ spec:
     metadata:
       labels:
         app: dbsync
+    spec:
       containers:
       - name: service
-        command: ["npm", "run", "dbsync"]
+        command: ["npm"]
+        args: ["run", "dbsync"]
         env:
         - name: FIN_SERVICE_NAME
           value: "dbsync"

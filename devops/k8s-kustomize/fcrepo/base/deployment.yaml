@@ -24,11 +24,10 @@ spec:
           requests:
             memory: "2Gi"
             cpu: "1"
-        volumes:
-        - name: ocfl-volume
-          persistentVolumeClaim:
-            claimName: ocfl-volume-claim
-            readOnly: true
+      volumes:
+      - name: ocfl-volume
+        persistentVolumeClaim:
+          claimName: ocfl-volume-claim
   volumeClaimTemplates:
     - metadata:
         name: activemq-volume

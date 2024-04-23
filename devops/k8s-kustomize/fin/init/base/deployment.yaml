@@ -1,14 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fin-service-deployment
+  name: init
 spec:
+  selector:
+    matchLabels:
+      app: init
   template:
+    metadata:
+      labels:
+        app: init
     spec:
       containers:
       - name: service
-        restartPolicy: Never
-        image: gcr.io/ucdlib-pubreg/dams-init:sandbox
+        image: gcr.io/ucdlib-pubreg/fin-init:sandbox
         env:
         - name: FIN_SERVICE_NAME
           value: "init"

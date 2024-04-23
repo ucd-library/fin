@@ -10,10 +10,12 @@ spec:
     app: rabbitmq
   ports:
   # wire protocol port
-  - protocol: TCP
+  - name: wire-protocol
+    protocol: TCP
     port: 5672
     targetPort: 5672
   # management UI port
-  - protocol: TCP
+  - name: admin
+    protocol: TCP
     port: 15672
     targetPort: 15672

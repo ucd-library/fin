@@ -3,3 +3,17 @@ kind: Kustomization
 
 resources:
 - ../../base
+
+patches:
+  - path: service.yaml
+    target:
+      kind: Service
+      name: fin-service-deployment
+    options:
+      allowNameChange: true
+  - path: deployment.yaml
+    target:
+      kind: Deployment
+      name: fin-service-deployment
+    options:
+      allowNameChange: true   

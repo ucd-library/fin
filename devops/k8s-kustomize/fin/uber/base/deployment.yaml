@@ -10,6 +10,7 @@ spec:
     metadata:
       labels:
         app: uber
+    spec:
       containers:
       - name: service
         command: ["npm", "run", "uber"]

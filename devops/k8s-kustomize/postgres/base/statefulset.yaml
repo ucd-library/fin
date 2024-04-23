@@ -18,12 +18,16 @@ spec:
         image: gcr.io/ucdlib-pubreg/fin-postgres:sandbox
         imagePullPolicy: Always
         env:
+        - name: PGDATA
+          value: "/var/lib/postgresql/data/pgdata"
         - name: POSTGRES_HOST_AUTH_METHOD
           value: "trust"
         resources:
           requests:
             memory: "1Gi"
             cpu: "1"
+        ports:
+        - containerPort: 5432
         volumeMounts:
         - name: data-volume
           mountPath: /var/lib/postgresql/data
