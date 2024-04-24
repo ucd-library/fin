@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: dbsync
+  name: gcs
 spec:
   selector:
     matchLabels:
-      app: dbsync
+      app: gcs
   template:
     metadata:
       labels:
-        app: dbsync
+        app: gcs
     spec:
       containers:
       - name: service
-        command: ["npm", "run", "dbsync"]
+        command: ["npm", "run", "gcs"]
         env:
         - name: FIN_SERVICE_NAME
-          value: "dbsync"
+          value: "gcs"

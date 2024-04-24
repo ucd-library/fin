@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: dbsync
+  name: workflow
 spec:
   selector:
     matchLabels:
-      app: dbsync
+      app: workflow
   template:
     metadata:
       labels:
-        app: dbsync
+        app: workflow
     spec:
       containers:
       - name: service
-        command: ["npm", "run", "dbsync"]
+        command: ["npm", "run", "workflow"]
         env:
         - name: FIN_SERVICE_NAME
-          value: "dbsync"
+          value: "workflow"

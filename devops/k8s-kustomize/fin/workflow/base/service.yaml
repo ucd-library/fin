@@ -1,0 +1,6 @@
+kind: Service
+metadata:
+  name: workflow
+spec:
+  selector:
+    app: workflow

@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: service
-        image: gcr.io/ucdlib-pubreg/dams-base-service:sandbox
+        image: gcr.io/ucdlib-pubreg/fin-base-service:sandbox
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
