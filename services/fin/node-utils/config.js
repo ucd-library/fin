@@ -9,6 +9,7 @@ if( process.env.FIN_ENV_FILE ) {
   envPath = process.env.FIN_ENV_FILE;
 }
 if( fs.existsSync(envPath) && fs.lstatSync(envPath).isFile() ) {
+  console.log(`Loading environment variables from ${envPath}`);
   require('dotenv').config({ path: envPath });
 }
 
@@ -26,6 +27,10 @@ function processArray(value) {
 
 var fcrepoHostname = process.env.FCREPO_HOST || 'fcrepo';
 var fcrepoPort = process.env.FCREPO_PORT || '8080';
+if( fcrepoPort.match(/^tcp:\//) ) {
+  fcrepoPort = new URL(fcrepoPort).port;
+}
+
 var esHostname = process.env.ES_HOST || 'elasticsearch';
 var esPort = process.env.ES_PORT || 9200;
 
