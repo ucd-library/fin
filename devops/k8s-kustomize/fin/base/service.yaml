@@ -7,6 +7,7 @@ spec:
   selector:
     app: fin-service-deployment
   ports:
-    - port: 3000
+    - name: service
+      port: 3000
       protocol: TCP
       targetPort: 3000

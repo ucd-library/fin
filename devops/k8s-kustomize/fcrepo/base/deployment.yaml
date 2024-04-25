@@ -14,6 +14,7 @@ spec:
     spec:
       containers:
       - name: service
+        imagePullPolicy: Always
         image: gcr.io/ucdlib-pubreg/fin-fcrepo:sandbox
         volumeMounts:
         - name: ocfl-volume
@@ -24,6 +25,11 @@ spec:
           requests:
             memory: "2Gi"
             cpu: "1"
+        env:
+        - name: CATALINA_OPTS
+          value: "-Dfcrepo.config.file=/etc/fin/fcrepo.properties -Dfcrepo.log=DEBUG -Dfcrepo.log.auth=DEBUG -Dfcrepo.log.kernel=DEBUG"
+        ports:
+        - containerPort: 8080
       volumes:
       - name: ocfl-volume
         persistentVolumeClaim:

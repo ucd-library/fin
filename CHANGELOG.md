@@ -1,3 +1,7 @@
+# 2.7.0
+
+  - gateway moved to port 3000
+
 # 2.5.0
 
   - Validation updates (major db schema change)

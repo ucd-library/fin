@@ -22,6 +22,11 @@ spec:
         volumeMounts:
         - name: fs-tests-volume
           mountPath: /fs-tests
+        ports:
+        - containerPort: 3001
+        - containerPort: 3002
+        - containerPort: 3003
+        - containerPort: 3004
       volumes:
       - name: fs-tests-volume
         emptyDir: {}
