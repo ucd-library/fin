@@ -9,7 +9,9 @@ if( process.env.FIN_ENV_FILE ) {
   envPath = process.env.FIN_ENV_FILE;
 }
 if( fs.existsSync(envPath) && fs.lstatSync(envPath).isFile() ) {
-  console.log(`Loading environment variables from ${envPath}`);
+  if( ['info', 'debug'].includes(process.env.LOG_LEVEL) ) {
+    console.log(`Loading environment variables from ${envPath}`);
+  }
   require('dotenv').config({ path: envPath });
 }
 
