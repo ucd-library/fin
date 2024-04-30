@@ -20,6 +20,7 @@ spec:
       containers:
       - name: elasticsearch
         image: gcr.io/ucdlib-pubreg/fin-elastic-search:sandbox
+        imagePullPolicy: Always
         resources:
           requests:
             memory: "2Gi"
@@ -62,8 +63,6 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /usr/share/elasticsearch/data
-        - name: logs
-          mountPath: /usr/share/elasticsearch/logs
       initContainers:
       - name: fix-permissions
         image: busybox

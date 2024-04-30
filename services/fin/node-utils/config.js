@@ -59,7 +59,6 @@ let gcsDiskCacheExts = processArray(process.env.GCS_DISK_CACHE_EXTS);
 let disableServices = processArray(process.env.DISABLE_FIN_SERVICES);
 
 // make sure this is set for gcssync templates
-if( !env.GCS_BUCKET_ENV ) env.GCS_BUCKET_ENV = 'local-dev';
 if( !env.WORKFLOW_ENV ) env.WORKFLOW_ENV = 'local-dev';
 
 let finCachePredicates = (processArray(process.env.FIN_CACHE_PREDICATES) || [])
@@ -322,8 +321,6 @@ module.exports = {
     project : env.GOOGLE_CLOUD_PROJECT || gcServiceAccount.project_id,
     location : env.GOOGLE_CLOUD_LOCATION || 'us-central1',
     pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || env.GCS_BUCKET_ENV || 'local-dev',
-    gcsBucketEnv : env.GCS_BUCKET_ENV,
-
     gcsfuse : {
       rootDir : env.GCSFUSE_ROOT_DIR || '/etc/gcsfuse',
 
