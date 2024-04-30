@@ -5,10 +5,11 @@ metadata:
   labels:
     app: elasticsearch
 spec:
-  type: ClusterIP
+  clusterIP: None  # This is needed for statefulset hostnames like elasticsearch-0 to resolve
   ports:
-    - port: 9200
-      protocol: TCP
-      targetPort: 9200
+    - name: rest
+      port: 9200
+    - name: transport
+      port: 9300
   selector:
     app: elasticsearch
