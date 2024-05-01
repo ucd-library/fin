@@ -22,7 +22,7 @@ spec:
             memory: "500Mi"
             cpu: "500m"
         env:
-        - name: FIN_METRICS_FIN_ENABLED
+        - name: FIN_METRICS_ENABLED
           value: "true"
         - name: FIN_METRICS_FCREPO_ENABLED
           value: "true"

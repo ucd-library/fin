@@ -569,16 +569,37 @@ class FinGcWorkflowModel {
     await gcs.cleanFolder(workflowInfo.data.tmpGcsBucket, workflowId);
   }
 
+  async _updateWorkflowBuckets(workflow={}) {
+    if( !workflow.data ) return;
+    if( typeof workflow.data === 'string' ) {
+      workflow.data = JSON.parse(workflow.data);
+    }
+
+    if( workflow.data.gcsBucket === this.getTmpGcsBucket(workflow.name) &&
+        workflow.data.tmpGcsBucket === this.getGcsBucket(workflow.name) ) {
+      return workflow;
+    }
+
+    workflow.data.orgBuckets = {
+      gcsBucket : workflow.data.gcsBucket,
+      tmpGcsBucket : workflow.data.tmpGcsBucket,
+      tmpGcsPath : workflow.data.tmpGcsPath
+    }
+
+    workflow.data.tmpGcsBucket = this.getTmpGcsBucket(workflow.name);
+    workflow.data.gcsBucket = this.getGcsBucket(workflow.name);
+    workflow.data.tmpGcsPath = workflow.data.tmpGcsPath.replace(new RegExp('^gs://'+workflow.data.orgBuckets.tmpGcsBucket), 'gs://'+workflow.data.tmpGcsBucket);
+
+    return workflow;
+  }
+
   async getWorkflowInfo(workflowId) {
     let workflowInfo = await pg.getWorkflow(workflowId);
-    // if( workflowInfo ) {
-    //   workflowInfo.data = JSON.parse(workflowInfo.data);
-    // }
-    return workflowInfo;
+    return this._updateWorkflowBuckets(workflowInfo);
   }
 
   async getWorkflows(finPath) {
-    return (await pg.getWorkflows(finPath)) || [];
+    return ((await pg.getWorkflows(finPath)) || []).map(w => this._updateWorkflowBuckets(w));
   }
 
   /**

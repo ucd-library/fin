@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fin-init
+spec:
+  backoffLimit: 4
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: service
+        image: gcr.io/ucdlib-pubreg/fin-init:sandbox
+        imagePullPolicy: Always
+        env:
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /etc/fin/service-account.json
+        - name: FIN_SERVICE_NAME
+          value: "init"
+        volumeMounts:
+        - name: service-account
+          mountPath: /etc/fin/service-account.json
+          subPath: service-account.json
+        - name: env-config
+          mountPath: /etc/fin/.env
+          subPath: .env
+      volumes:
+      - name: service-account
+        secret:
+          secretName: service-account
+      - name: env-config
+        secret:
+          secretName: env-config

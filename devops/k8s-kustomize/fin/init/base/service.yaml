@@ -1,6 +1,0 @@
-kind: Service
-metadata:
-  name: init
-spec:
-  selector:
-    app: init
