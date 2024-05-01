@@ -32,7 +32,9 @@ class DbSyncPostgresUtils {
       return;
     }
 
-    this.pg.pgLib.types.setTypeParser(eum.typarray, this.pg.pgLib.types.getTypeParser(text.typarray));
+    for( let enumType of resp.rows ) {
+      this.pg.pgLib.types.setTypeParser(enumType.typarray, this.pg.pgLib.types.getTypeParser(text.typarray));
+    }
   }
 
   /**
