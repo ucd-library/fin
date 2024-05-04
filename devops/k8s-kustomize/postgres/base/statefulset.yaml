@@ -24,8 +24,8 @@ spec:
           value: "trust"
         resources:
           requests:
-            memory: "1Gi"
-            cpu: "1"
+            memory: "4Gi"
+            cpu: "2"
         ports:
         - containerPort: 5432
         volumeMounts:

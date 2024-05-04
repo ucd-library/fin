@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS quads (
   object_value TEXT,
   object_type_id INTEGER REFERENCES quads_uri_ref(uri_ref_id),
   last_modified TIMESTAMP,
-  cache_time TIMESTAMP DEFAULT NOW()
+  cache_time TIMESTAMP DEFAULT NOW(),
+  UNIQUE (fedora_id, subject_id, predicate_id, object_value, object_type_id)
 );
 CREATE INDEX IF NOT EXISTS quads_fedora_id_idx ON quads(fedora_id);
 CREATE INDEX IF NOT EXISTS quads_subject_id_idx ON quads(subject_id);
@@ -66,7 +67,7 @@ BEGIN
   SELECT uri_ref_id INTO otid FROM fin_cache.quads_uri_ref WHERE uri = object_type_in;
 
   INSERT INTO fin_cache.quads (fedora_id, subject_id, predicate_id, object_value, object_type_id, last_modified, cache_time)
-  VALUES (fid, sid, pid, object_value_in, otid, modified_in, NOW());
+  VALUES (fid, sid, pid, object_value_in, otid, modified_in, NOW()) ON CONFLICT DO NOTHING;
 
 END;
 $$ LANGUAGE plpgsql;
