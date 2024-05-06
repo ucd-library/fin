@@ -10,6 +10,7 @@ const gcsConfig = require('../../gcs/lib/config.js');
 const {ActiveMqTests} = tests;
 const finCache = new FinCache();
 
+gcsConfig.load();
 let activeMqTest = new ActiveMqTests({
   active: true,
   agent : 'gateway'
@@ -86,7 +87,7 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
     cleanConfig.server.cookieSecret = '********';
     cleanConfig.oidc.secret = '********';
 
-    await gcsConfig.loaded;
+    await gcsConfig.requestLoopPromise;
 
     res.json({
       registeredModels,
