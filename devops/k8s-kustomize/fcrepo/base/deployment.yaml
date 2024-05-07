@@ -23,7 +23,7 @@ spec:
           mountPath: /usr/local/tomcat/ActiveMQ
         resources:
           requests:
-            memory: "2Gi"
+            memory: "4Gi"
             cpu: "1"
         env:
         - name: CATALINA_OPTS

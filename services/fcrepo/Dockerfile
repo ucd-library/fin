@@ -1,5 +1,5 @@
-# FROM fcrepo/fcrepo:6.4.0
-FROM fcrepo/fcrepo:6.5.0-SNAPSHOT
+FROM fcrepo/fcrepo:6.4.1
+# FROM fcrepo/fcrepo:6.5.0-SNAPSHOT
 
 RUN apt update && apt install -y vim rsync
 

@@ -16,6 +16,7 @@ spec:
       containers:
       - name: database
         image: gcr.io/ucdlib-pubreg/fin-postgres:sandbox
+        args: ["-c", "max_connections=200"]
         imagePullPolicy: Always
         env:
         - name: PGDATA

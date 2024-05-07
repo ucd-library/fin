@@ -38,6 +38,14 @@ spec:
         - name: ocfl-volume
           mountPath: /data
           readOnly: true
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+          periodSeconds: 5
+          failureThreshold: 1
       volumes:
       - name: service-account
         secret:
