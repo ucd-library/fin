@@ -3,8 +3,8 @@ const config = require('../../config.js');
 const {ValueType} = require('@opentelemetry/api');
 const os = require('os');
 
-function getKey(method, path, responseCode) {
-  return `${method}-${path}-${responseCode}`;
+function getKey(method, path, responseCode, fcrepoService) {
+  return `${method}-${path}-${responseCode}-${fcrepoService}`;
 }
 
 function metricsTimingMiddleware(opts={}) {
@@ -39,7 +39,8 @@ function metricsTimingMiddleware(opts={}) {
           method: item.method,
           pathPrefix: item.pathPrefix,
           status: item.statusCode,
-          serviceName
+          serviceName,
+          fcrepoService : item.fcrepoService
         });
         delete data[key];
         continue;
@@ -56,7 +57,8 @@ function metricsTimingMiddleware(opts={}) {
         method: item.method,
         pathPrefix: item.pathPrefix,
         status: item.statusCode,
-        serviceName
+        serviceName,
+        fcrepoService : item.fcrepoService
       });
       item.responseTimes = [];
     };
@@ -65,21 +67,23 @@ function metricsTimingMiddleware(opts={}) {
 
   return (req, res, next) => {
     let method = req.method;
-    let pathPrefix = (req.path || '')
-      .split('/').splice(0, opts.prefixSegments+1)
+    let pathPrefix = (req.path || '').split('/');
+    let fcrepoService = pathPrefix.find(part => part.match(/^svc:/)) || 'none';
+    pathPrefix = pathPrefix.splice(0, opts.prefixSegments+1)
 
     if( pathPrefix[pathPrefix.length-1].match(/\./) ) {
       pathPrefix = pathPrefix.slice(0, pathPrefix.length-1);
     }
     pathPrefix = pathPrefix.join('/');
+    if( pathPrefix === '' ) pathPrefix = '/';
 
     let startTime = Date.now();
 
     res.on('finish', () => {
       let responseTime = Date.now() - startTime;
 
-      let key = getKey(method, pathPrefix, res.statusCode);
-      if( !data[key] ) data[key] = {responseTimes: [], method, pathPrefix, statusCode: res.statusCode};
+      let key = getKey(method, pathPrefix, res.statusCode, fcrepoService);
+      if( !data[key] ) data[key] = {responseTimes: [], method, pathPrefix, statusCode: res.statusCode, fcrepoService};
       data[key].responseTimes.push(responseTime);
     });
     next();
