@@ -125,7 +125,13 @@ module.exports = {
     admin : {
       username : env.FCREPO_ADMIN_USERNAME || 'fedoraAdmin',
       password : env.FCREPO_ADMIN_PASSWORD || 'fedoraAdmin'
-    }
+    },
+    roInstances : {
+      enabled : env.FCREPO_RO_ENABLED === 'true',
+      host : env.FCREPO_RO_HOSTNAME || 'fcrepo-ro',
+      port : env.FCREPO_RO_PORT || 8080,
+      numInstances : parseInt(env.FCREPO_RO_NUM_INSTANCES || 2)
+    },
   },
 
   metrics : {

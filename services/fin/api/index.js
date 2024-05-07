@@ -1,4 +1,4 @@
-const {logger, keycloak, config} = require('@ucd-lib/fin-service-utils');
+const {logger, keycloak, config, middleware} = require('@ucd-lib/fin-service-utils');
 const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
@@ -6,6 +6,7 @@ const cors = require('cors');
 
 // create express instance
 const app = express();
+app.use(middleware.httpTiming());
 
 // parse cookies
 app.use(cookieParser()); 

@@ -1,4 +1,4 @@
-const {config, logger, FinAC} = require('@ucd-lib/fin-service-utils');
+const {config, logger, FinAC, middleware} = require('@ucd-lib/fin-service-utils');
 
 const express = require('express');
 const api = require('@ucd-lib/fin-api');
@@ -11,6 +11,7 @@ api.setConfig({
 })
 
 const app = express();
+app.use(middleware.httpTiming());
 
 app.get(/\/.*/, async (req, res) => {
   try {

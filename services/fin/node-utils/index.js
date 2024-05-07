@@ -26,7 +26,8 @@ module.exports = {
   FinCache : require('./lib/fin-cache.js'),
   FinDigests : require('./lib/fin-digests.js'),
   middleware : {
-    finac : require('./lib/fin-ac/middleware.js')
+    finac : require('./lib/fin-ac/middleware.js'),
+    httpTiming : require('./lib/metrics/http-timing-middleware.js'),
   },
   workflow : require('./lib/workflow/index.js'),
   keycloak : require('./lib/keycloak.js'),

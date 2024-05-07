@@ -252,7 +252,18 @@ class ProxyModel {
       req.headers['authorization'] = 'Basic '+Buffer.from(fcrepoApiConfig.username+':'+fcrepoApiConfig.password).toString('base64');
     }
 
-    let url = `http://${config.fcrepo.hostname}:8080${req.originalUrl}`;
+    let fcrepoHost = config.fcrepo.hostname;
+    // if we have read only fcrepo instances, its a GET request and
+    // we are not in a transaction, randomly distribute requests to read only instances and main instance
+    if( config.fcrepo.roInstances.enabled && 
+        ['GET', 'HEAD', 'OPTIONS'].includes(req.method) 
+        && !req.get('Atomic-ID') ) {
+      if( (1/(config.fcrepo.roInstances.numInstances+1)) < Math.random() ) {
+        fcrepoHost = config.fcrepo.roInstances.host;
+      }
+    }
+
+    let url = `http://${fcrepoHost}:8080${req.originalUrl}`;
     logger.debug(`Fcrepo proxy request: ${url}`);
 
     // JM - TODO

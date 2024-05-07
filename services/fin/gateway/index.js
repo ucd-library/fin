@@ -1,4 +1,4 @@
-const {logger, config, keycloak, metrics} = require('@ucd-lib/fin-service-utils');
+const {logger, config, keycloak, middleware} = require('@ucd-lib/fin-service-utils');
 
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -33,6 +33,7 @@ require('./lib/startupCheck')(() => {
 
   // create express instance
   const app = express();
+  app.use(middleware.httpTiming());
 
   app.use(cookieParser(config.server.cookieSecret)); 
 
