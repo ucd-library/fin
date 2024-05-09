@@ -19,6 +19,7 @@ class IoUtils {
     this.TYPES = {
       BINARY : 'http://fedora.info/definitions/v4/repository#Binary',
       ARCHIVAL_GROUP : 'http://fedora.info/definitions/v4/repository#ArchivalGroup',
+      FIN_ARCHIVAL_GROUP : 'http://digital.ucdavis.edu/schema#FinArchivalGroup',
       INDIRECT_CONTAINER : 'http://www.w3.org/ns/ldp#IndirectContainer',
       COLLECTION : 'http://schema.org/Collection',
       GIT_SOURCE : 'http://digital.ucdavis.edu/schema#GitSource',
@@ -257,12 +258,16 @@ class IoUtils {
    * expanded graph/node
    * 
    * @param {Object} node 
-   * @param {String} type full uri
+   * @param {String|Array} checkType full uri
    * @returns 
    */
-  isNodeOfType(node, type) {
+  isNodeOfType(node, checkType) {
     let types = node['@type'] || [];
-    if( types.includes(type) ) return type;
+    if( !Array.isArray(checkType) ) checkType = [checkType];
+    for( let ct of checkType ) {
+      if( types.includes(ct) ) return true;
+    }
+    
     return false;
   }
 

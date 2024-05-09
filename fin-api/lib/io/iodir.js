@@ -132,6 +132,21 @@ class IoDir {
     return this.children;
   }
 
+  getTypeMapper(node, includeDefault=true) {
+    if( !this.config.instanceConfig ) return null;
+
+    let typeConfig = this.config.instanceConfig.typeMappers.find(item => {
+      return utils.isNodeOfType(node, item.types);
+    });
+
+    if( !typeConfig && includeDefault && this.config.instanceConfig.default ) {
+      typeConfig = this.config.instanceConfig.default;
+    }
+
+    return typeConfig;
+
+  }
+
   /**
    * @method handleArchivalGroup
    * @description handle ldp:ArchivalGroup nodes. this method checks if node is of 
@@ -148,27 +163,45 @@ class IoDir {
 
     let node = container.graph.mainNode;
 
-    // check for archival group node
-    if( node['@type'] && node['@type'].includes(utils.TYPES.ARCHIVAL_GROUP) ) {
+    let agTypeConfig = this.getTypeMapper(node);
+    let isArchivalGroup = false;
+    if( agTypeConfig && agTypeConfig.virtualArchiveGroup ) {
+      let vgConfig = agTypeConfig.virtualArchiveGroup
 
+      if( !node['@type'] ) node['@type'] = [];
 
+      // strip out archival group from the node if it exists
+      let index = node['@type'].indexOf(utils.TYPES.ARCHIVAL_GROUP);
+      if( index > -1 ) node['@type'].splice(index, 1);
+      
+      node['@type'].push(utils.TYPES.FIN_ARCHIVAL_GROUP);
 
-      // handle fin io import instance config if provided by the server
-      if( this.config.instanceConfig ) {
-        container.agTypeConfig = this.config.instanceConfig.typeMappers.find(item => {
-          // search for type definition for the node
-          for( let itype of item.types ) {
-            if( utils.isNodeOfType(node, itype) ) {
-              return true;
+      // check for predicate and regex match
+      if( vgConfig.predicate && vgConfig.regex ) {
+        let re = new RegExp(vgConfig.regex);
+        let predicate = agTypeConfig.virtualArchiveGroup.predicate;
+        let short = predicate.replace(/^.*(\/|#)/, '');
+
+        let value = utils.getPropAsString(node, predicate) || utils.getPropAsString(node, short);
+        if( value ) {
+          if( !Array.isArray(value) ) value = [value];
+          for( let v of value ) {
+            if( re.test(v) ) {
+              isArchivalGroup = true;
+              break;
             }
           }
-        });
-
-        // set default type config if none found and default is provided
-        if( !container.agTypeConfig && this.config.instanceConfig.default ) {
-          container.agTypeConfig = this.config.instanceConfig.default;
         }
       }
+    } else {
+      isArchivalGroup = utils.isNodeOfType(node, utils.TYPES.ARCHIVAL_GROUP);
+    }
+
+    // check for archival group node
+    if( isArchivalGroup ) {
+
+      // handle fin io import instance config if provided by the server
+      container.agTypeConfig = agTypeConfig;
 
       // set archival group
       // must be done after agTypeConfig is set
@@ -180,8 +213,6 @@ class IoDir {
 
         this.archivalGroups.push(container);
       }
-
-
     }
   }
 
