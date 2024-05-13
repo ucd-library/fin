@@ -40,7 +40,7 @@ spec:
           readOnly: true
         readinessProbe:
           httpGet:
-            path: /
+            path: /health/ready
             port: 3000
           initialDelaySeconds: 5
           timeoutSeconds: 2

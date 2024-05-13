@@ -1,10 +1,11 @@
 // create express router
 const express = require('express');
 const bodyParser = require('body-parser');
-const {gc, logger, config, middleware} = require('@ucd-lib/fin-service-utils');
+const {gc, logger, config, middleware, controllers} = require('@ucd-lib/fin-service-utils');
 const {workflowModel} = gc;
 
 const app = express();
+controllers.health.register(app);
 app.use(middleware.httpTiming());
 
 app.get('/reload', async (req, res) => {

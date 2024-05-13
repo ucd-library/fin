@@ -5,7 +5,8 @@ const mime = require('mime');
 const pathutils = require('../utils/path');
 const utils = require('./utils');
 const csv = require('csv/sync');
-const fs = require('fs');
+const fs = require('fs-extra');
+const { stat } = require('fs');
 
 let api;
 
@@ -79,6 +80,27 @@ class FinIoImport {
    */
   async run(options) {
     this.addSigIntCallback();
+
+    // we are preparing the filesystem layout for import
+    // this is a two step process.  First we crawl the filesystem and create a json file for each write
+    // operation that will be performed.
+    if( options.prepareFsLayoutImport ) {
+      if( path.isAbsolute(options.prepareFsLayoutImport) === false ) {
+        options.prepareFsLayoutImport = path.resolve(process.cwd(), options.prepareFsLayoutImport);
+      }
+
+      this.writeCount = 0;
+      console.log('Preparing filesystem layout import: '+options.prepareFsLayoutImport);
+      if( !fs.existsSync(options.prepareFsLayoutImport) ) {
+        throw new Error('prepareFsLayoutImport path does not exist: '+options.prepareFsLayoutImport);
+      }
+      await fs.remove(options.prepareFsLayoutImport);
+      await fs.ensureDir(options.prepareFsLayoutImport);
+      fs.writeFileSync(
+        path.join(options.prepareFsLayoutImport, 'fin-io-import.json'),
+        JSON.stringify(options, null, 2)
+      );
+    }
 
     if( options.ignoreRemoval !== true ) options.ignoreRemoval = false;
     if( options.fcrepoPath && !options.fcrepoPath.match(/^\//) ) {
@@ -277,15 +299,22 @@ class FinIoImport {
     
     // run transaction import strategy
     } else if( this.options.agImportStrategy === 'transaction' ) {
-      this.currentOp = api.startTransaction({timeout: this.DEFAULT_TIMEOUT});
-      let tResp = await this.currentOp;
-      if( tResp.last.statusCode !== 201 ) {
-        console.error('Unable to start transaction: ', tResp.last.statusCode, tResp.last.body);
-        process.exit(1);
-        return;
+      if( !this.options.prepareFsLayoutImport ) {
+        this.currentOp = api.startTransaction({timeout: this.DEFAULT_TIMEOUT});
+        let tResp = await this.currentOp;
+        if( tResp.last.statusCode !== 201 ) {
+          console.error('Unable to start transaction: ', tResp.last.statusCode, tResp.last.body);
+          process.exit(1);
+          return;
+        }
+        console.log(' -> changes found, running transaction based update ('+api.getConfig().transactionToken+'): '+response.message);
+      } else {
+        this.openFsLayoutTransaction = path.join(this.options.prepareFsLayoutImport, this.writeCount+'-tx');
+        console.log(' -> changes found, creating transaction based update: ('+this.openFsLayoutTransaction);
+        await fs.mkdirp(this.openFsLayoutTransaction);
+        this.writeCount++;
       }
-      console.log(' -> changes found, running transaction based update ('+api.getConfig().transactionToken+'): '+response.message);
-    
+
     // run version import strategy
     // TODO: need to actually version here 
     } else if( this.options.agImportStrategy === 'version-all' ) {
@@ -344,10 +373,14 @@ class FinIoImport {
     }
 
     if( this.options.agImportStrategy === 'transaction' ) {
-      let token = api.getConfig().transactionToken;
-      this.currentOp = api.commitTransaction({timeout: this.DEFAULT_TIMEOUT});
-      let tResp = await this.currentOp;
-      console.log(' -> commit ArchivalGroup transaction based update ('+token+'): '+tResp.last.statusCode);
+      if( this.options.prepareFsLayoutImport ) {
+        this.openFsLayoutTransaction = null;
+      } else {
+        let token = api.getConfig().transactionToken;
+        this.currentOp = api.commitTransaction({timeout: this.DEFAULT_TIMEOUT});
+        let tResp = await this.currentOp;
+        console.log(' -> commit ArchivalGroup transaction based update ('+token+'): '+tResp.last.statusCode);
+      }
     }
 
     return true;
@@ -800,8 +833,19 @@ class FinIoImport {
   }
 
   async write(verb, opts, file) {
-    if( !opts.timeout ) opts.timeout = this.DEFAULT_TIMEOUT; 
+    if( this.options.prepareFsLayoutImport )  {
+      let data = {verb, opts, file};
+      let filename = `${this.writeCount}-${verb}-${path.parse(opts.path).base}.json`;
+      filename = path.join(this.openFsLayoutTransaction || this.options.prepareFsLayoutImport, filename);
+      this.writeCount++;
+      fs.writeFileSync(
+        filename,
+        JSON.stringify(data, null, 2)
+      );
+      return {last : {statusText: 'ok', statusCode: 'write to disk: '+filename}};
+    }
 
+    if( !opts.timeout ) opts.timeout = this.DEFAULT_TIMEOUT; 
     let startTime = Date.now();
 
     try {

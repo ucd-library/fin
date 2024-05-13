@@ -1,4 +1,4 @@
-const {config, logger, keycloak, models, dataModels, middleware} = require('@ucd-lib/fin-service-utils');
+const {config, logger, keycloak, models, dataModels, middleware, controllers} = require('@ucd-lib/fin-service-utils');
 
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -15,6 +15,7 @@ api.setConfig({
 
 const app = express();
 app.use(middleware.httpTiming());
+controllers.health.register(app);
 app.use(bodyParser.text({type: '*/*'}));
 
 // list all indexes

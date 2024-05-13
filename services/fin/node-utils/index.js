@@ -29,6 +29,9 @@ module.exports = {
     finac : require('./lib/fin-ac/middleware.js'),
     httpTiming : require('./lib/metrics/http-timing-middleware.js'),
   },
+  controllers : {
+    health : require('./lib/controllers/service-health.js')
+  },
   workflow : require('./lib/workflow/index.js'),
   keycloak : require('./lib/keycloak.js'),
   models : require('./lib/models.js'),

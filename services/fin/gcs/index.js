@@ -1,4 +1,4 @@
-const {gc, logger, config, middleware} = require('@ucd-lib/fin-service-utils');
+const {gc, logger, config, middleware, controllers} = require('@ucd-lib/fin-service-utils');
 
 const express = require('express');
 const gcsConfig = require('./lib/config.js');
@@ -9,6 +9,7 @@ const {gcs} = gc;
 
 const PORT = 3000;
 const app = express();
+controllers.health.register(app);
 app.use(middleware.httpTiming());
 
 gcsConfig.load();

@@ -1,4 +1,4 @@
-const {config, keycloak, logger, middleware} = require('@ucd-lib/fin-service-utils');
+const {config, keycloak, logger, middleware, controllers} = require('@ucd-lib/fin-service-utils');
 
 const express = require('express');
 const { auth } = require('express-openid-connect');
@@ -7,6 +7,7 @@ const bodyParser = require('body-parser');
 keycloak.initTls();
 
 const app = express();
+controllers.health.register(app);
 app.use(middleware.httpTiming());
 
 app.use(bodyParser.json());

@@ -1,4 +1,4 @@
-const {config, logger, keycloak, middleware} = require('@ucd-lib/fin-service-utils');
+const {config, logger, keycloak, middleware, controllers} = require('@ucd-lib/fin-service-utils');
 const express = require('express');
 const ReindexCrawler = require('./lib/reindex-crawler.js');
 const postgres = require('./lib/postgres.js');
@@ -11,6 +11,7 @@ api.setConfig({
 
 
 const app = express();
+controllers.health.register(app);
 app.use(middleware.httpTiming());
 
 // The fcrepo rest is because the crawl reindex is bound to path and
