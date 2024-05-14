@@ -9,6 +9,7 @@
     "cas": "node cas/index.js",
     "oidc": "node oidc/index.js",
     "dbsync": "node dbsync/index.js",
+    "fin-cache": "node fin-cache/index.js",
     "es-index-management": "node es-index-management/index.js",
     "gcs": "node gcs/index.js",
     "gateway": "node gateway/index.js",

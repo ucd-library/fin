@@ -4,6 +4,7 @@ const directAccess = require('./direct-access');
 const URIS = require('./common-rdf-uris.js');
 const config = require('../config.js');
 const SCHEMA = 'fin_cache';
+const RabbitMqClient = require('./messaging/rabbitmq');
 
 class FinCache {
 
@@ -18,6 +19,28 @@ class FinCache {
       REINDEX : 'Reindex',
       DELETE : ['Delete', 'Purge']
     }
+  }
+
+  /**
+   * @method listen
+   * @description listen for fcrepo events via rabbitmq
+   * 
+   * @param {RabbitMqClient} messaging Optional.  If not provided, a new RabbitMQ instance will be created
+   */
+  listen(messaging) {
+    if( this.listening ) {
+      throw new Error('Fin cache is already listening to fcrepo events');
+    }
+    this.listening = true;
+
+    if( !messaging ) {
+      messaging = new RabbitMqClient('fin-cache');
+    }
+    this.messaging = messaging;
+    this.messaging.subscribe(
+      this.messaging.EXCLUSIVE_QUEUE,
+      e => this.onFcrepoEvent(e)
+    );
   }
 
   /**

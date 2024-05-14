@@ -7,6 +7,11 @@ spec:
   selector:
     app: fcrepo
   ports:
-    - port: 8080
+    - name: http
+      port: 8080
       protocol: TCP
       targetPort: 8080
+    - name: amqp
+      port: 5672
+      protocol: TCP
+      targetPort: 5672

@@ -30,6 +30,7 @@ spec:
           value: "-Dfcrepo.config.file=/etc/fin/fcrepo.properties -Dfcrepo.log=DEBUG -Dfcrepo.log.auth=DEBUG -Dfcrepo.log.kernel=DEBUG"
         ports:
         - containerPort: 8080
+        - containerPort: 5672
       volumes:
       - name: ocfl-volume
         persistentVolumeClaim:
