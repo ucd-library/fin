@@ -17,3 +17,9 @@ patches:
       metadata:
         name: fin-service-deployment
       $patch: delete
+  - target:
+      kind: Deployment
+      name: fin-service-deployment
+    patch: |-
+      - path: /spec/template/spec/containers/0/readinessProbe
+        op: remove

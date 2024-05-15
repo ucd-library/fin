@@ -191,13 +191,26 @@ class DirectAccess {
     let results = await pg.query(`SELECT * from ocfl_id_map where fedora_id = ANY($1)`, [aclPaths]);
 
     let acl = null;
-    results.rows.forEach(row => {
+    for( let row of results.rows ) {
+      let container = await this.readOcfl(row.fedora_id, {isAcl: true});
+      let isAuthorizationType = false;
+      for( let node of container ) {
+        if( !node['@type'] ) continue;
+        if( !node['@type'].includes(RDF_URIS.TYPES.AUTHORIZATION) ) {
+          continue;
+        }
+        isAuthorizationType = true;
+        break;
+      }
+
+      if( !isAuthorizationType ) continue;
+
       if( !acl ) {
         acl = row.fedora_id;
       } else if( acl.length < row.fedora_id.length ) {
         acl = row.fedora_id;
       }
-    });
+    }
 
     if( !acl ) return aclImpl;
 
