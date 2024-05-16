@@ -3,6 +3,8 @@ const keycloak = require('./keycloak.js');
 const logger = require('./logger.js');
 const api = require('@ucd-lib/fin-api');
 const path = require('path');
+const FinCache = require('./fin-cache.js');
+const finCache = new FinCache();
 
 const CONFIG = {
   BASE_PATH : config.finDigests.basePath,
@@ -45,6 +47,8 @@ class FinDigests {
         }))
       }
 
+      await this.ensureChildren(finPath);
+
       let response = await api.put({
         path : finPath,
         jwt : await keycloak.getServiceAccountToken(),
@@ -56,8 +60,13 @@ class FinDigests {
 
       let statusCode = response.last.statusCode;
 
-      logger.info('Set fin digest container, status='+statusCode+' path='+finPath+' digests='+req.finDigests.map(d => d[0]).join(','));
-
+      if( statusCode > 299 ) {
+        logger.info('Set fin digest container, status='+statusCode+' path='+finPath+' digests='+req.finDigests.map(d => d[0]).join(','));
+        // force cache update ASAP
+        finCache.update(finPath, [body['@type']]);
+      } else {
+        logger.error('Failed to set fin digest container, status='+statusCode+' path='+finPath+' digests='+req.finDigests.map(d => d[0]).join(','));
+      }
     } else {
       let response = await api.delete({
         path : finPath,
@@ -66,7 +75,35 @@ class FinDigests {
       })
 
       logger.info('Deleted fin digest container, status='+response.last.statusCode+' path='+finPath);
+      // force cache update ASAP
+      finCache.delete(finPath);
     }
+  }
+
+  async ensureChildren(path, index=4) {
+    let childPath = path.split('/').splice(0, index).join('/');
+    if( childPath === path ) return;
+    
+    let exists = await api.head({
+      path: childPath,
+      jwt : await keycloak.getServiceAccountToken()
+    });
+
+    if( exists.last.statusCode === 404 ) {
+      await api.put({
+        path: childPath,
+        jwt : await keycloak.getServiceAccountToken(),
+        headers : {
+          'content-type' : 'application/ld+json',
+        },
+        body : JSON.stringify({
+          '@type' : 'http://digital.ucdavis.edu/schema#PlaceholderDigestContainer',
+          'http://schema.org/name' : 'Placeholder for digest container'
+        })
+      });
+    }
+
+    await this.ensureChildren(path, index+1);
   }
 
   ignore(req) {

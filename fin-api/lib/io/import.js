@@ -286,7 +286,13 @@ class FinIoImport {
     }
 
     // sha match, no changes, no force flag, ignore
-    if( response.equal === true && this.options.forceMetadataUpdate !== true ) {
+
+    let forcedUpdate = this.options.forceMetadataUpdate || this.options.forceBinaryUpdate;
+    if( response.equal === true && forcedUpdate === true ) {
+      console.log(' -> no changes found, forced update happening ');
+    }
+
+    if( response.equal === true && forcedUpdate !== true ) {
       console.log(' -> no changes found, ignoring');
       this.diskLog({verb: 'ignore', path: container.fcrepoPath, file: container.fsfull, message : 'no changes found'});
       return false;

@@ -3,11 +3,11 @@ const utils = require('./utils');
 const pathutils = require('../utils/path');
 
 const FIN_IO_DIGEST_NAME = {
-  BINARY_HASH : 'sha256',
+  BINARY_HASH : 'sha-?256',
   METADATA_HASH : 'finio-metadata-sha256',
 }
 const FIN_DIGEST_PREDICATE = 'http://digital.ucdavis.edu/schema#hasMessageDigest';
-
+const DIGEST_PREDICATE = 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest';
 class FinImportContainer {
 
   constructor(typeConfig, startPath) {
@@ -348,7 +348,7 @@ class FinImportContainer {
     let re = new RegExp('^urn:'+name+':');
 
     quads = quads
-      .filter(quad => quad.predicate === FIN_DIGEST_PREDICATE)
+      .filter(quad => quad.predicate === FIN_DIGEST_PREDICATE || quad.predicate === DIGEST_PREDICATE)
       .filter(quad => quad.object.match(re))
       .map(quad => quad.object.replace(re, ''));
 
