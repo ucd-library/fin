@@ -37,6 +37,7 @@ class FinDigests {
     finPath = path.join(CONFIG.BASE_PATH, finPath);
 
     if( req.finDigests && req.method !== 'DELETE' ) {
+      logger.info('Setting fin digests, path='+finPath+' for='+orgFinPath);
 
       let body = {
         '@id' : path.join('info:fedora', orgFinPath.replace(/\/fcr:metadata$/, '')),
@@ -61,18 +62,32 @@ class FinDigests {
       let statusCode = response.last.statusCode;
 
       if( statusCode > 299 ) {
+        logger.error('Failed to set fin digest container, status='+statusCode+' path='+finPath+' digests='+req.finDigests.map(d => d[0]).join(','));
+      } else {
         logger.info('Set fin digest container, status='+statusCode+' path='+finPath+' digests='+req.finDigests.map(d => d[0]).join(','));
         // force cache update ASAP
         finCache.update(finPath, [body['@type']]);
-      } else {
-        logger.error('Failed to set fin digest container, status='+statusCode+' path='+finPath+' digests='+req.finDigests.map(d => d[0]).join(','));
       }
     } else {
+      let exists = await api.head({
+        path: finPath,
+        jwt : await keycloak.getServiceAccountToken()
+      });
+
+      if( exists.last.statusCode !== 200 ) {
+        return;
+      }
+
       let response = await api.delete({
         path : finPath,
         jwt : await keycloak.getServiceAccountToken(),
         permanent: true
-      })
+      });
+
+      if( response.last.statusCode > 299 ) {
+        logger.error('Failed to delete fin digest container, status='+response.last.statusCode+' path='+finPath);
+        return;
+      }
 
       logger.info('Deleted fin digest container, status='+response.last.statusCode+' path='+finPath);
       // force cache update ASAP
@@ -108,9 +123,9 @@ class FinDigests {
 
   ignore(req) {
     if( !CONFIG.METHODS.includes(req.method) ) return true;
-    if( !req.headers['digest'] ) return true;
-    if( req.originalUrl.match(/\/fcr:*$/) && !req.originalUrl.match(/\/fcr:metadata$/) ) return true;
-    if( req.originalUrl.match(/\/svc:*$/) ) return true;
+    if( req.originalUrl.startsWith('/fcrepo/rest'+CONFIG.BASE_PATH) ) return true;
+    if( req.originalUrl.match(/\/fcr:.*$/) && !req.originalUrl.match(/\/fcr:metadata$/) ) return true;
+    if( req.originalUrl.match(/\/svc:.*$/) ) return true;
     return false;
   }
 
