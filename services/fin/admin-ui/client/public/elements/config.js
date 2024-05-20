@@ -169,15 +169,21 @@ const viewConfig = {
   },
 
   'path-info-fin-cache' : {
-    table : 'fin_cache_quads',
-    ignoreKeys : ['quads_id', 'fedora_id'],
+    ignoreKeys : ['quads_id'],
     renderCellValue : (row, key) => {
       if( key === 'subject' ) {
         if( row[key].match(row.fedora_id) ) {
           let short = row[key].replace(row.fedora_id, '');
           return '<'+short+'>';
         }
-        return row[key];
+        return row[key].replace(/info:fedora/, '');
+      }
+      if( key === 'fedora_id' ) {
+        if( row.subject === row.fedora_id ) return '<>';
+        return '<'+row.fedora_id.replace(/info:fedora/, '')+'>';
+      }
+      if( key === 'object' && row.object.length > 50 ) {
+        return row.object.substring(0, 50)+'...';
       }
       return standardRender(row, key);
     }

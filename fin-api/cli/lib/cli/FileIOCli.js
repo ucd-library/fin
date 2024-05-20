@@ -27,7 +27,8 @@ class FileIOCli {
       importFromRoot,
       prepareFsLayoutImport,
       agImportStrategy,
-      logToDisk : args.options.logToDisk || false
+      logToDisk : args.options.logToDisk || false,
+      debugShaChanges : args.options.debugShaChanges || false
     });
   }
 

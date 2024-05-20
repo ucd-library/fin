@@ -41,6 +41,14 @@ class FinApiModel extends BaseModel {
     return this.service.getContainer(path);
   }
 
+  getContainerVersions(path) {
+    return this.service.getContainerVersions(path);
+  }
+
+  getContainerSubjectCache(path) {
+    return this.service.getContainerSubjectCache(path);
+  }
+
   getDataModelIndexes(id) {
     return this.service.getDataModelIndexes(id);
   }

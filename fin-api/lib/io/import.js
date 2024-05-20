@@ -285,6 +285,10 @@ class FinIoImport {
       response = {equal:false, message: 'Changes detected: '+container.fcrepoPath};
     }
 
+    if( this.options.debugShaChanges && !response.equal ) {
+      console.log(' -> sha changes: ', JSON.stringify(agShaManifest, null, 2));
+    }
+
     // sha match, no changes, no force flag, ignore
 
     let forcedUpdate = this.options.forceMetadataUpdate || this.options.forceBinaryUpdate;

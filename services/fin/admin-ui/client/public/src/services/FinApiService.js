@@ -167,6 +167,32 @@ class FinApiService extends BaseService {
     });
   }
 
+  async getContainerVersions(path) {
+    if( path.match(/\/$/) ) {
+      path = path.slice(0, -1);
+    }
+
+    return this.request({
+      url : '/fcrepo/rest' + path + '/fcr:versions',
+      fetchOptions : {
+        headers : {
+          accept : 'application/ld+json'
+        }
+      }
+    });
+  }
+
+  getContainerSubjectCache(path) {
+    return this.request({
+      url : '/fin/subject' + path
+      // fetchOptions : {
+      //   headers : {
+      //     accept : 'application/ld+json'
+      //   }
+      // }
+    });
+  }
+
 }
 
 const service = new FinApiService();

@@ -64,14 +64,18 @@ class FinCache {
     for( let ut of updateType ) {
       try {
         if( this.UPDATE_TYPES.DELETE.includes(ut) ) {
+          // TODO: verify if this ever gets called
           logger.info('fin-cache deleting: '+id);
           await this.delete(id);
+          break;
         } else if( this.UPDATE_TYPES.CREATE === ut || this.UPDATE_TYPES.UPDATE === ut ) {
           logger.info('fin-cache updating: '+id);
           await this.update(id, types);
+          break;
         } else if( this.UPDATE_TYPES.REINDEX === ut ) {
           logger.info('fin-cache reindexing: '+id);
           await this.reindex(id);
+          break;
         }
       } catch(e) {
         logger.error('Failed fin-cache '+ut+' event handling for: '+id, e);
@@ -84,17 +88,21 @@ class FinCache {
    * @description set a fin tag.  if the object is an empty string, 
    * delete the subject/predicate tag.
    * 
+   * @param {String} finPath
    * @param {String} subject 
    * @param {String} predicate 
    * @param {String} object 
+   * @param {String} objectType
+   * @param {String} lastModified
+   * 
    * @returns 
    */
-  async set(graph, subject, predicate, object='', objectType='', lastModified=null) {
+  async set(finPath, graph, subject, predicate, object='', objectType='', lastModified=null) {
     subject = this._formatFedoraId(subject);
 
     return pg.query(
-      `select * from ${SCHEMA}.quads_insert($1, $2, $3, $4, $5, $6)`, 
-      [graph, subject, predicate, object, objectType, lastModified]
+      `select * from ${SCHEMA}.quads_insert($1, $2, $3, $4, $5, $6, $7)`, 
+      [finPath, graph, subject, predicate, object, objectType, lastModified]
     );
   }
 
@@ -212,6 +220,7 @@ class FinCache {
 
     for( let quad of quads ) {
       await this.set(
+        finPath,
         fedoraId, 
         quad.subject.id, 
         quad.predicate.id, 
@@ -246,13 +255,11 @@ class FinCache {
    * @method delete
    * @description delete a fin tag.  if predicate is not provided, delete all tags for the subject
    * 
-   * @param {String} graph 
+   * @param {String} finPath 
    * @returns 
    */
-  async delete(graph) {
-    graph = this._formatFedoraId(graph);
-
-    let params = [graph];
+  async delete(finPath) {
+    let params = [finPath];
     let query = `select * from ${SCHEMA}.quads_delete($1)`;
 
     let resp = await pg.query(query, params);
