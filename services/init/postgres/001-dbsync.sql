@@ -343,6 +343,7 @@ BEGIN
       validate_response_id = vrid;
   END IF;
 
+  DELETE FROM validate_response_item WHERE validate_response_id = vrid;
   DELETE FROM validate_response WHERE model = model_in AND db_id = db_id_in;
 END;
 $$ LANGUAGE plpgsql;
