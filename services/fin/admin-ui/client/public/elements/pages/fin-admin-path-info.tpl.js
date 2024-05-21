@@ -121,10 +121,10 @@ return html`
 <h1 class="heading--weighted-underline">Fin Subject Cache</h1>
 <div ?hidden="${!this.digestsCheckCompleted}">
   <div ?hidden="${this.digestsValid}">
-    <div class="alert alert--error">Digests do not match</div>
+    <div class="alert alert--error">Fcrepo state tokens do not match</div>
   </div>
   <div ?hidden="${!this.digestsValid}">
-    <div style="color:green">Fin Cache Digests are up to date</div>
+    <div style="color:green">Fcrepo state tokens are up to date</div>
   </div>
 </div>
 <fin-admin-data-table 

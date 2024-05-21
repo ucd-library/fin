@@ -76,6 +76,12 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     if( path === this.path ) return;
 
     this.path = path;
+    this.versions = {
+      count : 0,
+      latest : ''
+    };
+    this.digestsValid = false;
+    this.digestsCheckCompleted = false;
 
     this.queryDbSync();
     this.queryWorkflows();
@@ -89,6 +95,11 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
       let resp = await this.FinApiModel.getContainer(this.path);
 
       this.stateToken = resp.response.headers.get('x-state-token');
+      if( resp.isBinary ) {
+        this.binaryStateToken = resp.binaryHeaders.get('x-state-token');
+      } else {
+        this.binaryStateToken = null;
+      }
       this.checkDigestsValid();
  
       let container = JSON.parse(resp.body);
@@ -279,16 +290,34 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     if( !this.finCacheData.length ) return;
     if( !this.stateToken ) return;
 
-    let cacheToken = this.finCacheData.find(i => 
-      i.predicate === 'http://digital.ucdavis.edu/schema#ldpStateToken' &&
-      i.fin_path === '/fin/digests'+this.path
-    );
-    console.log(cacheToken, this.path, this.stateToken)
+    let cacheToken, binaryCacheToken;
+
+    if( this.binaryStateToken ) {
+      cacheToken = this.finCacheData.find(i => 
+        i.predicate === 'http://digital.ucdavis.edu/schema#ldpStateToken' &&
+        i.fin_path === '/fin/digests'+this.path+'/fcr-metadata'
+      );
+      binaryCacheToken = this.finCacheData.find(i =>
+        i.predicate === 'http://digital.ucdavis.edu/schema#ldpStateToken' &&
+        i.fin_path === '/fin/digests'+this.path
+      );
+    } else {
+      cacheToken = this.finCacheData.find(i => 
+        i.predicate === 'http://digital.ucdavis.edu/schema#ldpStateToken' &&
+        i.fin_path === '/fin/digests'+this.path
+      );
+    }
+
     if( !cacheToken ) return;
 
     this.digestsCheckCompleted = true;
 
-    if( cacheToken.object === this.stateToken ) {
+    let binaryValid = true;
+    if( binaryCacheToken ) {
+      binaryValid = (binaryCacheToken.object === this.binaryStateToken );
+    }
+
+    if( cacheToken.object === this.stateToken && binaryValid ) {
       this.digestsValid = true;
     } else {
       this.digestsValid = false;

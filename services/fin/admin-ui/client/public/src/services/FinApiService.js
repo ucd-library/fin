@@ -137,6 +137,9 @@ class FinApiService extends BaseService {
 
   async getContainer(path) {
     // find container type
+    let binaryHeaders = null;
+    let isBinary = false;
+
     if( !path.match(/\/fcr:metadata/) ) {
       let {response} = await this.request({
         url : '/fcrepo/rest' + path,
@@ -146,18 +149,18 @@ class FinApiService extends BaseService {
       });
 
       let link = response.headers.get('link') || '';
-      let isBinary = false;
       link.split(',').forEach(link => {
         let url = link.match(/<(.*)>/)[1];
         if( url === BINARY ) isBinary = true;
       });
 
       if( isBinary ) {
+        binaryHeaders = response.headers;
         path += '/fcr:metadata';
       }
     }
 
-    return this.request({
+    let resp = await this.request({
       url : '/fcrepo/rest' + path,
       fetchOptions : {
         headers : {
@@ -165,6 +168,8 @@ class FinApiService extends BaseService {
         }
       }
     });
+
+    return Object.assign(resp, {isBinary, binaryHeaders});
   }
 
   async getContainerVersions(path) {
