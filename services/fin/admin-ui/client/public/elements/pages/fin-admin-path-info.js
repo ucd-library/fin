@@ -82,6 +82,8 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     };
     this.digestsValid = false;
     this.digestsCheckCompleted = false;
+    this.binaryStateToken = null;
+    this.stateToken = null;
 
     this.queryDbSync();
     this.queryWorkflows();
