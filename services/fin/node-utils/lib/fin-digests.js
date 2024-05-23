@@ -1,138 +1,186 @@
-const config = require('../config.js');
-const keycloak = require('./keycloak.js');
 const logger = require('./logger.js');
-const api = require('@ucd-lib/fin-api');
-const path = require('path');
-const FinCache = require('./fin-cache.js');
-const finCache = new FinCache();
+const pg = require('./pg.js');
+
+// const FinCache = require('./fin-cache.js');
+// const finCache = new FinCache();
 
 const CONFIG = {
-  BASE_PATH : config.finDigests.basePath,
-  METHODS : ['PUT', 'POST', 'PATCH', 'DELETE']
+  GET_METHODS: ['GET', 'HEAD'],
+  SET_METHODS: ['PUT', 'POST'],
+  DELETE_METHODS: ['PATCH', 'DELETE']
 }
 
 class FinDigests {
 
-  onFcrepoRequest(req) {
-    if( !req.headers['digest'] ) return;
+  async onFcrepoRequest(req) {
+    if ( req.headers['digest'] ) {
+      req.finDigests = req.headers['digest']
+        .split(',')
+        .map(d => d.trim())
+        .filter(d => d)
+        .map(d => {
+          let parts = d.split('=');
+          return [parts.shift(), parts.join('=')];
+        });
+    }
 
-    req.finDigests = req.headers['digest']
-      .split(',')
-      .map(d => d.trim())
-      .filter(d => d)
-      .map(d => {
-        let parts = d.split('=');
-        return [parts.shift(), parts.join('=')];
-      });
+    if( CONFIG.GET_METHODS.includes(req.method) ) {
+      req.finRespDigestHeader = await this.getHeader(this._cleanPath(req.originalUrl));
+    }
   }
 
   async onFcrepoResponse(req, res) {
-    if( this.ignore(req) ) return;
-    if( req.statusCode > 299 ) return;
+    if (this._ignoreResponse(req)) return;
 
+    // if this is a request to set the precooked digest header, just return
+    if( CONFIG.GET_METHODS.includes(req.method) ) {
+      if( req.finRespDigestHeader ) {
+        res.headers.digest = req.finRespDigestHeader;
+      }
+      return;
+    }
 
     let stateToken = res.headers['x-state-token'];
-    let orgFinPath = req.originalUrl.replace(/.*\/fcrepo\/rest\//, '');
-    let finPath = orgFinPath.replace(/\/fcr:metadata$/, '/fcr-metadata');
-    finPath = path.join(CONFIG.BASE_PATH, finPath);
+    let orgFinPath = this._cleanPath(req.originalUrl);
 
-    if( req.finDigests && req.method !== 'DELETE' ) {
-      logger.info('Setting fin digests, path='+finPath+' for='+orgFinPath);
+    // if there are digests, set them
+    if (req.finDigests && CONFIG.SET_METHODS.includes(req.method)) {
+      logger.info('Setting fin digests, for=' + orgFinPath);
 
-      let body = {
-        '@id' : path.join('info:fedora', orgFinPath.replace(/\/fcr:metadata$/, '')),
-        '@type' : 'http://digital.ucdavis.edu/schema#DigestContainer',
-        'http://digital.ucdavis.edu/schema#ldpStateToken' : stateToken,
-        'http://digital.ucdavis.edu/schema#hasMessageDigest' : req.finDigests.map(d => ({
-          '@id' : 'urn:'+d.join(':') 
-        }))
-      }
+      let digests = req.finDigests.map(d => { return { type: d[0], value: d[1] } });
 
-      await this.ensureChildren(finPath);
+      this.clear(orgFinPath, false)
+        .then(() => this.set(orgFinPath, digests, stateToken))
+        .catch(e => logger.error('Error setting digests', orgFinPath, e));
 
-      let response = await api.put({
-        path : finPath,
-        jwt : await keycloak.getServiceAccountToken(),
-        headers : {
-          'content-type' : 'application/ld+json',
-        },
-        body : JSON.stringify(body)
-      });
+    // if this is a delete request, clear the digests
+    // if this is a set request and there are no digests, clear the digests
+    } else if( 
+        CONFIG.DELETE_METHODS.includes(req.method) || 
+        (!req.finDigests && CONFIG.SET_METHODS.includes(req.method)) ) {
 
-      let statusCode = response.last.statusCode;
+      logger.info('Clearing fin digests, for=' + orgFinPath);
 
-      if( statusCode > 299 ) {
-        logger.error('Failed to set fin digest container, status='+statusCode+' path='+finPath+' digests='+req.finDigests.map(d => d[0]).join(','));
+      if( orgFinPath.endsWith('/fcr:metadata') ) {
+        this.clear(orgFinPath, false)
+          .catch(e => logger.error('Error clearing digests', orgFinPath, e));
       } else {
-        logger.info('Set fin digest container, status='+statusCode+' path='+finPath+' digests='+req.finDigests.map(d => d[0]).join(','));
-        // force cache update ASAP
-        finCache.update(finPath, [body['@type']]);
+        this.clear(orgFinPath)
+          .catch(e => logger.error('Error clearing digests', orgFinPath, e));
       }
-    } else {
-      let exists = await api.head({
-        path: finPath,
-        jwt : await keycloak.getServiceAccountToken()
-      });
-
-      if( exists.last.statusCode !== 200 ) {
-        return;
-      }
-
-      let response = await api.delete({
-        path : finPath,
-        jwt : await keycloak.getServiceAccountToken(),
-        permanent: true
-      });
-
-      if( response.last.statusCode > 299 ) {
-        logger.error('Failed to delete fin digest container, status='+response.last.statusCode+' path='+finPath);
-        return;
-      }
-
-      logger.info('Deleted fin digest container, status='+response.last.statusCode+' path='+finPath);
-      // force cache update ASAP
-      finCache.delete(finPath);
     }
   }
 
-  async ensureChildren(path, index=4) {
-    let childPath = path.split('/').splice(0, index).join('/');
-    if( childPath === path ) return;
-    
-    let exists = await api.head({
-      path: childPath,
-      jwt : await keycloak.getServiceAccountToken()
-    });
-
-    if( exists.last.statusCode === 404 ) {
-      await api.put({
-        path: childPath,
-        jwt : await keycloak.getServiceAccountToken(),
-        headers : {
-          'content-type' : 'application/ld+json',
-        },
-        body : JSON.stringify({
-          '@type' : 'http://digital.ucdavis.edu/schema#PlaceholderDigestContainer',
-          'http://schema.org/name' : 'Placeholder for digest container'
-        })
-      });
-    }
-
-    await this.ensureChildren(path, index+1);
-  }
-
-  ignore(req) {
-    if( !CONFIG.METHODS.includes(req.method) ) return true;
-    if( req.originalUrl.startsWith('/fcrepo/rest'+CONFIG.BASE_PATH) ) return true;
-    if( req.originalUrl.match(/\/fcr:.*$/) && !req.originalUrl.match(/\/fcr:metadata$/) ) return true;
-    if( req.originalUrl.match(/\/svc:.*$/) ) return true;
-    return false;
-  }
-
-  isDigestsPath(path) {
-    path = path.replace(/.*\/fcrepo\/rest\//, '');
+  _cleanPath(path) {
+    path = path.replace(/^\/fcrepo\/rest\//, '');
     if( !path.startsWith('/') ) path = '/' + path;
-    return path === CONFIG.BASE_PATH;
+    return path;
+  }
+
+  /**
+   * @method set
+   * @description Set the digests for a given path
+   * 
+   * @param {String} path fcrepo path, make sure to include /fcr:metadata if needed
+   * @param {Array} digests Array of digest objects to set.  Each digest should be an object with type and value
+   * @param {String} stateToken fcrepo state token 
+   * @returns {Promise}
+   */
+  set(path, digests, stateToken) {
+    path = this._cleanPath(path);
+    
+    if( !Array.isArray(digests) ) {
+      throw new Error('Digests must be an array');
+    }
+    for( let digest of digests ) {
+      if( digest.digest ) {
+        digest.value = digest.digest;
+        delete digest.digest;
+      }
+      if( !digest.type || !digest.value ) {
+        throw new Error('Digests must have type and value');
+      }
+    }
+
+    let payload = JSON.stringify({ path, digests, stateToken});
+    return pg.client.query(`SELECT * FROM fin_digests.digests_insert($1)`, [payload]);
+  }
+
+  clear(path, all=true) {
+    if( all === false ) {
+      return pg.client.query(`
+        DELETE FROM fin_digests.digests 
+        WHERE path = $1`,
+        [path]);
+    }
+
+    return pg.client.query(`
+      DELETE FROM fin_digests.digests 
+      WHERE path = $1 OR path = $2`,
+      [path, path+'/fcr:metadata']
+    );
+  }
+
+  async get(path, includeMetadata=true) {
+    path = this._cleanPath(path);
+
+    if( includeMetadata ) {
+      let resp = await pg.client.query(`
+        SELECT * FROM fin_digests.digests_view 
+        WHERE path = $1 OR path = $2`,
+        [path, path+'/fcr:metadata']
+      );
+      return resp.rows;
+    }
+
+    let resp = await pg.client.query(`
+      SELECT * FROM fin_digests.digests_view 
+      WHERE path = $1`,
+      [path]
+    );
+    return resp.rows;
+  }
+
+  /**
+   * @method getHeader
+   * @description Get the digest header for a given path
+   * 
+   * @param {String} path fcrepo path 
+   * @param {Boolean} includeMetadata should fcr:metadata digests be included in the header
+   * @returns {String}
+   */
+  async getHeader(path, includeMetadata=true) {
+    let digest = await this.get(path, includeMetadata);
+
+    let prefix = false;
+    if( !path.endsWith('/fcr:metadata') && 
+      digest.find(r => r.path.match(/\/fcr:metadata$/)) ) {
+      prefix = true;
+    }
+
+    if( prefix ) {
+      return digest.map(row => {
+        if( row.path.endsWith('/fcr:metadata') ) {
+          return `fcr:metadata-${row.type}=${row.digest}`
+        }
+        return `${row.type}=${row.digest}`
+      }).join(', ');
+    }
+
+    return digest.map(row => `${row.type}=${row.digest}`).join(', ');
+  }
+
+  /**
+   * @method _ignoreResponse
+   * @description ignore service requests and non 200 responses
+   * 
+   * @param {Request} req express request object 
+   * @returns {Boolean}
+   */
+  _ignoreResponse(req) {
+    if (req.originalUrl.match(/\/svc:.*$/)) return true;
+    if (req.statusCode > 299) return true;
+    return false;
   }
 }
 

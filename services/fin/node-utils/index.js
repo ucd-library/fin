@@ -23,7 +23,7 @@ module.exports = {
   dataModels : require('./lib/data-models/index.js'),
   esClient : require('./lib/data-models/elastic-search/client.js'),
   FinAC : require('./lib/fin-ac/index.js'),
-  FinCache : require('./lib/fin-cache.js'),
+  // FinCache : require('./lib/fin-cache.js'),
   FinDigests : require('./lib/fin-digests.js'),
   middleware : {
     finac : require('./lib/fin-ac/middleware.js'),

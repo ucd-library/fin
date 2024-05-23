@@ -8,7 +8,7 @@ const util = require('util');
 const redis = require('../lib/redisClient')();
 const jwt = require('jsonwebtoken');
 const label = require('../models/label');
-const finCache = new FinCache();
+// const finCache = new FinCache();
 
 jsonld.frame = util.promisify(jsonld.frame);
 
@@ -61,11 +61,11 @@ class ServiceModel {
     this.clientService = null;
 
     this.finCacheEnabled = false;
-    let hostname = await utils.getContainerHostname();
-    if( hostname.match(/-1$/) ) {
-      logger.info('Listening for fcrepo events to update fin-cache');
-      this.finCacheEnabled = true;
-    }
+    // let hostname = await utils.getContainerHostname();
+    // if( hostname.match(/-1$/) ) {
+    //   logger.info('Listening for fcrepo events to update fin-cache');
+    //   this.finCacheEnabled = true;
+    // }
 
     // listen for service definition updates
     this.messaging = new RabbitMqClient('gateway');
@@ -400,13 +400,13 @@ class ServiceModel {
       .map(item => item.trim())
       .filter(item => item)
 
-    if( this.finCacheEnabled ) {
-      try {
-        await finCache.onFcrepoEvent(event);
-      } catch(e) {
-        logger.error(e);
-      }
-    }
+    // if( this.finCacheEnabled ) {
+    //   try {
+    //     await finCache.onFcrepoEvent(event);
+    //   } catch(e) {
+    //     logger.error(e);
+    //   }
+    // }
 
     if( !types.includes(SERVICE_TYPE) ) {
       return;

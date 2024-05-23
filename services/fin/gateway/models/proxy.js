@@ -295,7 +295,7 @@ class ProxyModel {
       }
     }
 
-    finDigests.onFcrepoRequest(req);
+    await finDigests.onFcrepoRequest(req);
 
     if( req.headers['cookie'] ) {
       delete req.headers['cookie'];
