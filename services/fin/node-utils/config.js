@@ -245,7 +245,7 @@ module.exports = {
       "offline_access"
     ],
     // default cache all tokens for 30 seconds before requesting verification again
-    tokenCacheTTL : env.OIDC_TOKEN_CACHE_TTL ? parseInt(env.OIDC_TOKEN_CACHE_TTL) : (1000*30)
+    tokenCacheTTL : env.OIDC_TOKEN_CACHE_TTL ? parseInt(env.OIDC_TOKEN_CACHE_TTL) : (1000*60*5)
   },
 
   finCache : {

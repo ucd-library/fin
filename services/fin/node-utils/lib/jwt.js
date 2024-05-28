@@ -8,57 +8,57 @@ const waitUntil = require('./wait-until');
 class JwtUtils {
 
   constructor() {
-    if( config.jwt.jwksUri ) {
-      this.jwksClient = jwksClient({
-        cache: false,
-        jwksUri: config.jwt.jwksUri,
-        getKeysInterceptor: () => {
-          if( this.signingKey ) {
-            return this.signingKey.keys;
-          }
-          return null;
-        }
-      });
+    // if( config.jwt.jwksUri ) {
+    //   this.jwksClient = jwksClient({
+    //     cache: false,
+    //     jwksUri: config.jwt.jwksUri,
+    //     getKeysInterceptor: () => {
+    //       if( this.signingKey ) {
+    //         return this.signingKey.keys;
+    //       }
+    //       return null;
+    //     }
+    //   });
 
-      this.signingKeyFail = false;
-      this._getSigningKey = this._getSigningKey.bind(this);
-      this.getSigningKey(config.jwt.jwksUri);
-      setInterval(() => this.getSigningKey(config.jwt.jwksUri), 1000*60*60);
-    }
+    //   this.signingKeyFail = false;
+    //   this._getSigningKey = this._getSigningKey.bind(this);
+    //   this.getSigningKey(config.jwt.jwksUri);
+    //   setInterval(() => this.getSigningKey(config.jwt.jwksUri), 1000*60*60);
+    // }
   }
 
-  async getSigningKey(url) {
-    logger.info('Fetching rsa signing key from: '+url);
+  // async getSigningKey(url) {
+  //   logger.info('Fetching rsa signing key from: '+url);
 
-    let parts = new URL(url);
-    await waitUntil(parts.hostname, parts.port || 80);
+  //   let parts = new URL(url);
+  //   await waitUntil(parts.hostname, parts.port || 80);
 
-    try {
-      let resp = await fetch(url);
+  //   try {
+  //     let resp = await fetch(url);
 
-      let hasSigningKey = this.signingKey ? true : false;
-      this.signingKey = await resp.json();
+  //     let hasSigningKey = this.signingKey ? true : false;
+  //     this.signingKey = await resp.json();
 
-      if( hasSigningKey === false ) {
-        logger.info('Successfully fetched rsa signing key when none was present from: '+url);
-      }
+  //     if( hasSigningKey === false ) {
+  //       logger.info('Successfully fetched rsa signing key when none was present from: '+url);
+  //     }
 
-      this.signingKeyFail = false;
-    } catch(e) {
-      // no need to keep loging failures
-      if( this.signingKeyFail === true && this.signingKey === null ) {
-        return;
-      }
+  //     this.signingKeyFail = false;
+  //   } catch(e) {
+  //     // no need to keep loging failures
+  //     if( this.signingKeyFail === true && this.signingKey === null ) {
+  //       return;
+  //     }
 
-      if( this.signingKeyFail === false ) {
-        logger.warn('Failed to fetch signing key.  First attempt', e);
-        this.signingKeyFail = true;
-      } else {
-        logger.warn('Failed to fetch signing key.  Final attempt, invalidating key', e);
-        this.signingKey = null;
-      }
-    }
-  }
+  //     if( this.signingKeyFail === false ) {
+  //       logger.warn('Failed to fetch signing key.  First attempt', e);
+  //       this.signingKeyFail = true;
+  //     } else {
+  //       logger.warn('Failed to fetch signing key.  Final attempt, invalidating key', e);
+  //       this.signingKey = null;
+  //     }
+  //   }
+  // }
 
   /**
    * @method getJwtFromRequest
