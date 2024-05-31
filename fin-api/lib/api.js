@@ -553,8 +553,11 @@ class FinApi {
     }
     var req = this.baseRequest('POST', options);
 
-    if( options.content || options.body ) req.body = options.content || options.body;
-    else if( options.file ) req.body = fs.createReadStream(options.file);
+    if( options.content || options.body ) {
+      req.body = options.content || options.body;
+    } else if( options.file ) {
+      this._createReadStream(req, options);
+    }
 
     return _simpleRequest(req);
   }
@@ -642,6 +645,23 @@ class FinApi {
     return response;
   }
 
+  _cleanupReadStream(req) {
+    if( !req.body ) return;
+    if( req.body.removeAllListeners ) {
+      req.body.removeAllListeners();
+    }
+    if( req.body.destroy ) {
+      req.body.destroy();
+    }
+    delete req.body;
+  }
+
+  _createReadStream(req, options) {
+    req.body = fs.createReadStream(options.file)
+      .on('error', () => this._cleanupReadStream(req))
+      .on('close', () => this._cleanupReadStream(req))
+  }
+
   /**
    * @method put
    * @description Create a resource with a specified path, or replace the triples associated 
@@ -664,8 +684,11 @@ class FinApi {
 
     var req = this.baseRequest('PUT', options);
 
-    if( options.content || options.body ) req.body = options.content || options.body;
-    else if( options.file ) req.body = fs.createReadStream(options.file);
+    if( options.content || options.body ) {
+      req.body = options.content || options.body;
+    } else if( options.file ) {
+      this._createReadStream(req, options);
+    }
 
     if( options.partial ) {
       // This is what is should be... but there is a bug in fedora

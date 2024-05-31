@@ -870,6 +870,13 @@ class FinIoImport {
       }
 
       let response = await this.currentOp;
+
+      // memory cleanup
+      if( opts.content ) delete opts.content;
+      if( opts.file ) delete opts.file;
+      if( opts.body ) delete opts.body;
+      if( opts.headers ) delete opts.headers;
+
       this.diskLog({
         verb,
         path: opts.path,

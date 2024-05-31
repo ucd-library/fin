@@ -15,7 +15,7 @@ class FileIOCli {
     let fcrepoPathType = args.options.fcrepoPathType;
     let importFromRoot = args.options.importFromRoot;
     let prepareFsLayoutImport = args.options.prepareFsLayoutImport;
-    let agImportStrategy = args.options.agImportStrategy || 'transaction';
+    let agImportStrategy = args.options.agImportStrategy || 'version-all';
 
     await api.io.import.run({
       fsPath : rootPath, 
