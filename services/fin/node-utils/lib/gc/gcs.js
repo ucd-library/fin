@@ -169,10 +169,10 @@ class GcsWrapper {
 
     try {
       let gcsMetadata = await this.getGcsFileMetadata(gcsFile);
-
+      let digests = await finDigests.get(finPath);
       let binaryNode = api.io.utils.getGraphNode(fcrepoContainer, RDF_URIS.TYPES.BINARY);
 
-      if( this.isBinaryMd5Match(binaryNode, gcsMetadata) ) {
+      if( this.isBinaryDigestMatch(digests, gcsMetadata) ) {
         logger.debug('md5 match, ignoring fcrepo to gcs sync', finPath, gcsFile);
         await pg.updateStatus({
           path : finPath,
