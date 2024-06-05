@@ -25,10 +25,22 @@ class DbSync {
       DELETE: ['Delete', 'Purge']
     }
 
+    // used to handle sigterm and sigint
+    this.shutdown = false;
+
     this.init();
   }
 
   async init() {
+    process.on('SIGINT', async () => {
+      logger.info('Received SIGINT, stopping read loops');
+      this.shutdown = true;
+    });
+    process.on('SIGTERM', async () => {
+      logger.info('Received SIGTERM, stopping read loops');
+      this.shutdown = true;
+    });
+
     // first connect to es, fcrepo and postgres
     await waitUntil(config.fcrepo.hostname, config.fcrepo.port);
     await waitUntil(config.elasticsearch.host, config.elasticsearch.port);
@@ -87,6 +99,8 @@ class DbSync {
   }
 
   async readLoop() {
+    if( this.shutdown ) return;
+
     let item = null;
     try {
       item = await postgres.nextMessage();
@@ -121,6 +135,8 @@ class DbSync {
   }
 
   async validateLoop() {
+    if( this.shutdown ) return;
+
     try {
       let item = await postgres.nextDataModelValidation();
 
@@ -140,6 +156,8 @@ class DbSync {
   }
 
   async processCheckQueueLoop() {
+    if( this.shutdown ) return;
+
     try {
       let messages = await postgres.getQueueProcessingMessages();
       let now = Date.now();

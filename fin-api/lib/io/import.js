@@ -18,6 +18,8 @@ class FinIoImport {
 
     this.existsStatusCode = {};
 
+    this.exitStatusCode = 0;
+
     this.FIN_CACHE_PREDICATES = {
       AG_HASH : 'http://digital.ucdavis.edu/schema#finIoAgHash',
       BINARY_HASH : 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest',
@@ -216,6 +218,8 @@ class FinIoImport {
     if( this.options.logToDisk ) {
       this.saveDiskLog();
     }
+
+    process.exit(this.exitStatusCode);
   }
 
   /**
@@ -558,6 +562,7 @@ class FinIoImport {
       }
 
       if( response.error ) {
+        console.error('Error writing binary: ', response.error);
         throw new Error(response.error);
       }
     }
@@ -842,7 +847,7 @@ class FinIoImport {
     return content;
   }
 
-  async write(verb, opts, file) {
+  async write(verb, opts, file, retryOnConflict=true) {
     if( this.options.prepareFsLayoutImport )  {
       let data = {verb, opts, file};
       let filename = `${this.writeCount}-${verb}-${path.parse(opts.path).base}.json`;
@@ -884,14 +889,33 @@ class FinIoImport {
         statusCode : response.last.statusCode
       });
 
-      console.log(' -> '+verb+' status: '+response.last.statusCode+' ('+(Date.now() - startTime)+'ms)')
-      if( response.last.body ) {
-        console.log(' -> '+verb+' body: '+response.last.body);
+      if( response.last.statusCode >= 200 && response.last.statusCode < 300 ) {
+        console.log(' -> '+verb+' status: '+response.last.statusCode+' ('+(Date.now() - startTime)+'ms)')
+        if( response.last.body ) {
+          console.log(' -> '+verb+' body: '+response.last.body);
+        }
+      } else {
+        this.exitStatusCode = 1;
+        console.error(' -> '+verb+' '+opts.path+' status: '+response.last.statusCode+' ('+(Date.now() - startTime)+'ms)')
+        if( response.last.body ) {
+          console.error(' -> '+verb+' body: '+response.last.body);
+        }
+      }
+
+      if( response.last.statusCode === 409 ) {
+        if( retryOnConflict === true ) {
+          console.log(' -> retrying due to container conflict: '+opts.path);
+          await sleep(500);
+          return this.write(verb, opts, file, false);
+        }
+        console.error('exiting due to container conflict: '+opts.path);
+        process.exit(1);
       }
 
       return response;
     } catch(e) {
-      console.log(' -> '+verb+' error: '+e.message)
+      this.exitStatusCode = 1;
+      console.error(' -> '+verb+' error: '+e.message)
       this.diskLog({
         verb,
         path: opts.path,
@@ -952,6 +976,10 @@ class FinIoImport {
     );
   }
 
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 module.exports = FinIoImport;

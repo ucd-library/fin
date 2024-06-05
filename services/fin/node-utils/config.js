@@ -98,7 +98,15 @@ module.exports = {
   },
 
   gateway : {
-    host : 'http://gateway:3000',
+    http : {
+      port : env.FIN_GATEWAY_HTTP_PORT || 3000
+    },
+    https : {
+      enabled : env.FIN_GATEWAY_HTTPS_ENABLED === 'true',
+      certFolder : env.FIN_GATEWAY_HTTPS_CERT_FOLDER || '/etc/fin/certs',
+      port : env.FIN_GATEWAY_HTTPS_PORT || 3443
+    },
+    host : 'http://gateway:'+(env.FIN_GATEWAY_HTTP_PORT || 3000),
     fcrepoDataMount : env.GATEWAY_FCREPO_DATA_MOUNT || '/data',
     ocflRoot : 'ocfl-root',
     disableServices

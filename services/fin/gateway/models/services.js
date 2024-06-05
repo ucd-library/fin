@@ -87,9 +87,11 @@ class ServiceModel {
   }
 
   async waitForFcRepoServices() {
+    logger.info('Checking if fcrepo services root to be available');
     let response = await api.head({path : api.service.ROOT});
-    await this.wait(500);
     if( response.data.statusCode !== 200 ) {
+      logger.info('fcrepo services root not available; ', response.data.statusCode, response.data.body);
+      await this.wait(2000);
       await this.waitForFcRepoServices(); 
     }
   }
