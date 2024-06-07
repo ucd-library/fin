@@ -71,7 +71,6 @@ class FinModelLoader {
 
     // load in swagger base file
     let extensions = ['json', 'yaml', 'yml'];
-    let swaggerBase;
     let definition = {
       openapi: '3.0.0',
       info: {
@@ -89,6 +88,8 @@ class FinModelLoader {
         },
       }
     };
+
+    let swaggerBase = definition;
 
     for( let ext of extensions ) {
       let filePath = path.join(config.models.rootDir, `swagger-spec.${ext}`);
@@ -143,15 +144,39 @@ class FinModelLoader {
           }
         });
 
-        if( swagger?.components?.schemas ) {
-          if( !swagger.components ) swagger.components = {};
-          if( !swagger.components.schemas ) swagger.components.schemas = {};
-
-          for( let key in swagger.components.schemas ) {
-            swaggerBase.components.schemas[key] = swagger.components.schemas[key];
-          }
+        if( !swaggerBase.tags ) swaggerBase.tags = [];
+        if( swagger?.tags ) {
+          swaggerBase.tags = swaggerBase.tags.concat(swagger.tags);
         }
 
+        if( !swaggerBase.info ) swaggerBase.info = {};
+        if( swagger?.info ) {
+          swaggerBase.info = Object.assign({}, swaggerBase.info, swagger.info);
+        }
+
+        if( !swaggerBase.openapi ) swaggerBase.openapi = '';
+        if( swagger?.openapi ) {
+          swaggerBase.openapi = swagger.openapi;
+        }
+
+        if( !swaggerBase.components ) swaggerBase.components = {};
+
+        if (swagger?.components?.schemas) {
+          swaggerBase.components.schemas = Object.assign({}, swaggerBase.components.schemas, swagger.components.schemas);
+        }
+
+        if (swagger?.components?.parameters) {
+          swaggerBase.components.parameters = Object.assign({}, swaggerBase.components.parameters, swagger.components.parameters);
+        }
+        
+        if (swagger?.components?.responses) {
+          swaggerBase.components.responses = Object.assign({}, swaggerBase.components.responses, swagger.components.responses);
+        }
+        
+        if (swagger?.components?.requestBodies) {
+          swaggerBase.components.requestBodies = Object.assign({}, swaggerBase.components.requestBodies, swagger.components.requestBodies);
+        }
+        
         model.swagger = swaggerBase;
 
       } else if( isJsDoc ) {
