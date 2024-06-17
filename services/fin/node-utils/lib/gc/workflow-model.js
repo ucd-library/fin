@@ -561,6 +561,7 @@ class FinGcWorkflowModel {
   }
 
   async cleanupWorkflowTmpFiles(workflowId) {
+    logger.info('Cleaning up tmp files for workflow: '+workflowId);
     let workflowInfo = await this.getWorkflowInfo(workflowId);
     if( !workflowInfo.data.tmpGcsBucket ) {
       logger.info('No tmp bucket, skipping cleanup for workflow: '+workflowId);
@@ -654,6 +655,7 @@ class FinGcWorkflowModel {
         workflow.data.gcExecution = execution;
 
         let keepTmpData = workflow.data?.options?.keepTmpData;
+        let gcDebug = workflow.data?.options?.gcDebug;
 
         if( execution.state === 'SUCCEEDED' || execution.state === 'CANCELLED' ) {
           await pg.updateWorkflow({
@@ -678,7 +680,7 @@ class FinGcWorkflowModel {
             error : execution.error.message
           });
 
-          if( keepTmpData !== true ) {
+          if( keepTmpData !== true && gcDebug !== true ) {
             await this.cleanupWorkflowTmpFiles(workflow.workflow_id);
           }
         } else {

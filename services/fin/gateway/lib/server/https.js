@@ -7,7 +7,7 @@ const {logger, config} = require('@ucd-lib/fin-service-utils');
 let defaultKey, defaultCert;
 
 
-function loadSecureContext(app) {
+function loadSecureContext(folder) {
   let domain = folder.split('/').pop();
   let files = fs.readdirSync(folder);
   let cert, key;
