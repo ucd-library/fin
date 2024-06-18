@@ -26,6 +26,11 @@ function getRootDomain(url) {
 function getContainerHostname() {
   if( hostname ) return Promise.resolve(hostname);
 
+  // check if hostname is already in the format we want
+  if( os.hostname().match(/^[a-z]+-[a-z0-9]+/) ) {
+    return Promise.resolve(os.hostname());
+  }
+
   return new Promise((resolve, reject) => {
     logger.info('getting container hostname',os.hostname());
     dns.lookup(os.hostname(), (err, address, family) => {
