@@ -21,48 +21,48 @@ function metricsTimingMiddleware(opts={}) {
     throw new Error('Invalid type, must be "avg" or "max"');
   }
 
-  const httpTimingGauge = meter.createObservableGauge('fin.http.timing',  {
-    description: 'Time to handle http requests',
-    unit: 'ms',
-    valueType: ValueType.INT,
-  });
+  // const httpTimingGauge = meter.createObservableGauge('fin.http.timing',  {
+  //   description: 'Time to handle http requests',
+  //   unit: 'ms',
+  //   valueType: ValueType.INT,
+  // });
   
-  httpTimingGauge.addCallback(async result => {
-    let serviceName = config.serviceName || os.hostname();
-    let item = null;
+  // httpTimingGauge.addCallback(async result => {
+  //   let serviceName = config.serviceName || os.hostname();
+  //   let item = null;
 
-    for( let key in data ) {
-      item = data[key];
+  //   for( let key in data ) {
+  //     item = data[key];
 
-      if( item.responseTimes.length === 0 ) {
-        result.observe(0, {
-          method: item.method,
-          pathPrefix: item.pathPrefix,
-          status: item.statusCode,
-          serviceName,
-          fcrepoService : item.fcrepoService
-        });
-        delete data[key];
-        continue;
-      }
+  //     if( item.responseTimes.length === 0 ) {
+  //       result.observe(0, {
+  //         method: item.method,
+  //         pathPrefix: item.pathPrefix,
+  //         status: item.statusCode,
+  //         serviceName,
+  //         fcrepoService : item.fcrepoService
+  //       });
+  //       delete data[key];
+  //       continue;
+  //     }
 
-      let value = 0;
-      if( opts.type === 'avg' ) {
-        value = item.responseTimes.reduce((acc, cur) => acc+cur, 0) / item.responseTimes.length;
-      } else {
-        value = Math.max(...item.responseTimes);
-      }
+  //     let value = 0;
+  //     if( opts.type === 'avg' ) {
+  //       value = item.responseTimes.reduce((acc, cur) => acc+cur, 0) / item.responseTimes.length;
+  //     } else {
+  //       value = Math.max(...item.responseTimes);
+  //     }
 
-      result.observe(value, {
-        method: item.method,
-        pathPrefix: item.pathPrefix,
-        status: item.statusCode,
-        serviceName,
-        fcrepoService : item.fcrepoService
-      });
-      item.responseTimes = [];
-    };
-  });  
+  //     result.observe(value, {
+  //       method: item.method,
+  //       pathPrefix: item.pathPrefix,
+  //       status: item.statusCode,
+  //       serviceName,
+  //       fcrepoService : item.fcrepoService
+  //     });
+  //     item.responseTimes = [];
+  //   };
+  // });  
 
 
   return (req, res, next) => {
@@ -82,9 +82,9 @@ function metricsTimingMiddleware(opts={}) {
     res.on('finish', () => {
       let responseTime = Date.now() - startTime;
 
-      let key = getKey(method, pathPrefix, res.statusCode, fcrepoService);
-      if( !data[key] ) data[key] = {responseTimes: [], method, pathPrefix, statusCode: res.statusCode, fcrepoService};
-      data[key].responseTimes.push(responseTime);
+      // let key = getKey(method, pathPrefix, res.statusCode, fcrepoService);
+      // if( !data[key] ) data[key] = {responseTimes: [], method, pathPrefix, statusCode: res.statusCode, fcrepoService};
+      // data[key].responseTimes.push(responseTime);
     });
     next();
   };
