@@ -1,4 +1,4 @@
-const { config, logger, tests, waitUntil, MessagingClients, keycloak, models, RDF_URIS, workflow, metrics } = require('@ucd-lib/fin-service-utils');
+const { config, logger, tests, waitUntil, MessagingClients, keycloak, models, RDF_URIS, workflow, metrics, utils } = require('@ucd-lib/fin-service-utils');
 const api = require('@ucd-lib/fin-api');
 const {ValueType} = require('@opentelemetry/api');
 const postgres = require('./postgres');
@@ -7,6 +7,9 @@ const clone = require('clone');
 const { RabbitMqClient, MessageWrapper } = MessagingClients;
 const { ActiveMqTests } = tests;
 const activeMqTest = new ActiveMqTests();
+
+let hostname = 'dbsync';
+utils.getContainerHostname().then(h => hostname = h);
 
 class DbSync {
 
@@ -211,7 +214,7 @@ class DbSync {
 
     // for integration health tests, send ack message
     // this checks that message is a test, ignores otherwise
-    await activeMqTest.sendPing(msg, 'dbsync', this.messaging);
+    await activeMqTest.sendPing(msg, hostname, this.messaging);
 
     await postgres.queue(e);
   }
@@ -239,7 +242,7 @@ class DbSync {
             {
               '@id': e.path,
               '@type': e.container_types,
-              'http://schema.org/agent': 'dbsync',
+              'http://schema.org/agent': hostname,
               'http://schema.org/startTime': {'@value': e.event_timestamp},
               'http://schema.org/endTime': {'@value' : new Date().toISOString()},
               'https://www.w3.org/ns/activitystreams': {'@id' : 'http://digital.ucdavis.edu/schema#DataModelUpdate'}

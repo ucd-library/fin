@@ -508,6 +508,11 @@ class MessagingIntegrationTest {
   async sendPing(msg, serviceName, client) {
     let containerTypes = msg.getContainerTypes();
     let finPath = msg.getFinId();
+    let msgTypes = msg.getMessageTypes();
+
+    if( msgTypes.includes(this.PING_EVENT_TYPE) ) {
+      return;
+    }
 
     if (
       !containerTypes.includes(this.TYPES.TEST_CONTAINER) &&

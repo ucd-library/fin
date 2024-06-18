@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const {keycloak, models, config, logger, jwt, tests, directAccess, FinCache} = require('@ucd-lib/fin-service-utils');
+const {keycloak, models, config, logger, jwt, tests, utils, FinCache} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('../models/services.js');
 const httpProxy = require('http-proxy');
 const fetch = require('node-fetch');
@@ -11,9 +11,11 @@ const {ActiveMqTests} = tests;
 // const finCache = new FinCache();
 
 gcsConfig.load();
-let activeMqTest = new ActiveMqTests({
-  active: true,
-  agent : 'gateway'
+let activeMqTest;
+utils.getContainerHostname().then(hostname => {
+  activeMqTest = new ActiveMqTests({
+    agent : hostname
+  });
 });
 
 let proxy = httpProxy.createProxyServer({

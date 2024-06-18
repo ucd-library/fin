@@ -1,5 +1,5 @@
 const api = require('@ucd-lib/fin-api');
-const {logger, config, models, MessagingClients, FinCache, utils} = require('@ucd-lib/fin-service-utils');
+const {logger, config, models, MessagingClients, tests, utils} = require('@ucd-lib/fin-service-utils');
 const request = require('request');
 const {URL} = require('url');
 const jsonld = require('jsonld');
@@ -16,6 +16,11 @@ jsonld.frame = util.promisify(jsonld.frame);
 // const finGroups = new FinGroups();
 
 const {RabbitMqClient} = MessagingClients;
+const { ActiveMqTests } = tests;
+const activeMqTest = new ActiveMqTests();
+let hostname = 'gateway';
+utils.getContainerHostname().then(h => hostname = h);
+
 const FIN_URL = new URL(config.server.url);
 const SERVICE_CHAR = '/svc:';
 const AUTHENTICATION_SERVICE_CHAR = '^/auth';
@@ -409,6 +414,8 @@ class ServiceModel {
     //     logger.error(e);
     //   }
     // }
+
+    await activeMqTest.sendPing(event, hostname, this.messaging);
 
     if( !types.includes(SERVICE_TYPE) ) {
       return;

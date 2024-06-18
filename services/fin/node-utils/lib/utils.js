@@ -24,7 +24,7 @@ function getRootDomain(url) {
 }
 
 function getContainerHostname() {
-  if( hostname ) return hostname;
+  if( hostname ) return Promise.resolve(hostname);
 
   return new Promise((resolve, reject) => {
     logger.info('getting container hostname',os.hostname());
