@@ -8,6 +8,7 @@ const { HttpInstrumentation } = require('@opentelemetry/instrumentation-http');
 const { ExpressInstrumentation } = require('@opentelemetry/instrumentation-express');
 const { PgInstrumentation } = require('@opentelemetry/instrumentation-pg');
 const { FsInstrumentation } = require('@opentelemetry/instrumentation-fs');
+const config = require('../../config.js');
 
 
 const {
@@ -60,9 +61,14 @@ function init() {
     return;
   }
 
-  let config = {
+  let harvestInterval = config.metrics.harvestInterval;
+  if( harvestInterval < 30000 ) {
+    harvestInterval = 30000;
+  }
+
+  let metricconfig = {
     metricReader: new PeriodicExportingMetricReader({
-      exportIntervalMillis: 15000,
+      exportIntervalMillis: harvestInterval,
       exporter: metricExporter,
     }),
     instrumentations : [
@@ -77,7 +83,7 @@ function init() {
   }
 
 
-  const sdk = new NodeSDK(config);
+  const sdk = new NodeSDK(metricconfig);
   
   sdk.start();
 

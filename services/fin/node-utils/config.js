@@ -144,7 +144,7 @@ module.exports = {
 
   metrics : {
     enabled : env.FIN_METRICS_ENABLED === 'true',
-    harvestInterval : env.FIN_METRICS_HARVEST_INTERVAL ? parseInt(env.FIN_METRICS_HARVEST_INTERVAL) : (1000 * 15),
+    harvestInterval : env.FIN_METRICS_HARVEST_INTERVAL ? parseInt(env.FIN_METRICS_HARVEST_INTERVAL) : (1000 * 60),
     instruments : {
       fs : {
         enabled : env.FIN_METRICS_FS_ENABLED === 'true',
