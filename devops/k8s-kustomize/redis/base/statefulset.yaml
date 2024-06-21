@@ -19,8 +19,8 @@ spec:
         imagePullPolicy: Always
         resources:
           requests:
-            memory: "250Mi"
-            cpu: "500m"
+            memory: "500Mi"
+            cpu: "200m"
         volumeMounts:
         - name: data-volume
           mountPath: /data
