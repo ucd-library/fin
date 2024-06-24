@@ -24,8 +24,6 @@ spec:
         env:
         - name: FIN_METRICS_ENABLED
           value: "true"
-        - name: FIN_METRICS_FCREPO_ENABLED
-          value: "true"
         - name: GOOGLE_APPLICATION_CREDENTIALS
           value: /etc/fin/service-account.json
         volumeMounts:
