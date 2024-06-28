@@ -523,6 +523,10 @@ class FinEsDataModel extends FinDataModel {
               },
               autocomplete_search : {
                 tokenizer: "lowercase"
+              },
+              punctuation_insensitive: {
+                tokenizer: "standard",
+                filter: ["lowercase", "remove_punctuation"]
               }
             },
             tokenizer: {
@@ -541,6 +545,13 @@ class FinEsDataModel extends FinDataModel {
                 'tokenize_on_chars': [
                   '-', '.', ',', '>', '<', ' '
                 ]
+              }
+            },
+            filter: {
+              "remove_punctuation": {
+                type: "pattern_replace",
+                pattern: "[^\\w\\s]",
+                replacement: ""
               }
             }
           }
