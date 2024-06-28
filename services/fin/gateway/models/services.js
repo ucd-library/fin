@@ -87,8 +87,10 @@ class ServiceModel {
       await this.loadModelTransformService(modelService);
     }
 
-    await this.waitForFcRepoServices();
-    await this.reload();
+    // load services from fcrepo but don't wait so we can start the server
+    // TODO: need uptime endpoint to set to true AFTER reload is run
+    this.waitForFcRepoServices()
+      .then(() => this.reload());
   }
 
   async waitForFcRepoServices() {
