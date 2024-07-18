@@ -62,6 +62,8 @@ async function request(options) {
   
   options.headers['User-Agent'] = config.userAgent;
 
+  options.headers['Connection'] = 'keep-alive';
+
   let writeStream = options.writeStream;
   if( writeStream !== undefined ) delete options.writeStream;
 
@@ -71,12 +73,16 @@ async function request(options) {
 
   if( !options.timeout ) options.timeout = 20*1000;
 
+  let _uri = options.uri;
+  let _method = options.method;
+
   return new Promise(async (resolve, reject) => {
     requestCallback(options, (error, response, body) => {
       if( error ) {
         response = {
           request : {
-            path : options.uri,
+            method : _method,
+            path : _uri,
             headers : options.headers,
             body : options.body
           },
