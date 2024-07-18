@@ -93,11 +93,3 @@ class LabelService {
 }
 
 module.exports = new LabelService();
-
-
-
-router.get('/search', handleSearch);
-router.post('/search', handleSearch);
-async function handleSearch(req, res) {
-  let params = Object.assign({}, req.query || {}, req.body || {});
-}
