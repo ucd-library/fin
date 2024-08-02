@@ -154,7 +154,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $INIT_IMAGE_NAME:$FIN_BRANCH_NAME \
   services/init
 
 # Core - PG REST
