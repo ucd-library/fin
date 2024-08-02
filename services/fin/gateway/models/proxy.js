@@ -88,6 +88,10 @@ class ProxyModel {
   async _onProxyResponse(proxyRes, req, res) {
     this._setReqTime(req);
 
+    if( proxyRes.proxyInfo ) {
+      proxyRes.headers['x-fin-proxy-info'] = `time=${req.proxyInfo.time}ms target=${req.proxyInfo.target}`;
+    }
+
     // set cors headers if in FIN_ALLOW_ORIGINS env variable or is a registered ExternalService domain
     // this._setCors(req, proxyRes);
 
@@ -183,8 +187,6 @@ class ProxyModel {
    * @param {Object} res express response object
    */
   async _fcRepoPathResolver(req, res) {
-    req.fcrepoProxyTime = Date.now();
-
     this._setCors(req, res);
 
     // trying to sniff out browser preflight options request for cors
@@ -300,6 +302,12 @@ class ProxyModel {
     if( req.headers['cookie'] ) {
       delete req.headers['cookie'];
     }
+
+    req.proxyInfo = {
+      startTime : Date.now(),
+      target : url
+    }
+
 
     proxy.web(req, res, {
       target : url
@@ -417,8 +425,8 @@ class ProxyModel {
   }
 
   _setReqTime(req) {
-    if( !req.fcrepoProxyTime ) return;
-    req.fcrepoProxyTime = Date.now() - req.fcrepoProxyTime;
+    if( !req.proxyInfo ) return;
+    req.proxyInfo.time = Date.now() - req.proxyInfo.startTime;
   }
 
   async _renderLabel(req, res) {

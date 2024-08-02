@@ -1,8 +1,9 @@
 const httpProxy = require('http-proxy');
-const {logger} = require('@ucd-lib/fin-service-utils')
+const {logger, config} = require('@ucd-lib/fin-service-utils')
 
 let proxy = httpProxy.createProxyServer({
-  ignorePath : true
+  ignorePath : true,
+  proxyTimeout: config.gateway.proxyTimeout
 });
 
 proxy.on('error', e => {
