@@ -3,7 +3,8 @@ const {logger, config} = require('@ucd-lib/fin-service-utils')
 
 let proxy = httpProxy.createProxyServer({
   ignorePath : true,
-  proxyTimeout: config.gateway.proxyTimeout
+  timeout: config.gateway.proxy.timeout,
+  proxyTimeout: config.gateway.proxy.proxyTimeout,
 });
 
 proxy.on('error', e => {

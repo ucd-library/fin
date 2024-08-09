@@ -107,6 +107,7 @@ module.exports = {
       port : env.FIN_GATEWAY_HTTPS_PORT || 3443
     },
     proxy : {
+      timeout : env.FIN_GATEWAY_TIMEOUT || 1000 * 60 * 5,
       proxyTimeout : env.FIN_GATEWAY_PROXY_TIMEOUT || 1000 * 60 * 5
     },
     host : 'http://gateway:'+(env.FIN_GATEWAY_HTTP_PORT || 3000),
