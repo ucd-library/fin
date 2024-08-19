@@ -14,7 +14,7 @@ else
 fi
 BUILD_DATETIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-DOCKER="docker"
+DOCKER="docker --debug"
 if [[ ! -z $BUILD_ARCHITECTURE ]]; then
   DOCKER="$DOCKER --context $BUILD_ARCHITECTURE"
 fi
@@ -24,6 +24,8 @@ export DOCKER_BUILDKIT=1
 DOCKER_BUILD="$DOCKER buildx build --output=type=docker --cache-to=type=inline,mode=max "
 if [[ $LOCAL_DEV != 'true' ]]; then
   DOCKER_BUILD="$DOCKER_BUILD --pull "
+else
+  DOCKER_BUILD="$DOCKER_BUILD --load"
 fi
 
 DOCKER_PUSH="$DOCKER push "
@@ -105,7 +107,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $CACHE_IMAGE \
   services/fcrepo
 push $FCREPO_IMAGE_NAME
 
@@ -118,7 +119,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
    $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $CACHE_IMAGE \
   services/postgres
 push $POSTGRES_IMAGE_NAME
 
@@ -131,7 +131,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $CACHE_IMAGE \
   services/load-balancer
 push $LB_IMAGE_NAME
 
@@ -145,7 +144,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $CACHE_IMAGE \
   -f services/fin/Dockerfile \
   .
 push $SERVER_IMAGE_NAME
@@ -159,7 +157,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $CACHE_IMAGE \
   services/elastic-search
 push $ELASTIC_SEARCH_IMAGE_NAME
 
@@ -172,21 +169,19 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $CACHE_IMAGE \
   services/rabbitmq
 push $RABBITMQ_IMAGE_NAME
 
 # Core - Init services
 get_tags $INIT_IMAGE_NAME
 $DOCKER_BUILD \
-  --build-arg FIN_SERVER_IMAGE=${BUILD_FIN_SERVER_IMAGE} \
   --build-arg FIN_APP_VERSION=${APP_VERSION} \
+  --build-arg FIN_SERVER_IMAGE=${BUILD_FIN_SERVER_IMAGE} \
   --build-arg FIN_REPO_TAG=${FIN_TAG_NAME} \
   --build-arg FIN_BRANCH_NAME=${FIN_BRANCH_NAME} \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $CACHE_IMAGE \
   services/init
 push $INIT_IMAGE_NAME
 
@@ -199,6 +194,5 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $CACHE_IMAGE \
   services/pg-rest
 push $PGREST_IMAGE_NAME

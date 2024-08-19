@@ -80,7 +80,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $FCREPO_IMAGE_NAME:$FIN_BRANCH_NAME \
   services/fcrepo
 
 # Core Server - postgres
@@ -104,7 +103,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $LB_IMAGE_NAME:$FIN_BRANCH_NAME \
   services/load-balancer
 
 # Core Server - server
@@ -116,7 +114,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $SERVER_IMAGE_NAME:$FIN_BRANCH_NAME \
   -f services/fin/Dockerfile \
   .
 
@@ -129,7 +126,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $ELASTIC_SEARCH_IMAGE_NAME:$FIN_BRANCH_NAME \
   services/elastic-search
 
 # Core Server - rabbitmq
@@ -141,7 +137,6 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $RABBITMQ_IMAGE_NAME:$FIN_BRANCH_NAME \
   services/rabbitmq
 
 # Core - Init services
@@ -165,5 +160,4 @@ $DOCKER_BUILD \
   --build-arg FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH} \
   --build-arg BUILD_DATETIME=${BUILD_DATETIME} \
   $(echo $IMAGE_TAG_FLAGS) \
-  --cache-from $PGREST_IMAGE_NAME:$BUILD_DATETIME \
   services/pg-rest

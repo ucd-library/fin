@@ -1,6 +1,6 @@
 ARG INIT_BASE=gcr.io/ucdlib-pubreg/init-services:main
 ARG FIN_SERVER_IMAGE
-FROM ${FIN_SERVER_IMAGE} as fin-server
+FROM ${FIN_SERVER_IMAGE} AS fin-server
 FROM ${INIT_BASE}
 
 COPY --from=fin-server /fin/api /fin-api
