@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const URL = 'https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry';4
+const URL = 'https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry';
 const FILE = path.join(__dirname, '..', 'services', 'init', 'fcrepo', 'service', 'lang-label-service.jsonld.json');
 
 const IANALANG = 'https://www.iana.org/assignments/language-subtag-registry#';
