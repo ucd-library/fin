@@ -78,6 +78,14 @@ if( finCachePredicates.length === 0 ) {
   ];
 }
 
+let extensionRoutes = [];
+if( env.ADMIN_UI_EXTENSIONS_ROUTES ) {
+  extensionRoutes = processArray(env.ADMIN_UI_EXTENSIONS_ROUTES).map(eleRoute => {
+    let [path, element] = eleRoute.split(':');
+    return {path, element};
+  });
+}
+
 
 module.exports = {
 
@@ -330,6 +338,14 @@ module.exports = {
 
   workflow : {
     finConfigPath : '/fin/workflows/config.json',
+  },
+
+  adminUi : {
+    extensions : {
+      enabled : env.ADMIN_UI_EXTENSIONS_ENABLED === 'true',
+      sourcePath : env.ADMIN_UI_EXTENSIONS_SOURCE_PATH || '/js/app-extension.js',
+      routes : extensionRoutes
+    }
   },
 
   google : {

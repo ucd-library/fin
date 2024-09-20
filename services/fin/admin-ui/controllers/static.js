@@ -66,16 +66,22 @@ module.exports = async (app) => {
       dir : assetsDir
     },
     getConfig : async (req, res, next) => {
-
       next({
         user : {},
         appRoutes,
+        extensions : config.client.extensions,
         env : config.client.env,
       });
     },
     template : async (req, res, next) => {
+      let extSrc = '';
+      if( config.client.extensions.enabled ) {
+        extSrc = `<script src="${config.client.extensions.sourcePath}"></script>`;
+      }
+
       return next({
         bundle,
+        extSrc,
         title : config.client.title
       });
     }

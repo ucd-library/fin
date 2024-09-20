@@ -23,7 +23,7 @@
   "license": "MIT",
   "dependencies": {
     "@elastic/elasticsearch": "^8.4.0",
-    "@google-cloud/logging-bunyan": "^0.9.4",
+    "@google-cloud/logging-bunyan": "^5.1.0",
     "@google-cloud/opentelemetry-cloud-monitoring-exporter": "^0.17.0",
     "@google-cloud/opentelemetry-cloud-trace-exporter": "^2.1.0",
     "@google-cloud/opentelemetry-resource-util": "^2.1.0",

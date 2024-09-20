@@ -1,5 +1,6 @@
 import { LitElement } from 'lit';
 import {render, styles} from "./fin-admin-integration-tests.tpl.js";
+import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
 import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 
 import "../widgets/fin-admin-line-chart.js"

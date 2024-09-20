@@ -52,6 +52,7 @@ return html`
     <a href="#health">Health</a>
     <a href="#services">Services</a>
     <a href="#config">Config</a>
+    ${this.extensions.map(ext => html`<a href="#${ext.path}">${ext.label}</a>`)}
   </ucd-theme-primary-nav>
 
 </ucd-theme-header>
