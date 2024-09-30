@@ -12,7 +12,7 @@ COPY --from=fin-server /fin/services /fin/services
 RUN cd /fin/services && npm link @ucd-lib/fin-api
 RUN cd /fin/services && npm link 
 
-RUN apt-get update && apt-get install -y wait-for-it
+RUN apt-get update && apt-get install -y wait-for-it postgresql-client
 
 RUN mkdir -p /etc/ucdlib-service-init
 COPY postgres /etc/ucdlib-service-init/postgres
