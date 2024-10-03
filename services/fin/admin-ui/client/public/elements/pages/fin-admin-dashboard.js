@@ -24,7 +24,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       workflowName : {type: String},
       workflowPath : {type: String},
       workflowDeleteErrors : {type: Array},
-      fcrepoTypeStats : {type: Array},
+      // fcrepoTypeStats : {type: Array},
       deletingWorkflows : {type: Boolean},
       baseDocsUrl : {type: String},
       env : {type: Object},
@@ -50,7 +50,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.workflowPath = '';
     this.workflowDeleteErrors = [];
     this.deletingWorkflows = false;
-    this.fcrepoTypeStats = [];
+    // this.fcrepoTypeStats = [];
     this.env = {};
     this.buildTime = new Date();
     this.cloudDashboardUrl = config.env.CLOUD_DASHBOARD_URL || '';
@@ -104,9 +104,9 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.DataViewModel.coreData({refresh: true})
       .then(e => this._onCoreDataUpdate(e));
 
-    this.DataViewModel.pgQuery(
-      'fcrepo_type_stats', {}, {refresh: true}, 'dashboard-fcrepo-stats'
-    ).then(e => this._onFcrepoTypeStatsUpdate(e));
+    // this.DataViewModel.pgQuery(
+    //   'fcrepo_type_stats', {}, {refresh: true}, 'dashboard-fcrepo-stats'
+    // ).then(e => this._onFcrepoTypeStatsUpdate(e));
   }
 
   async _onCoreDataUpdate(e) {
@@ -292,35 +292,35 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.requestUpdate();
   }
 
-  _onFcrepoTypeStatsUpdate(e) {
-    if( e.state !== 'loaded' ) return;
+  // _onFcrepoTypeStatsUpdate(e) {
+  //   if( e.state !== 'loaded' ) return;
 
-    let stats = {};
-    e.payload.forEach(item => {
-      let parts = item.rdf_type_uri.split(/#|\//);
-      let name = parts.pop();
-      let ns = parts.join('/');
-      if( !stats[ns] ) stats[ns] = {};
-      stats[ns][name] = item.count;
-    });
+  //   let stats = {};
+  //   e.payload.forEach(item => {
+  //     let parts = item.rdf_type_uri.split(/#|\//);
+  //     let name = parts.pop();
+  //     let ns = parts.join('/');
+  //     if( !stats[ns] ) stats[ns] = {};
+  //     stats[ns][name] = item.count;
+  //   });
 
-    let tmp = [];
-    for( let ns in stats ) {
-      let item = {
-        ns,
-        properties : []
-      };
-      for( let name in stats[ns] ) {
-        item.properties.push({
-          name,
-          count : stats[ns][name]
-        });
-      }
-      tmp.push(item);
-    }
+  //   let tmp = [];
+  //   for( let ns in stats ) {
+  //     let item = {
+  //       ns,
+  //       properties : []
+  //     };
+  //     for( let name in stats[ns] ) {
+  //       item.properties.push({
+  //         name,
+  //         count : stats[ns][name]
+  //       });
+  //     }
+  //     tmp.push(item);
+  //   }
 
-    this.fcrepoTypeStats = tmp;
-  }
+  //   this.fcrepoTypeStats = tmp;
+  // }
 
 }
 
