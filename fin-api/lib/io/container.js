@@ -1,6 +1,8 @@
 const path = require('path');
 const utils = require('./utils');
 const pathutils = require('../utils/path');
+const { debug } = require('console');
+const { match } = require('assert');
 
 const FIN_IO_DIGEST_NAME = {
   BINARY_HASH : 'sha256',
@@ -293,6 +295,21 @@ class FinImportContainer {
       return this.shaManifest;
     }
 
+    if( this.metadata.virtual ) {
+      this.shaManifest = {
+        metadata : {
+          fs : '__virtual__',
+          fsMd5 : '__virtual__',
+          fsSha512 : '__virtual__',
+          ldp : await this.getFinCacheDigest(FIN_IO_DIGEST_NAME.METADATA_HASH),
+        }
+      }
+      if( this.shaManifest.metadata.ldp === this.shaManifest.metadata.fs ) {
+        this.shaManifest.metadata.match = true;
+      }
+      return this.shaManifest;
+    }
+
     let digestRequest = this.getFinDigestsCache();
     let localBinarySha = null;
     let localMetadataSha = null;
@@ -395,7 +412,7 @@ class FinImportContainer {
 
     this.digestsCache = digests;
 
-    return resp;
+    return digests;
   }
 
 }

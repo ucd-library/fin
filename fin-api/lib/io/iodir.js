@@ -72,7 +72,7 @@ class IoDir {
       let isDir = fs.statSync(childPath).isDirectory();
       if( isDir ) continue;
 
-      let containerFsId = child.replace(utils.CONTAINER_FILE_EXTS_REGEX, '');
+      let containerFsId = childPath.replace(utils.CONTAINER_FILE_EXTS_REGEX, '');
       let container = this.containers[containerFsId];
       if( !container ) {
         container = new FinImportContainer(this.config, this.fsroot);
@@ -103,12 +103,29 @@ class IoDir {
     }
 
     for( let child of children ) {
-      let containerFsId = child.replace(utils.CONTAINER_FILE_EXTS_REGEX, '');
       let childPath = path.join(this.fsfull, child);
+      let containerFsId = childPath.replace(utils.CONTAINER_FILE_EXTS_REGEX, '');
       let isDir = fs.statSync(childPath).isDirectory();
       if( !isDir ) continue;
 
       let container = this.containers[containerFsId];
+      if( !container ) {
+        container = new FinImportContainer(this.config, this.fsroot);
+        this.containers[containerFsId] = container;
+        let gitInfo = clone(this.gitInfo);
+        gitInfo.file = childPath.replace(this.gitInfo.rootDir, '');
+        gitInfo.rootDir = path.parse(gitInfo.file).dir;
+        await container.set({
+          metadata: {fsfull: childPath, gitInfo, virtual: true},
+          graph : {instance: [{
+            '@id': '',
+            'http://schema.org/name': 'Fin Io Directory Placeholder',
+          }]}
+        });
+        if( this.archivalGroup ) {
+          await container.set({archivalGroup: this.archivalGroup});
+        }
+      }
 
       child = new IoDir(
         this.fsroot, 

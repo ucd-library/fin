@@ -6,7 +6,6 @@ const pathutils = require('../utils/path');
 const utils = require('./utils');
 const csv = require('csv/sync');
 const fs = require('fs-extra');
-const { stat } = require('fs');
 
 let api;
 
