@@ -67,6 +67,15 @@ stdOptionWrapper(
 );
 
 stdOptionWrapper(
+  program.command('crawl-delete [path]')
+    .option('-d --depth <depth>', 'Depth to crawl')
+    .description('Find all resources at path, delete individually, starting at leaf.  Best done as root')
+    .action((path, options) => {
+      http.crawlDelete({path, options});
+    })
+);
+
+stdOptionWrapper(
   program.command('head [path]')
     .description('Retrieve the resource headers')
     .action((path, options) => {

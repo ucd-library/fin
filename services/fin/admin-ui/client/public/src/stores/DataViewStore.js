@@ -1,4 +1,4 @@
-import {BaseStore} from '@ucd-lib/cork-app-utils';
+import {BaseStore, LruStore} from '@ucd-lib/cork-app-utils';
 import config from '../config';
 
 class DataViewStore extends BaseStore {
@@ -8,7 +8,7 @@ class DataViewStore extends BaseStore {
 
     this.data = {
       core : null,
-      pg : {}
+      pg : new LruStore({name: 'pg.query'})
     };
     this.events = {
       CORE_DATA_UPDATE : 'core-data-update',
@@ -82,7 +82,7 @@ class DataViewStore extends BaseStore {
   }
 
   _setPgQuery(name, data) {
-    this.data.pg[name] = data;
+    this.data.pg.set(name, data);
     this.emit(this.events.PG_QUERY_UPDATE, data);
   }
 

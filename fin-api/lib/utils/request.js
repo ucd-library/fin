@@ -71,7 +71,11 @@ async function request(options) {
 
   if( options.printCurl ) printCurl(options);
 
-  if( !options.timeout ) options.timeout = 20*1000;
+  if( options.timeout === undefined ) {
+    options.timeout = 5*60*1000;
+  } else if ( options.timeout <= 0 ) {
+    delete options.timeout;
+  }
 
   let _uri = options.uri;
   let _method = options.method;

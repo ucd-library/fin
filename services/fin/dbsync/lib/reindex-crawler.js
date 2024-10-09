@@ -25,7 +25,6 @@ class ReindexCrawler {
     this.options = options;
 
     this.messaging = new RabbitMqClient('reindex-crawler');
-    console.log('reindex crawler', this.messaging);
   }
   
 

@@ -250,7 +250,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         row.updated = new Date(row.updated);
       }
       if( row.updated.getTime() > Date.now() - 1000*60*30 ) {
-        this.workflowErrors.push({
+        this.workflowDeleteErrors.push({
           workflow: row.path+' '+row.name,
           error: 'Workflow with state "init" updated in last 30 minutes, skipping delete'
         });
@@ -261,7 +261,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         let {response, body} = await this.FinApiModel.deleteWorkflow(row.path, row.name);
 
         if( response.status !== 200 ) {
-          this.workflowErrors.push({
+          this.workflowDeleteErrors.push({
             workflow: row.path+' '+row.name,
             error: response.status+': '+body
           });
@@ -269,7 +269,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         }
       } catch(e) {
         console.error('Error deleting workflow', e);
-        this.workflowErrors.push({
+        this.workflowDeleteErrors.push({
           workflow: row.path+' '+row.name,
           error: e.message
         });

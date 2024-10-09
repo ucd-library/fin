@@ -88,7 +88,6 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     this.queryDbSync();
     this.queryWorkflows();
     this.queryGcs();
-    this.queryFinCache();
 
     try {
       this.children = [];
@@ -272,19 +271,6 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     };
 
     this.gcsQuery = query;
-  }
-
-  async queryFinCache() {
-    if( !this.path ) return;
-    let resp = await this.FinApiModel.getContainerSubjectCache(this.path);
-    resp = resp.body || [];
-    resp.sort((a, b) => a.fedora_id.length < b.fedora_id.length ? -1 : 1);
-    this.finCacheData = resp;
-    this.checkDigestsValid();
-  }
-
-  _onAutoRefresh() {
-    this.queryFinCache();
   }
 
   checkDigestsValid() {
