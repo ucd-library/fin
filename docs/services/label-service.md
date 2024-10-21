@@ -78,9 +78,11 @@ Then using the transform utils:
 
   await utils.add({
     attr : 'keywords',
-    value : ['schema', 'keywords']
+    value : ['schema', 'keywords'],
+    type : 'id'
   });
 ```
+_Note: If the label service should match using `@id`, it's necessary to specify `type : 'id'` above._
 
 Will result in:
 
