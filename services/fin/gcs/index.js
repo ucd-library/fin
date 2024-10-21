@@ -7,6 +7,7 @@ const diskCache = require('./lib/disk-cache.js');
 const fs = require('fs-extra');
 const {gcs} = gc;
 
+const MAX_AGE=86400;
 const PORT = 3000;
 const app = express();
 controllers.health.register(app);
@@ -42,6 +43,7 @@ app.get(/.*/, hasAccess, async (req, res) => {
       let contents = await fs.readFile(localFile, 'utf-8');
       contents = contents.replace(/{{BUCKET}}/gi, req.gcsBucket);
       res.setHeader('content-type', 'application/json');
+      res.setHeader('Cache-Control', 'public, max-age='+MAX_AGE);
       res.send(contents);
       return;
     }
@@ -49,6 +51,8 @@ app.get(/.*/, hasAccess, async (req, res) => {
     // let the disk cache handle if file extension is in list
     let ext = path.parse(req.gcsPath).ext.replace(/^\./, '');
     if( config.google.gcsDiskCache.allowedExts.includes(ext) ) {
+      console.log(1, MAX_AGE);
+      res.setHeader('Cache-Control', 'public, max-age='+MAX_AGE);
       await diskCache.get(req.gcsBucket, req.baseFilePath, res);
       return;
     }
@@ -59,6 +63,8 @@ app.get(/.*/, hasAccess, async (req, res) => {
       res.setHeader('content-type', metadata.contentType);
     }
     let file = gcs.getGcsFileObjectFromPath(req.gcsPath);
+    console.log(1, MAX_AGE);
+    res.setHeader('Cache-Control', 'public, max-age='+MAX_AGE);
     let stream = file.createReadStream(streamOpts)
       .on('error', e => {
         res.status(500).send(JSON.stringify({error : e.message}));
