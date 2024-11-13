@@ -1,0 +1,40 @@
+{
+  "registry" : "gcr.io/ucdlib-pubreg",
+
+  "repositories" : {
+    "init" : "https://github.com/ucd-library/ucdlib-service-init"
+  },
+
+  "images" : {
+    "fin-fcrepo" : {
+      "contextPath" : "services/fcrepo"
+    },
+    "fin-postgres" : {
+      "contextPath" : "services/postgres"
+    },
+    "fin-apache-lb" : {
+      "contextPath" : "services/load-balancer"
+    },
+    "fin-base-service" : {
+      "contextPath" : ".",
+      "dockerfile" : "services/fin/Dockerfile"
+    },
+    "fin-elastic-search" : {
+      "contextPath" : "services/elastic-search",
+      "user" : "elasticsearch"
+    },
+    "fin-rabbitmq" : {
+      "contextPath" : "services/rabbitmq"
+    },
+    "fin-init" : {
+      "contextPath" : "services/init",
+      "options" : {
+        "build-arg" : ["INIT_BASE=${init.init-services}",
+                      "FIN_SERVER_IMAGE=${fin.fin-base-service}"]
+      }
+    },
+    "fin-pg-rest" : {
+      "contextPath" : "services/pg-rest"
+    }
+  }
+}

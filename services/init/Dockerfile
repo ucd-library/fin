@@ -1,4 +1,4 @@
-ARG INIT_BASE=gcr.io/ucdlib-pubreg/init-services:main
+ARG INIT_BASE
 ARG FIN_SERVER_IMAGE
 FROM ${FIN_SERVER_IMAGE} AS fin-server
 FROM ${INIT_BASE}

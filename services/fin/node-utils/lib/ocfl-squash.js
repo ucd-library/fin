@@ -13,7 +13,7 @@ class OcflSquash {
     }
   }
 
-  log(...args) {
+  log(...args) { 
     if( this.quiet ) return;
     console.log(...args);
   }
@@ -166,26 +166,6 @@ class OcflSquash {
       versionsToRemove
     }
 
-  }
-
-
-
-  crawl(dir) {
-    let files = [];
-    let dirs = [];
-    let items = fs.readdirSync(dir);
-    for( let item of items ) {
-      let itemPath = path.join(dir, item);
-      let stat = fs.statSync(itemPath);
-      if( stat.isDirectory() ) {
-        dirs.push(itemPath);
-        let subFiles = this.crawl(itemPath);
-        files = files.concat(subFiles);
-      } else {
-        files.push(itemPath);
-      }
-    }
-    return files;
   }
 
 }
