@@ -19,7 +19,7 @@ spec:
         runAsUser: 1000
       containers:
       - name: elasticsearch
-        image: gcr.io/ucdlib-pubreg/fin-elastic-search:sandbox
+        image: us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-elastic-search:sandbox
         imagePullPolicy: Always
         resources:
           requests:

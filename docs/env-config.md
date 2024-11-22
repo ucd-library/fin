@@ -127,7 +127,7 @@ openssl rand -base64 512
 If you have the above `FIN_SERVICE_ACCOUNT_*` parameters set in your `.env`.  You can test your service account with:
 
 ```bash
-docker run --rm -i -t --env-file .env --name init gcr.io/ucdlib-pubreg/fin-init:${version} node /service/getToken.js
+docker run --rm -i -t --env-file .env --name init us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-init:${version} node /service/getToken.js
 ```
 
 # Google Cloud Config

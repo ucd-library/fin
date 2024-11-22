@@ -9,7 +9,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: service
-        image: gcr.io/ucdlib-pubreg/fin-init:sandbox
+        image: us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-init:sandbox
         imagePullPolicy: Always
         env:
         - name: GOOGLE_APPLICATION_CREDENTIALS

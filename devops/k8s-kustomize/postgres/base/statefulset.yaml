@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: database
-        image: gcr.io/ucdlib-pubreg/fin-postgres:sandbox
+        image: us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-postgres:sandbox
         args: ["-c", "max_connections=200"]
         imagePullPolicy: Always
         env:

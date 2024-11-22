@@ -15,7 +15,7 @@ spec:
       containers:
       - name: service
         imagePullPolicy: Always
-        image: gcr.io/ucdlib-pubreg/fin-fcrepo:sandbox
+        image: us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-fcrepo:sandbox
         volumeMounts:
         - name: ocfl-volume
           mountPath: /usr/local/tomcat/fcrepo-home/data

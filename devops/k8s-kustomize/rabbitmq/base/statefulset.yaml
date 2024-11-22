@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: service
-        image: gcr.io/ucdlib-pubreg/fin-rabbitmq:sandbox
+        image: us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-rabbitmq:sandbox
         imagePullPolicy: Always
         resources:
           requests:

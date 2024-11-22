@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: service
-        image: gcr.io/ucdlib-pubreg/fin-pg-rest:sandbox
+        image: us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-pg-rest:sandbox
         imagePullPolicy: Always
         env:
         - name: FIN_SERVICE_NAME
