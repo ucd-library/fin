@@ -1,4 +1,20 @@
 const fs = require('fs');
+const path = require('path');
+
+// load custom .env file if it exists in environment variables
+// this is really useful for k8s environments where individual 
+// env variables from secrets are verbose and hard to manage
+let envPath = '/etc/fin/.env';
+if( process.env.FIN_ENV_FILE ) {
+  envPath = process.env.FIN_ENV_FILE;
+}
+if( fs.existsSync(envPath) && fs.lstatSync(envPath).isFile() ) {
+  if( ['info', 'debug'].includes(process.env.LOG_LEVEL) ) {
+    console.log(`Loading environment variables from ${envPath}`);
+  }
+  require('dotenv').config({ path: envPath });
+}
+
 const env = process.env;
 const COMMON_URI = require('./lib/common-rdf-uris');
 
@@ -13,6 +29,10 @@ function processArray(value) {
 
 var fcrepoHostname = process.env.FCREPO_HOST || 'fcrepo';
 var fcrepoPort = process.env.FCREPO_PORT || '8080';
+if( fcrepoPort.match(/^tcp:\//) ) {
+  fcrepoPort = new URL(fcrepoPort).port;
+}
+
 var esHostname = process.env.ES_HOST || 'elasticsearch';
 var esPort = process.env.ES_PORT || 9200;
 
@@ -39,7 +59,6 @@ let gcsDiskCacheExts = processArray(process.env.GCS_DISK_CACHE_EXTS);
 let disableServices = processArray(process.env.DISABLE_FIN_SERVICES);
 
 // make sure this is set for gcssync templates
-if( !env.GCS_BUCKET_ENV ) env.GCS_BUCKET_ENV = 'local-dev';
 if( !env.WORKFLOW_ENV ) env.WORKFLOW_ENV = 'local-dev';
 
 let finCachePredicates = (processArray(process.env.FIN_CACHE_PREDICATES) || [])
@@ -57,6 +76,14 @@ if( finCachePredicates.length === 0 ) {
     // currently not used as hasMessageDigest is in the digital namespace via the fin-digests service
     // 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest'
   ];
+}
+
+let extensionRoutes = [];
+if( env.ADMIN_UI_EXTENSIONS_ROUTES ) {
+  extensionRoutes = processArray(env.ADMIN_UI_EXTENSIONS_ROUTES).map(eleRoute => {
+    let [path, element] = eleRoute.split(':');
+    return {path, element};
+  });
 }
 
 
@@ -79,7 +106,19 @@ module.exports = {
   },
 
   gateway : {
-    host : 'http://gateway:3001',
+    http : {
+      port : env.FIN_GATEWAY_HTTP_PORT || 3000
+    },
+    https : {
+      enabled : env.FIN_GATEWAY_HTTPS_ENABLED === 'true',
+      certFolder : env.FIN_GATEWAY_HTTPS_CERT_FOLDER || '/etc/fin/certs',
+      port : env.FIN_GATEWAY_HTTPS_PORT || 3443
+    },
+    proxy : {
+      timeout : env.FIN_GATEWAY_TIMEOUT || 1000 * 60 * 5,
+      proxyTimeout : env.FIN_GATEWAY_PROXY_TIMEOUT || 1000 * 60 * 5
+    },
+    host : 'http://gateway:'+(env.FIN_GATEWAY_HTTP_PORT || 3000),
     fcrepoDataMount : env.GATEWAY_FCREPO_DATA_MOUNT || '/data',
     ocflRoot : 'ocfl-root',
     disableServices
@@ -106,12 +145,18 @@ module.exports = {
     admin : {
       username : env.FCREPO_ADMIN_USERNAME || 'fedoraAdmin',
       password : env.FCREPO_ADMIN_PASSWORD || 'fedoraAdmin'
-    }
+    },
+    roInstances : {
+      enabled : env.FCREPO_RO_ENABLED === 'true',
+      host : env.FCREPO_RO_HOSTNAME || 'fcrepo-ro',
+      port : env.FCREPO_RO_PORT || 8080,
+      numInstances : parseInt(env.FCREPO_RO_NUM_INSTANCES || 2)
+    },
   },
 
   metrics : {
     enabled : env.FIN_METRICS_ENABLED === 'true',
-    harvestInterval : env.FIN_METRICS_HARVEST_INTERVAL ? parseInt(env.FIN_METRICS_HARVEST_INTERVAL) : (1000 * 15),
+    harvestInterval : env.FIN_METRICS_HARVEST_INTERVAL ? parseInt(env.FIN_METRICS_HARVEST_INTERVAL) : (1000 * 60),
     instruments : {
       fs : {
         enabled : env.FIN_METRICS_FS_ENABLED === 'true',
@@ -220,7 +265,7 @@ module.exports = {
       "offline_access"
     ],
     // default cache all tokens for 30 seconds before requesting verification again
-    tokenCacheTTL : env.OIDC_TOKEN_CACHE_TTL ? parseInt(env.OIDC_TOKEN_CACHE_TTL) : (1000*30)
+    tokenCacheTTL : env.OIDC_TOKEN_CACHE_TTL ? parseInt(env.OIDC_TOKEN_CACHE_TTL) : (1000*60*5)
   },
 
   finCache : {
@@ -295,6 +340,14 @@ module.exports = {
     finConfigPath : '/fin/workflows/config.json',
   },
 
+  adminUi : {
+    extensions : {
+      enabled : env.ADMIN_UI_EXTENSIONS_ENABLED === 'true',
+      sourcePath : env.ADMIN_UI_EXTENSIONS_SOURCE_PATH || '/js/app-extension.js',
+      routes : extensionRoutes
+    }
+  },
+
   google : {
     serviceAccountExists,
     serviceAccountFile,
@@ -302,8 +355,6 @@ module.exports = {
     project : env.GOOGLE_CLOUD_PROJECT || gcServiceAccount.project_id,
     location : env.GOOGLE_CLOUD_LOCATION || 'us-central1',
     pubSubSubscriptionName : env.GOOGLE_PUBSUB_SUBSCRIPTION_NAME || env.GCS_BUCKET_ENV || 'local-dev',
-    gcsBucketEnv : env.GCS_BUCKET_ENV,
-
     gcsfuse : {
       rootDir : env.GCSFUSE_ROOT_DIR || '/etc/gcsfuse',
 
@@ -329,5 +380,13 @@ module.exports = {
     }
 
   },
+
+  k8s : {
+    enabled : env.K8S_ENABLED === 'true' ? true : false,
+    platform : env.K8S_PLATFORM || 'docker-desktop',
+    cluster : env.K8S_CLUSTER || 'fin',
+    region : env.K8S_REGION || 'us-central1-c',
+    namespace : env.K8S_NAMESPACE || 'default'
+  }
 
 }

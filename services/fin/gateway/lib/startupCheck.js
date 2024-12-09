@@ -3,13 +3,11 @@
  */
 const api = require('@ucd-lib/fin-api');
 
-module.exports = async function(callback) {
+module.exports = async function() {
   let c = 0;
   while( !(await check(c)) ) {
     c++;
   }
-
-  callback();
 }
 
 async function check(count) {

@@ -2,7 +2,9 @@ import { LitElement } from 'lit';
 import {render, styles} from "./fin-admin-app.tpl.js";
 import {Mixin, MainDomElement} from '@ucd-lib/theme-elements/utils/mixins';
 import { LitCorkUtils } from '@ucd-lib/cork-app-utils';
+import config from '../src/config.js';
 
+import './expose.js'
 import "../src"
 
 import './widgets/fin-admin-reindex-path.js'
@@ -31,7 +33,8 @@ export default class FinAdminApp extends Mixin(LitElement)
   static get properties() {
     return {
       currentPage : {type: String},
-      projectName : {type: String}
+      projectName : {type: String},
+      extensions : {type: Array}
     }
   }
 
@@ -46,10 +49,22 @@ export default class FinAdminApp extends Mixin(LitElement)
     this.currentPage = 'dashboard';
     this.projectName = 'Fin';
 
+    if( config?.extensions?.enabled ) {
+      let script = document.createElement('script');
+      script.src = config.extensions.sourcePath;
+      document.head.appendChild(script);
+
+      this.extensions = config.extensions.routes.map(route => {
+        route.label = capitalize(route.path.replace(/(-|_)/g  , ' '));
+        return route;
+      })
+    } else {
+      this.extensions = [];
+    }
+
     this._injectModel('AppStateModel', 'DataViewModel');
-
-
   }
+
 
   _onCoreDataUpdate(e) {
     if( e.state !== 'loaded' ) return;
@@ -62,6 +77,13 @@ export default class FinAdminApp extends Mixin(LitElement)
   }
 
   async firstUpdated() {
+    let pages = this.querySelector('ucdlib-pages');
+    this.extensions.forEach(page => {
+      let el = document.createElement(page.element);
+      el.id = page.path;
+      pages.appendChild(el);
+    });
+
     this.DataViewModel.coreData()
       .then(e => this._onCoreDataUpdate(e));
 
@@ -76,6 +98,12 @@ export default class FinAdminApp extends Mixin(LitElement)
     window.scrollTo(0, 0);
   }
 
+}
+
+function capitalize(str) {
+  return str.split(' ').map(word => {
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
 }
 
 customElements.define('fin-admin-app', FinAdminApp);

@@ -1,0 +1,23 @@
+kind: Service
+metadata:
+  name: uber
+spec:
+  selector:
+    app: uber
+  ports:
+    - name: es-managment
+      port: 3001
+      protocol: TCP
+      targetPort: 3001
+    - name: finac
+      port: 3002
+      protocol: TCP
+      targetPort: 3002
+    - name: oidc
+      port: 3003
+      protocol: TCP
+      targetPort: 3003
+    - name: api
+      port: 3004
+      protocol: TCP
+      targetPort: 3004

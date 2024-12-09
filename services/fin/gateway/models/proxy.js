@@ -88,6 +88,10 @@ class ProxyModel {
   async _onProxyResponse(proxyRes, req, res) {
     this._setReqTime(req);
 
+    if( proxyRes.proxyInfo ) {
+      proxyRes.headers['x-fin-proxy-info'] = `time=${req.proxyInfo.time}ms target=${req.proxyInfo.target}`;
+    }
+
     // set cors headers if in FIN_ALLOW_ORIGINS env variable or is a registered ExternalService domain
     // this._setCors(req, proxyRes);
 
@@ -183,8 +187,6 @@ class ProxyModel {
    * @param {Object} res express response object
    */
   async _fcRepoPathResolver(req, res) {
-    req.fcrepoProxyTime = Date.now();
-
     this._setCors(req, res);
 
     // trying to sniff out browser preflight options request for cors
@@ -252,7 +254,18 @@ class ProxyModel {
       req.headers['authorization'] = 'Basic '+Buffer.from(fcrepoApiConfig.username+':'+fcrepoApiConfig.password).toString('base64');
     }
 
-    let url = `http://${config.fcrepo.hostname}:8080${req.originalUrl}`;
+    let fcrepoHost = config.fcrepo.hostname;
+    // if we have read only fcrepo instances, its a GET request and
+    // we are not in a transaction, randomly distribute requests to read only instances and main instance
+    if( config.fcrepo.roInstances.enabled && 
+        ['GET', 'HEAD', 'OPTIONS'].includes(req.method) 
+        && !req.get('Atomic-ID') ) {
+      if( (1/(config.fcrepo.roInstances.numInstances+1)) < Math.random() ) {
+        fcrepoHost = config.fcrepo.roInstances.host;
+      }
+    }
+
+    let url = `http://${fcrepoHost}:8080${req.originalUrl}`;
     logger.debug(`Fcrepo proxy request: ${url}`);
 
     // JM - TODO
@@ -284,11 +297,17 @@ class ProxyModel {
       }
     }
 
-    finDigests.onFcrepoRequest(req);
+    await finDigests.onFcrepoRequest(req);
 
     if( req.headers['cookie'] ) {
       delete req.headers['cookie'];
     }
+
+    req.proxyInfo = {
+      startTime : Date.now(),
+      target : url
+    }
+
 
     proxy.web(req, res, {
       target : url
@@ -406,8 +425,8 @@ class ProxyModel {
   }
 
   _setReqTime(req) {
-    if( !req.fcrepoProxyTime ) return;
-    req.fcrepoProxyTime = Date.now() - req.fcrepoProxyTime;
+    if( !req.proxyInfo ) return;
+    req.proxyInfo.time = Date.now() - req.proxyInfo.startTime;
   }
 
   async _renderLabel(req, res) {

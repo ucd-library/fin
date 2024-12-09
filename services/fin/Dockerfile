@@ -8,13 +8,12 @@ ENV FIN_CONFIG_ROOT=/etc/fin
 ARG FIN_REPO_SERVICE_ROOT=services/fin
 ARG FIN_REPO_API_ROOT=fin-api
 
-RUN apt-get update
-RUN apt-get install -y git jq zip unzip vim apt-transport-https ca-certificates gnupg dnsutils
-RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | \
-  tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
-  apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && apt-get update -y && apt-get install google-cloud-cli -y
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get clean
+COPY ${FIN_REPO_SERVICE_ROOT}/install-depends.sh /install-depends.sh
+RUN chmod +x /install-depends.sh && \
+  /install-depends.sh && \
+  rm /install-depends.sh
 
 RUN mkdir -p $FIN_SERVICE_ROOT
 RUN mkdir -p $FIN_API_ROOT
@@ -48,6 +47,7 @@ COPY ${FIN_REPO_SERVICE_ROOT}/api api
 COPY ${FIN_REPO_SERVICE_ROOT}/dbsync dbsync
 COPY ${FIN_REPO_SERVICE_ROOT}/es-index-management es-index-management
 COPY ${FIN_REPO_SERVICE_ROOT}/fin-ac fin-ac
+COPY ${FIN_REPO_SERVICE_ROOT}/fin-cache fin-cache
 COPY ${FIN_REPO_SERVICE_ROOT}/gateway gateway
 COPY ${FIN_REPO_SERVICE_ROOT}/monitoring monitoring
 COPY ${FIN_REPO_SERVICE_ROOT}/gcs gcs

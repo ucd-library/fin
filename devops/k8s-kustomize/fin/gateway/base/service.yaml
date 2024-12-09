@@ -1,0 +1,6 @@
+kind: Service
+metadata:
+  name: gateway
+spec:
+  selector:
+    app: gateway

@@ -1,5 +1,5 @@
 const api = require('@ucd-lib/fin-api');
-const {logger, config, models, MessagingClients, FinCache, utils} = require('@ucd-lib/fin-service-utils');
+const {logger, config, models, MessagingClients, tests, utils} = require('@ucd-lib/fin-service-utils');
 const request = require('request');
 const {URL} = require('url');
 const jsonld = require('jsonld');
@@ -8,7 +8,7 @@ const util = require('util');
 const redis = require('../lib/redisClient')();
 const jwt = require('jsonwebtoken');
 const label = require('../models/label');
-const finCache = new FinCache();
+// const finCache = new FinCache();
 
 jsonld.frame = util.promisify(jsonld.frame);
 
@@ -16,6 +16,11 @@ jsonld.frame = util.promisify(jsonld.frame);
 // const finGroups = new FinGroups();
 
 const {RabbitMqClient} = MessagingClients;
+const { ActiveMqTests } = tests;
+const activeMqTest = new ActiveMqTests();
+let hostname = 'gateway';
+utils.getContainerHostname().then(h => hostname = h);
+
 const FIN_URL = new URL(config.server.url);
 const SERVICE_CHAR = '/svc:';
 const AUTHENTICATION_SERVICE_CHAR = '^/auth';
@@ -61,11 +66,11 @@ class ServiceModel {
     this.clientService = null;
 
     this.finCacheEnabled = false;
-    let hostname = await utils.getContainerHostname();
-    if( hostname.match(/-1$/) ) {
-      logger.info('Listening for fcrepo events to update fin-cache');
-      this.finCacheEnabled = true;
-    }
+    // let hostname = await utils.getContainerHostname();
+    // if( hostname.match(/-1$/) ) {
+    //   logger.info('Listening for fcrepo events to update fin-cache');
+    //   this.finCacheEnabled = true;
+    // }
 
     // listen for service definition updates
     this.messaging = new RabbitMqClient('gateway');
@@ -82,14 +87,18 @@ class ServiceModel {
       await this.loadModelTransformService(modelService);
     }
 
-    await this.waitForFcRepoServices();
-    await this.reload();
+    // load services from fcrepo but don't wait so we can start the server
+    // TODO: need uptime endpoint to set to true AFTER reload is run
+    this.waitForFcRepoServices()
+      .then(() => this.reload());
   }
 
   async waitForFcRepoServices() {
+    logger.info('Checking if fcrepo services root to be available');
     let response = await api.head({path : api.service.ROOT});
-    await this.wait(500);
     if( response.data.statusCode !== 200 ) {
+      logger.info('fcrepo services root not available; ', response.data.statusCode, response.data.body);
+      await this.wait(2000);
       await this.waitForFcRepoServices(); 
     }
   }
@@ -400,13 +409,15 @@ class ServiceModel {
       .map(item => item.trim())
       .filter(item => item)
 
-    if( this.finCacheEnabled ) {
-      try {
-        await finCache.onFcrepoEvent(event);
-      } catch(e) {
-        logger.error(e);
-      }
-    }
+    // if( this.finCacheEnabled ) {
+    //   try {
+    //     await finCache.onFcrepoEvent(event);
+    //   } catch(e) {
+    //     logger.error(e);
+    //   }
+    // }
+
+    await activeMqTest.sendPing(event, hostname, this.messaging);
 
     if( !types.includes(SERVICE_TYPE) ) {
       return;

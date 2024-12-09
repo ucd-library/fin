@@ -1,13 +1,15 @@
 const path = require('path');
 const utils = require('./utils');
 const pathutils = require('../utils/path');
+const { debug } = require('console');
+const { match } = require('assert');
 
 const FIN_IO_DIGEST_NAME = {
   BINARY_HASH : 'sha256',
   METADATA_HASH : 'finio-metadata-sha256',
 }
 const FIN_DIGEST_PREDICATE = 'http://digital.ucdavis.edu/schema#hasMessageDigest';
-
+const DIGEST_PREDICATE = 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest';
 class FinImportContainer {
 
   constructor(typeConfig, startPath) {
@@ -293,7 +295,22 @@ class FinImportContainer {
       return this.shaManifest;
     }
 
-    let quadRequest = this.getFinQuadCacheDigests();
+    if( this.metadata.virtual ) {
+      this.shaManifest = {
+        metadata : {
+          fs : '__virtual__',
+          fsMd5 : '__virtual__',
+          fsSha512 : '__virtual__',
+          ldp : await this.getFinCacheDigest(FIN_IO_DIGEST_NAME.METADATA_HASH),
+        }
+      }
+      if( this.shaManifest.metadata.ldp === this.shaManifest.metadata.fs ) {
+        this.shaManifest.metadata.match = true;
+      }
+      return this.shaManifest;
+    }
+
+    let digestRequest = this.getFinDigestsCache();
     let localBinarySha = null;
     let localMetadataSha = null;
     let manifest = {};
@@ -305,7 +322,7 @@ class FinImportContainer {
       localMetadataSha = this.api.hash(this.metadata.fsfull);
     }
 
-    await quadRequest;
+    await digestRequest;
     
     if( localBinarySha !== null ) {
       localBinarySha = await localBinarySha;
@@ -318,12 +335,17 @@ class FinImportContainer {
       }
     }
     if( localMetadataSha !== null ) {
+      let hashName = FIN_IO_DIGEST_NAME.METADATA_HASH;
+      if( this.isBinary ) {
+        hashName = 'fcr:metadata-'+hashName;
+      }
+
       localMetadataSha = await localMetadataSha;
       manifest.metadata = {
         fs : localMetadataSha.sha256,
         fsMd5 : localMetadataSha.md5,
         fsSha512 : localMetadataSha.sha512,
-        ldp : await this.getFinCacheDigest(FIN_IO_DIGEST_NAME.METADATA_HASH)
+        ldp : await this.getFinCacheDigest(hashName)
       }
       if( manifest.metadata.ldp === manifest.metadata.fs ) {
         manifest.metadata.match = true;
@@ -335,60 +357,62 @@ class FinImportContainer {
   }
 
   /**
-   * @method getBinarySha256
+   * @method getFinCacheDigest
    * @description get the binary sha256 from the fin quads.  Helper method for
    * getQuadCachePredicate filtering for urn:sha-256: prefix
    * 
    * @returns {Promise<String>}
    */
   async getFinCacheDigest(name) {
-    let quads = await this.getFinQuadCacheDigests();
-    if( !quads ) return null;
+    let digests = await this.getFinDigestsCache();
+    if( !digests ) return null;
 
-    let re = new RegExp('^urn:'+name+':');
-
-    quads = quads
-      .filter(quad => quad.predicate === FIN_DIGEST_PREDICATE)
-      .filter(quad => quad.object.match(re))
-      .map(quad => quad.object.replace(re, ''));
-
-    if( quads.length === 0 ) return null;
-    return quads[0];
+    let item = digests.find(digest => digest.type === name);
+    if( !item ) return null;
+    return item.value;
   }
 
   /**
-   * @method getFinQuadCache
+   * @method getFinDigestsCache
    * @description get the fin-quads for the fin path.  This will cache responses
    * in memory so function can be accessed multiple times.
    * 
    * @param {String} finPath path the fetch cached quads for
    * @returns {Promise<Array>}
    */
-  async getFinQuadCacheDigests() {
-    if( this.quadCacheRequest ) {
-      await this.quadCacheRequest;
+  async getFinDigestsCache() {
+    if( this.digestsCacheRequest ) {
+      await this.digestsCacheRequest;
     }
 
-    if( this.quadCache ) {
-      return this.quadCache;
+    if( this.digestsCache ) {
+      return this.digestsCache;
     }
     
-    this.quadCacheRequest = this.api.get({
-      path: this.fcrepoPath,
-      fcBasePath : '/fin/subject'
+    this.digestsCacheRequest = this.api.head({
+      path: this.fcrepoPath
     });
 
-    let resp = await this.quadCacheRequest;
-    this.quadCacheRequest = null;
+    let resp = await this.digestsCacheRequest;
+    this.digestsCacheRequest = null;
 
     if( resp.last.statusCode !== 200 ) {
       return null;
     }
 
-    resp = JSON.parse(resp.last.body);
-    this.quadCache = resp;
+    let digests = (resp.last.headers['digest'] || '')
+      .split(',')
+      .map(digest => {
+        let [type, value] = digest.split('=').map(v => v.trim());
+        return {
+          type,
+          value
+        }
+      });
 
-    return resp;
+    this.digestsCache = digests;
+
+    return digests;
   }
 
 }

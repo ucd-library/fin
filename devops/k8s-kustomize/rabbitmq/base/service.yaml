@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+spec:
+  # this enables direct access to the pod from within the cluster
+  # and no load balancing is done
+  clusterIP: None 
+  selector:
+    app: rabbitmq
+  ports:
+  # wire protocol port
+  - name: wire-protocol
+    protocol: TCP
+    port: 5672
+    targetPort: 5672
+  # management UI port
+  - name: admin
+    protocol: TCP
+    port: 15672
+    targetPort: 15672

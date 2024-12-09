@@ -148,19 +148,20 @@ CREATE OR REPLACE VIEW workflow_workflow AS
   SELECT *, data->>'finPath' as path FROM workflow.workflow;
 
 CREATE OR REPLACE VIEW workflow_lastest AS
-  SELECT *
-  FROM (
-    SELECT *,
-          ROW_NUMBER() OVER (PARTITION BY path, name ORDER BY updated DESC) AS rn
-    FROM workflow_workflow
-  ) subquery
-  WHERE rn = 1;
+  SELECT *, data->>'finPath' as path  from workflow.workflow order by updated desc;
+  -- SELECT *
+  -- FROM (
+  --   SELECT *,
+  --         ROW_NUMBER() OVER (PARTITION BY path, name ORDER BY updated DESC) AS rn
+  --   FROM workflow_workflow
+  -- ) subquery
+  -- WHERE rn = 1;
 
 CREATE OR REPLACE VIEW workflow_workflow_gcs AS
   SELECT * FROM workflow.workflow_gcs;
 
 CREATE OR REPLACE VIEW workflow_stats AS
-  SELECT name, state, count(*) as count from workflow_lastest GROUP BY name, state ORDER BY name, count;
+  SELECT name, state, count(*) as count FROM workflow.workflow group by name, state;
 
 CREATE OR REPLACE VIEW fin_cache_quads AS
   SELECT * FROM fin_cache.quads_view;

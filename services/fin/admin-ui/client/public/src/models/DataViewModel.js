@@ -63,17 +63,7 @@ class DataViewModel extends BaseModel {
 
   async pgQuery(table, query={}, opts={}, name) {
     if( !name ) name = table;
-
-    let pg = this.store.data.pg[name];
-    if( pg?.state === 'loading' && opts.refresh !== true ) {
-      await pg.request;
-    } else {
-      if( pg && opts.refresh !== true ) {
-        return pg;
-      }
-      await this.service.pgQuery(table, query, name, opts.queryCount);
-    }
-    return this.store.data.pg[name];
+    return await this.service.pgQuery(table, query, name, opts.queryCount);
   }
 
 }

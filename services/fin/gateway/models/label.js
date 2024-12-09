@@ -1,5 +1,5 @@
 const api = require('@ucd-lib/fin-api');
-const {pg, logger} = require('@ucd-lib/fin-service-utils');
+const {pg, logger, config} = require('@ucd-lib/fin-service-utils');
 const crypto = require('crypto');
 
 pg.connect();
@@ -26,7 +26,7 @@ class LabelService {
       headers: {accept: api.RDF_FORMATS.JSON_LD}
     });
 
-    if( container.data.statusCode !== 200 ) {
+    if( container?.data.statusCode !== 200 ) {
       return logger.error('Failed to load container into label service: '+containerPath)
     }
 

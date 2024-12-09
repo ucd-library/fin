@@ -14,7 +14,8 @@ class FileIOCli {
     let ignoreRemoval = args.options.syncDeletes ? false : true;
     let fcrepoPathType = args.options.fcrepoPathType;
     let importFromRoot = args.options.importFromRoot;
-    let agImportStrategy = args.options.agImportStrategy || 'transaction';
+    let prepareFsLayoutImport = args.options.prepareFsLayoutImport;
+    let agImportStrategy = args.options.agImportStrategy || 'version-all';
 
     await api.io.import.run({
       fsPath : rootPath, 
@@ -24,8 +25,10 @@ class FileIOCli {
       ignoreRemoval,
       fcrepoPathType,
       importFromRoot,
+      prepareFsLayoutImport,
       agImportStrategy,
-      logToDisk : args.options.logToDisk || false
+      logToDisk : args.options.logToDisk || false,
+      debugShaChanges : args.options.debugShaChanges || false
     });
   }
 

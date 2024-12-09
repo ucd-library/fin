@@ -1,0 +1,6 @@
+kind: Service
+metadata:
+  name: dbsync
+spec:
+  selector:
+    app: dbsync

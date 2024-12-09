@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gcs
+spec:
+  selector:
+    matchLabels:
+      app: gcs
+  template:
+    metadata:
+      labels:
+        app: gcs
+    spec:
+      containers:
+      - name: service
+        command: ["npm", "run", "gcs"]
+        env:
+        - name: FIN_SERVICE_NAME
+          value: "gcs"

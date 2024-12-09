@@ -1,5 +1,5 @@
-# FROM fcrepo/fcrepo:6.4.0
-FROM fcrepo/fcrepo:6.5.0-SNAPSHOT
+FROM fcrepo/fcrepo:6.4.1
+# FROM fcrepo/fcrepo:6.5.0-SNAPSHOT
 
 RUN apt update && apt install -y vim rsync
 
@@ -24,7 +24,7 @@ COPY hawtdispatch-1.22.jar $CATALINA_HOME/webapps/fcrepo/WEB-INF/lib/hawtdispatc
 COPY mqtt-client-1.16.jar $CATALINA_HOME/webapps/fcrepo/WEB-INF/lib/mqtt-client-1.16.jar
 COPY activemq.xml $CATALINA_HOME/webapps/fcrepo/WEB-INF/classes/config/activemq.xml
 
-ENV CATALINA_OPTS="-Dfcrepo.config.file=/etc/fin/fcrepo.properties"
+ENV CATALINA_OPTS="-Djava.awt.headless=true -Dfile.encoding=UTF-8 -Xms1G -Xmx4G -XX:+UseG1GC -XX:+DisableExplicitGC -Dfcrepo.config.file=/etc/fin/fcrepo.properties"
 
 ARG FIN_APP_VERSION
 ENV FIN_APP_VERSION=${FIN_APP_VERSION}

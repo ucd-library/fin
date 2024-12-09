@@ -7,8 +7,10 @@ const crypto = require('crypto');
 const path = require('path');
 const pg = require('./gcs-postgres.js');
 const keycloak = require('../keycloak.js');
-const FinCache = require('../fin-cache.js');
-const finCache = new FinCache();
+const FinDigests = require('../fin-digests.js');
+const finDigests = new FinDigests();
+
+const GCS_MD5 = 'gcs-md5';
 
 // For more information on ways to initialize Storage, please see
 // https://googleapis.dev/nodejs/storage/latest/Storage.html
@@ -34,10 +36,6 @@ class GcsWrapper {
       'http://fedora.info/definitions/fcrepo#ServerManaged'
     ]
 
-    // this.METADATA_PREFIX = {
-    //   GCS_METADATA_MD5 : 'http://digital.ucdavis.edu/schema#gcs-metadata-md5',
-    //   GCS_BINARY_MD5 : 'http://digital.ucdavis.edu/schema#gcs-binary-md5'
-    // }
 
     this.SYNC_BATCH_SIZE = 250;
 
@@ -171,10 +169,10 @@ class GcsWrapper {
 
     try {
       let gcsMetadata = await this.getGcsFileMetadata(gcsFile);
-
+      let digests = await finDigests.get(finPath);
       let binaryNode = api.io.utils.getGraphNode(fcrepoContainer, RDF_URIS.TYPES.BINARY);
 
-      if( this.isBinaryMd5Match(binaryNode, gcsMetadata) ) {
+      if( this.isBinaryDigestMatch(digests, gcsMetadata) ) {
         logger.debug('md5 match, ignoring fcrepo to gcs sync', finPath, gcsFile);
         await pg.updateStatus({
           path : finPath,
@@ -251,14 +249,15 @@ class GcsWrapper {
     if( !finPath.startsWith('/') ) finPath = '/'+finPath;
 
     try {
-      let finQuads = await finCache.get(finPath);
+      let digests = await finDigests.get(finPath);
 
-      if( !this.isBinaryTagMatch(finQuads, file.metadata) ) {
+      if( !this.isBinaryDigestMatch(digests, file.metadata) ) {
         logger.info('syncing binary from gcs to fcrepo'+(opts.proxyBinary === true ? ' as proxy' : ''), gcsFile, finPath);
         let result;
 
         await this.ensureRootPaths(finPath, opts.ensurePathCache);
 
+        let md5 = Buffer.from(file.metadata.md5Hash, 'base64').toString('hex');
         if( opts.proxyBinary === true ) {
           let url = file.metadata.mediaLink;
           if( opts.basePath ) {
@@ -272,7 +271,7 @@ class GcsWrapper {
               link : `<${file.metadata.mediaLink}>; rel="http://fedora.info/definitions/fcrepo#ExternalContent"; handling="redirect"; type="${item.file.metadata.contentType}"`,
               'Content-Type' : file.metadata.contentType,
               'Content-Disposition' : file.metadata.contentDisposition,
-              digest : 'md5='+Buffer.from(file.metadata.md5Hash, 'base64').toString('hex')
+              digest : 'md5='+md5
             },
             partial : true
           });
@@ -283,7 +282,7 @@ class GcsWrapper {
             headers : {
               'Content-Type' : file.metadata.contentType,
               'Content-Disposition' : file.metadata.contentDisposition,
-              digest : 'md5='+Buffer.from(file.metadata.md5Hash, 'base64').toString('hex'),
+              digest : 'md5='+md5,
             },
             partial : true
           });
@@ -330,9 +329,9 @@ class GcsWrapper {
     if( !finPath.startsWith('/') ) finPath = '/'+finPath;
 
     try {
-      let finQuads = await finCache.get(finPath);
+      let digests = await finDigests.get(finPath);
       
-      if( !this.isMetadataTagMatch(finQuads, file.metadata) ) {
+      if( !this.isMetadataDigestMatch(digests, file.metadata) ) {
         logger.info('syncing container from gcs to fcrepo', gcsFile, finPath);
 
         await this.ensureRootPaths(finPath, opts.ensurePathCache);
@@ -340,13 +339,14 @@ class GcsWrapper {
         let content = await this.loadFileIntoMemory(gcsFile);
         let jsonld = JSON.parse(content);
 
-        jsonld = this.addGcsMetadataNode(jsonld, {
-          md5 : file.metadata.md5Hash,
-          gcsFile : gcsFile
-        });
+        // jsonld = this.addGcsMetadataNode(jsonld, {
+        //   md5 : file.metadata.md5Hash,
+        //   gcsFile : gcsFile
+        // });
 
         let headers = {
-          'Content-Type' : api.RDF_FORMATS.JSON_LD
+          'Content-Type' : api.RDF_FORMATS.JSON_LD,
+          'digest' : GCS_MD5+'='+file.metadata.md5Hash+', gcs-file='+Buffer.from(gcsFile).toString('hex')
         };
 
         // get root node
@@ -428,10 +428,10 @@ class GcsWrapper {
       // TODO: check if metadata is just empty array and is binary metadata
       // if so, skip file.
 
-      let finQuads = await finCache.get(finPath);
+      let digests = await finDigests.get(finPath);
 
       let fileContent = JSON.stringify(fcrepoContainer);
-      if( this.isMetadataTagMatch(finQuads, gcsMetadata) ) {
+      if( this.isMetadataDigestMatch(digests, gcsMetadata) ) {
         logger.debug('md5 match, ignoring fcrepo to gcs sync', finPath, gcsFile);
         await pg.updateStatus({
           path : finPath,
@@ -488,16 +488,17 @@ class GcsWrapper {
       });
       container = JSON.parse(response.last.body);
 
-      container = this.addGcsMetadataNode(container, {
-        md5 : md5Hash,
-        gcsFile : gcsFile
-      });
+      // container = this.addGcsMetadataNode(container, {
+      //   md5 : md5Hash,
+      //   gcsFile : gcsFile
+      // });
 
       let result = await this.fcrepoPut({
         path : finPath,
         body : JSON.stringify(container),
         headers : {
-          'Content-Type' : api.RDF_FORMATS.JSON_LD
+          'Content-Type' : api.RDF_FORMATS.JSON_LD,
+          'digest' : GCS_MD5+'='+md5Hash+', gcs-file='+Buffer.from(gcsFile).toString('hex')
         }
       });
       // console.log(result);
@@ -598,28 +599,28 @@ class GcsWrapper {
    * @param {Object} jsonld 
    * @param {String} md5 
    */
-  addGcsMetadataNode(jsonld, metadata) {
-    if( !jsonld['@graph'] ) {
-      jsonld = {'@graph' : jsonld};
-    }
-    if( !Array.isArray(jsonld['@graph']) ) {
-      jsonld['@graph'] = [jsonld['@graph']];
-    }
+  // addGcsMetadataNode(jsonld, metadata) {
+  //   if( !jsonld['@graph'] ) {
+  //     jsonld = {'@graph' : jsonld};
+  //   }
+  //   if( !Array.isArray(jsonld['@graph']) ) {
+  //     jsonld['@graph'] = [jsonld['@graph']];
+  //   }
 
-    let metadataNode = api.io.utils.getGraphNode(jsonld, RDF_URIS.TYPES.FIN_GCSSYNC_METADATA);
-    if( !metadataNode ) {
-      metadataNode = {
-        '@id' : RDF_URIS.NODE_HASH.FIN_GCSSYNC_METADATA,
-        '@type' : RDF_URIS.TYPES.FIN_GCSSYNC_METADATA
-      };
-      jsonld['@graph'].push(metadataNode);
-    }
+  //   let metadataNode = api.io.utils.getGraphNode(jsonld, RDF_URIS.TYPES.FIN_GCSSYNC_METADATA);
+  //   if( !metadataNode ) {
+  //     metadataNode = {
+  //       '@id' : RDF_URIS.NODE_HASH.FIN_GCSSYNC_METADATA,
+  //       '@type' : RDF_URIS.TYPES.FIN_GCSSYNC_METADATA
+  //     };
+  //     jsonld['@graph'].push(metadataNode);
+  //   }
 
-    metadataNode[RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5] = [{'@value': metadata.md5}];
-    metadataNode[RDF_URIS.PROPERTIES.GCSSYNC_GCS_PATH] = [{'@value': metadata.gcsFile}];
+  //   metadataNode[RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5] = [{'@value': metadata.md5}];
+  //   metadataNode[RDF_URIS.PROPERTIES.GCSSYNC_GCS_PATH] = [{'@value': metadata.gcsFile}];
 
-    return jsonld;
-  }
+  //   return jsonld;
+  // }
 
 
   getGcsFileObjectFromPath(gcsFile) {
@@ -720,58 +721,33 @@ class GcsWrapper {
     }
   }
 
-  isBinaryTagMatch(finQuads, gcsFile) {
-    if( !gcsFile ) return false;
-    finQuads = finCache.getPropertyValues(finQuads, 'predicate', RDF_URIS.PROPERTIES.HAS_MESSAGE_DIGEST);
+  getDigest(digests=[], type) {
+    let item = digests.find(item => item.type === type);
+    if( item ) return item.value;
+    return null;
+  }
 
-    let md5 = finQuads.find(item => item.startsWith('urn:md5:'));
+  isBinaryDigestMatch(digests=[], gcsFile) {
+    if( !gcsFile ) return false;
+
+    let md5 = this.getDigest(digests, 'md5');
     if( !md5 ) return false;
 
-    let md5Base64 = Buffer.from(md5.replace(/^urn:md5:/, ''), 'hex').toString('base64')
+    let md5Base64 = Buffer.from(md5, 'hex').toString('base64')
     return (md5Base64 === gcsFile.md5Hash);
   }
 
-  isMetadataTagMatch(finQuads, gcsFile) {
+  isMetadataDigestMatch(digests=[], gcsFile) {
     if( !gcsFile ) return false;
-    finQuads = finCache.getPropertyValues(finQuads, 'predicate', RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5);
-    if( finQuads.length === 0 ) return false;
-    if( finQuads[0] === gcsFile.md5Hash ) return true;
-    let b64 = Buffer.from(finQuads[0], 'hex').toString('base64');
-    return (b64 === gcsFile.md5Hash);
-  }
-
-  isBinaryMd5Match(fcrepoContainer, gcsFile) {
-    if( !fcrepoContainer || !gcsFile ) return false;
-
-    if( !fcrepoContainer[RDF_URIS.PROPERTIES.HAS_MESSAGE_DIGEST] ) return false;
-
-    let md5 = fcrepoContainer[RDF_URIS.PROPERTIES.HAS_MESSAGE_DIGEST].find(item => item['@id'].startsWith('urn:md5:'));
+    
+    let md5 = this.getDigest(digests, GCS_MD5);
     if( !md5 ) return false;
 
-    let md5Base64 = Buffer.from(md5['@id'].replace(/^urn:md5:/, ''), 'hex').toString('base64');
-    if( md5Base64 === gcsFile.md5Hash ) {
-      return true;
-    }
-    return false;
+    if( md5 === gcsFile.md5Hash ) return true;
+
+    let b64 = Buffer.from(md5, 'hex').toString('base64');
+    return (b64 === gcsFile.md5Hash);
   }
-
-  // isMetadataMd5Match(fileContent, gcsFile) {
-  //   if( !fileContent || !gcsFile ) return false;
-
-  //   if( typeof fileContent === 'string' ) {
-  //     fileContent = JSON.parse(fileContent);
-  //   }
-
-  //   let gcsMetadataNode = api.io.utils.getGraphNode(fileContent, RDF_URIS.TYPES.FIN_GCSSYNC_METADATA);
-  //   if( gcsMetadataNode && gcsMetadataNode[RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5] ) {
-  //     let md5 = gcsMetadataNode[RDF_URIS.PROPERTIES.GCSSYNC_METADATA_MD5][0]['@value'];
-  //     if( md5 === gcsFile.md5Hash ) {
-  //       return true;
-  //     }
-  //   }
-
-  //   return false;
-  // }
 
   loadFileIntoMemory(gcsFile) {
     return new Promise((resolve, reject) => {
@@ -852,6 +828,8 @@ class GcsWrapper {
   async fcrepoPut(opts) {
     opts.jwt = await keycloak.getServiceAccountToken();
     opts.host = config.gateway.host;
+    opts.superuser = false;
+    opts.directAccess = false;
     return api.put(opts);
   }
 

@@ -4,6 +4,7 @@ const inquirer = require('inquirer');
 
 const Logger = require('../lib/logger');
 const location = require('../lib/location');
+const Crawler = require('../lib/crawl');
 
 /**
  * @class HttpCli
@@ -48,6 +49,7 @@ class HttpCli {
               'be any combination of hbsHB where: H=request headers, B=request body,'+
               'h=response headers, b=response body and s=response HTTP status code')
       .option('-d, --debug', 'Debug all http requests')
+      .option('--timeout <timeout>', 'Set request timeout in seconds')
   }
 
   /**
@@ -265,6 +267,10 @@ class HttpCli {
       this._appendHeaders(options, args.options);
     }
 
+    if( args.options.timeout ) {
+      options.timeout = parseInt(args.options.timeout) * 1000;
+    }
+
     return options;
   }
 
@@ -408,6 +414,28 @@ class HttpCli {
     }
 
     return {options};
+  }
+
+  async crawlDelete(args) {
+    let options = this._initOptions(args);
+    options.permanent = true;
+
+    const crawler = new Crawler(args.options.depth);
+    await crawler.crawl(options.path);
+
+    let paths = Array.from(crawler.visited);
+    paths.sort((a,b) => b.length - a.length);
+
+    for( let path of paths ) {
+      let response = await api.delete({
+        path,
+        permanent : options.permanent
+      });
+
+      response.httpStack.forEach(r => {
+        console.log(r.request.method+' '+r.statusCode+' '+r.request.url);
+      });
+    }
   }
 
   /**

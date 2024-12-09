@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow
+spec:
+  selector:
+    matchLabels:
+      app: workflow
+  template:
+    metadata:
+      labels:
+        app: workflow
+    spec:
+      containers:
+      - name: service
+        command: ["npm", "run", "workflow"]
+        env:
+        - name: FIN_SERVICE_NAME
+          value: "workflow"

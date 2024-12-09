@@ -5,7 +5,7 @@ const mime = require('mime');
 const pathutils = require('../utils/path');
 const utils = require('./utils');
 const csv = require('csv/sync');
-const fs = require('fs');
+const fs = require('fs-extra');
 
 let api;
 
@@ -16,6 +16,8 @@ class FinIoImport {
     this.DEFAULT_TIMEOUT = 1000 * 60 * 5; // 5min
 
     this.existsStatusCode = {};
+
+    this.exitStatusCode = 0;
 
     this.FIN_CACHE_PREDICATES = {
       AG_HASH : 'http://digital.ucdavis.edu/schema#finIoAgHash',
@@ -79,6 +81,27 @@ class FinIoImport {
    */
   async run(options) {
     this.addSigIntCallback();
+
+    // we are preparing the filesystem layout for import
+    // this is a two step process.  First we crawl the filesystem and create a json file for each write
+    // operation that will be performed.
+    if( options.prepareFsLayoutImport ) {
+      if( path.isAbsolute(options.prepareFsLayoutImport) === false ) {
+        options.prepareFsLayoutImport = path.resolve(process.cwd(), options.prepareFsLayoutImport);
+      }
+
+      this.writeCount = 0;
+      console.log('Preparing filesystem layout import: '+options.prepareFsLayoutImport);
+      if( !fs.existsSync(options.prepareFsLayoutImport) ) {
+        throw new Error('prepareFsLayoutImport path does not exist: '+options.prepareFsLayoutImport);
+      }
+      await fs.remove(options.prepareFsLayoutImport);
+      await fs.ensureDir(options.prepareFsLayoutImport);
+      fs.writeFileSync(
+        path.join(options.prepareFsLayoutImport, 'fin-io-import.json'),
+        JSON.stringify(options, null, 2)
+      );
+    }
 
     if( options.ignoreRemoval !== true ) options.ignoreRemoval = false;
     if( options.fcrepoPath && !options.fcrepoPath.match(/^\//) ) {
@@ -194,6 +217,8 @@ class FinIoImport {
     if( this.options.logToDisk ) {
       this.saveDiskLog();
     }
+
+    process.exit(this.exitStatusCode);
   }
 
   /**
@@ -263,8 +288,18 @@ class FinIoImport {
       response = {equal:false, message: 'Changes detected: '+container.fcrepoPath};
     }
 
+    if( this.options.debugShaChanges && !response.equal ) {
+      console.log(' -> sha changes: ', JSON.stringify(agShaManifest, null, 2));
+    }
+
     // sha match, no changes, no force flag, ignore
-    if( response.equal === true && this.options.forceMetadataUpdate !== true ) {
+
+    let forcedUpdate = this.options.forceMetadataUpdate || this.options.forceBinaryUpdate;
+    if( response.equal === true && forcedUpdate === true ) {
+      console.log(' -> no changes found, forced update happening ');
+    }
+
+    if( response.equal === true && forcedUpdate !== true ) {
       console.log(' -> no changes found, ignoring');
       this.diskLog({verb: 'ignore', path: container.fcrepoPath, file: container.fsfull, message : 'no changes found'});
       return false;
@@ -277,15 +312,22 @@ class FinIoImport {
     
     // run transaction import strategy
     } else if( this.options.agImportStrategy === 'transaction' ) {
-      this.currentOp = api.startTransaction({timeout: this.DEFAULT_TIMEOUT});
-      let tResp = await this.currentOp;
-      if( tResp.last.statusCode !== 201 ) {
-        console.error('Unable to start transaction: ', tResp.last.statusCode, tResp.last.body);
-        process.exit(1);
-        return;
+      if( !this.options.prepareFsLayoutImport ) {
+        this.currentOp = api.startTransaction({timeout: this.DEFAULT_TIMEOUT});
+        let tResp = await this.currentOp;
+        if( tResp.last.statusCode !== 201 ) {
+          console.error('Unable to start transaction: ', tResp.last.statusCode, tResp.last.body);
+          process.exit(1);
+          return;
+        }
+        console.log(' -> changes found, running transaction based update ('+api.getConfig().transactionToken+'): '+response.message);
+      } else {
+        this.openFsLayoutTransaction = path.join(this.options.prepareFsLayoutImport, this.writeCount+'-tx');
+        console.log(' -> changes found, creating transaction based update: ('+this.openFsLayoutTransaction);
+        await fs.mkdirp(this.openFsLayoutTransaction);
+        this.writeCount++;
       }
-      console.log(' -> changes found, running transaction based update ('+api.getConfig().transactionToken+'): '+response.message);
-    
+
     // run version import strategy
     // TODO: need to actually version here 
     } else if( this.options.agImportStrategy === 'version-all' ) {
@@ -344,10 +386,14 @@ class FinIoImport {
     }
 
     if( this.options.agImportStrategy === 'transaction' ) {
-      let token = api.getConfig().transactionToken;
-      this.currentOp = api.commitTransaction({timeout: this.DEFAULT_TIMEOUT});
-      let tResp = await this.currentOp;
-      console.log(' -> commit ArchivalGroup transaction based update ('+token+'): '+tResp.last.statusCode);
+      if( this.options.prepareFsLayoutImport ) {
+        this.openFsLayoutTransaction = null;
+      } else {
+        let token = api.getConfig().transactionToken;
+        this.currentOp = api.commitTransaction({timeout: this.DEFAULT_TIMEOUT});
+        let tResp = await this.currentOp;
+        console.log(' -> commit ArchivalGroup transaction based update ('+token+'): '+tResp.last.statusCode);
+      }
     }
 
     return true;
@@ -515,6 +561,7 @@ class FinIoImport {
       }
 
       if( response.error ) {
+        console.error('Error writing binary: ', response.error);
         throw new Error(response.error);
       }
     }
@@ -799,9 +846,20 @@ class FinIoImport {
     return content;
   }
 
-  async write(verb, opts, file) {
-    if( !opts.timeout ) opts.timeout = this.DEFAULT_TIMEOUT; 
+  async write(verb, opts, file, retryOnConflict=true) {
+    if( this.options.prepareFsLayoutImport )  {
+      let data = {verb, opts, file};
+      let filename = `${this.writeCount}-${verb}-${path.parse(opts.path).base}.json`;
+      filename = path.join(this.openFsLayoutTransaction || this.options.prepareFsLayoutImport, filename);
+      this.writeCount++;
+      fs.writeFileSync(
+        filename,
+        JSON.stringify(data, null, 2)
+      );
+      return {last : {statusText: 'ok', statusCode: 'write to disk: '+filename}};
+    }
 
+    if( !opts.timeout ) opts.timeout = this.DEFAULT_TIMEOUT; 
     let startTime = Date.now();
 
     try {
@@ -816,6 +874,13 @@ class FinIoImport {
       }
 
       let response = await this.currentOp;
+
+      // memory cleanup
+      if( opts.content ) delete opts.content;
+      if( opts.file ) delete opts.file;
+      if( opts.body ) delete opts.body;
+      if( opts.headers ) delete opts.headers;
+
       this.diskLog({
         verb,
         path: opts.path,
@@ -823,14 +888,33 @@ class FinIoImport {
         statusCode : response.last.statusCode
       });
 
-      console.log(' -> '+verb+' status: '+response.last.statusCode+' ('+(Date.now() - startTime)+'ms)')
-      if( response.last.body ) {
-        console.log(' -> '+verb+' body: '+response.last.body);
+      if( response.last.statusCode >= 200 && response.last.statusCode < 300 ) {
+        console.log(' -> '+verb+' status: '+response.last.statusCode+' ('+(Date.now() - startTime)+'ms)')
+        if( response.last.body ) {
+          console.log(' -> '+verb+' body: '+response.last.body);
+        }
+      } else {
+        this.exitStatusCode = 1;
+        console.error(' -> '+verb+' '+opts.path+' status: '+response.last.statusCode+' ('+(Date.now() - startTime)+'ms)')
+        if( response.last.body ) {
+          console.error(' -> '+verb+' body: '+response.last.body);
+        }
+      }
+
+      if( response.last.statusCode === 409 ) {
+        if( retryOnConflict === true ) {
+          console.log(' -> retrying due to container conflict: '+opts.path);
+          await sleep(500);
+          return this.write(verb, opts, file, false);
+        }
+        console.error('exiting due to container conflict: '+opts.path);
+        process.exit(1);
       }
 
       return response;
     } catch(e) {
-      console.log(' -> '+verb+' error: '+e.message)
+      this.exitStatusCode = 1;
+      console.error(' -> '+verb+' error: '+e.message)
       this.diskLog({
         verb,
         path: opts.path,
@@ -891,6 +975,10 @@ class FinIoImport {
     );
   }
 
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 module.exports = FinIoImport;

@@ -56,6 +56,9 @@ return html`
     <div>
       <a href="/fcrepo/rest${this.path}" target="_blank">View in Fedora UI</a>
     </div>
+    <div>
+      <div><b>Versions</b> ${this.versions.count}, <b>latest:</b> ${this.versions.latest}</div>
+    </div>
     ${this.properties.map(prop => html`
       <div>
         <b>${prop.label}:</b> ${prop.value} 
@@ -115,11 +118,18 @@ return html`
   .query="${this.workflowQuery}">
 </fin-admin-data-table>
 
-<h1 class="heading--weighted-underline">Fin Cache</h1>
+<h1 class="heading--weighted-underline">Fin Subject Cache</h1>
+<div ?hidden="${!this.digestsCheckCompleted}">
+  <div ?hidden="${this.digestsValid}">
+    <div class="alert alert--error">Fcrepo state tokens do not match</div>
+  </div>
+  <div ?hidden="${!this.digestsValid}">
+    <div style="color:green">Fcrepo state tokens are up to date</div>
+  </div>
+</div>
 <fin-admin-data-table 
   name="path-info-fin-cache"
-  ?auto-refresh="${this.autoRefresh}"
-  .query="${this.finCacheQuery}">
+  .rawData="${this.finCacheData}">
 </fin-admin-data-table>
 
 <h1 class="heading--weighted-underline">GCS Sync</h1>

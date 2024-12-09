@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: fcrepo
+spec:
+  selector:
+    matchLabels:
+      app: fcrepo
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: fcrepo
+    spec:
+      containers:
+      - name: service
+        imagePullPolicy: Always
+        image: us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-fcrepo:sandbox
+        volumeMounts:
+        - name: ocfl-volume
+          mountPath: /usr/local/tomcat/fcrepo-home/data
+        - name: activemq-volume
+          mountPath: /usr/local/tomcat/ActiveMQ
+        resources:
+          requests:
+            memory: "6Gi"
+            cpu: "1"
+        env:
+        - name: CATALINA_OPTS
+          value: "-Dfcrepo.config.file=/etc/fin/fcrepo.properties -Dfcrepo.log=DEBUG -Dfcrepo.log.auth=DEBUG -Dfcrepo.log.kernel=DEBUG"
+        ports:
+        - containerPort: 8080
+        - containerPort: 5672
+      initContainers:
+      - name: wait-for-other-pg
+        image: busybox
+        command: ['sh', '-c', 'until nc -v -z "postgres" "5432" 2>&1 | grep -oE "open" ; do echo  "waiting for postgres"; sleep 2; done']
+      volumes:
+      - name: ocfl-volume
+        persistentVolumeClaim:
+          claimName: ocfl-volume-claim
+  volumeClaimTemplates:
+    - metadata:
+        name: activemq-volume
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 2Gi

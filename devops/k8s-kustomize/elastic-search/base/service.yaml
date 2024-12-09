@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  labels:
+    app: elasticsearch
+spec:
+  clusterIP: None  # This is needed for statefulset hostnames like elasticsearch-0 to resolve
+  ports:
+    - name: rest
+      port: 9200
+    - name: transport
+      port: 9300
+  selector:
+    app: elasticsearch

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  replicas: 1
+  serviceName: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: database
+        image: us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-postgres:sandbox
+        args: ["-c", "max_connections=200"]
+        imagePullPolicy: Always
+        env:
+        - name: PGDATA
+          value: "/var/lib/postgresql/data/pgdata"
+        - name: POSTGRES_HOST_AUTH_METHOD
+          value: "trust"
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2"
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: data-volume
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: data-volume
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi

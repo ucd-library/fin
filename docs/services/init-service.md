@@ -1,6 +1,6 @@
 # Init Service
 
-The default fin `init` microservice is based on the `gcr.io/ucdlib-pubreg/init-services` image (https://github.com/ucd-library/ucdlib-service-init).  The base fin `init` service is responsable for initializing the fin PostgreSQL tables and Fcrepo /fin and /service paths with default fin services.  However it is a best practice to extend this image to add your applications ldp base state as well.
+The default fin `init` microservice is based on the `us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/init-services` image (https://github.com/ucd-library/ucdlib-service-init).  The base fin `init` service is responsable for initializing the fin PostgreSQL tables and Fcrepo /fin and /service paths with default fin services.  However it is a best practice to extend this image to add your applications ldp base state as well.
 
 This documentation will take you through how to extend the `init` service to add your application's ldp base state including root containers for models as well as fin config and fin services.
 
@@ -19,8 +19,8 @@ And your build command is something similar to:
 
 ```bash
 docker build \
-  -t gcr.io/ucdlib-pubreg/dams-init \
-  --build-arg FIN_INIT=gcr.io/ucdlib-pubreg/fin-init \
+  -t us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/dams-init \
+  --build-arg FIN_INIT=us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-init \
   .
 ```
 

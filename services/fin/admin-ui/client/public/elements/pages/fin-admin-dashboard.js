@@ -24,7 +24,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       workflowName : {type: String},
       workflowPath : {type: String},
       workflowDeleteErrors : {type: Array},
-      fcrepoTypeStats : {type: Array},
+      // fcrepoTypeStats : {type: Array},
       deletingWorkflows : {type: Boolean},
       baseDocsUrl : {type: String},
       env : {type: Object},
@@ -50,7 +50,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.workflowPath = '';
     this.workflowDeleteErrors = [];
     this.deletingWorkflows = false;
-    this.fcrepoTypeStats = [];
+    // this.fcrepoTypeStats = [];
     this.env = {};
     this.buildTime = new Date();
     this.cloudDashboardUrl = config.env.CLOUD_DASHBOARD_URL || '';
@@ -104,9 +104,9 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.DataViewModel.coreData({refresh: true})
       .then(e => this._onCoreDataUpdate(e));
 
-    this.DataViewModel.pgQuery(
-      'fcrepo_type_stats', {}, {refresh: true}, 'dashboard-fcrepo-stats'
-    ).then(e => this._onFcrepoTypeStatsUpdate(e));
+    // this.DataViewModel.pgQuery(
+    //   'fcrepo_type_stats', {}, {refresh: true}, 'dashboard-fcrepo-stats'
+    // ).then(e => this._onFcrepoTypeStatsUpdate(e));
   }
 
   async _onCoreDataUpdate(e) {
@@ -250,7 +250,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         row.updated = new Date(row.updated);
       }
       if( row.updated.getTime() > Date.now() - 1000*60*30 ) {
-        this.workflowErrors.push({
+        this.workflowDeleteErrors.push({
           workflow: row.path+' '+row.name,
           error: 'Workflow with state "init" updated in last 30 minutes, skipping delete'
         });
@@ -261,7 +261,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         let {response, body} = await this.FinApiModel.deleteWorkflow(row.path, row.name);
 
         if( response.status !== 200 ) {
-          this.workflowErrors.push({
+          this.workflowDeleteErrors.push({
             workflow: row.path+' '+row.name,
             error: response.status+': '+body
           });
@@ -269,7 +269,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         }
       } catch(e) {
         console.error('Error deleting workflow', e);
-        this.workflowErrors.push({
+        this.workflowDeleteErrors.push({
           workflow: row.path+' '+row.name,
           error: e.message
         });
@@ -292,35 +292,35 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     this.requestUpdate();
   }
 
-  _onFcrepoTypeStatsUpdate(e) {
-    if( e.state !== 'loaded' ) return;
+  // _onFcrepoTypeStatsUpdate(e) {
+  //   if( e.state !== 'loaded' ) return;
 
-    let stats = {};
-    e.payload.forEach(item => {
-      let parts = item.rdf_type_uri.split(/#|\//);
-      let name = parts.pop();
-      let ns = parts.join('/');
-      if( !stats[ns] ) stats[ns] = {};
-      stats[ns][name] = item.count;
-    });
+  //   let stats = {};
+  //   e.payload.forEach(item => {
+  //     let parts = item.rdf_type_uri.split(/#|\//);
+  //     let name = parts.pop();
+  //     let ns = parts.join('/');
+  //     if( !stats[ns] ) stats[ns] = {};
+  //     stats[ns][name] = item.count;
+  //   });
 
-    let tmp = [];
-    for( let ns in stats ) {
-      let item = {
-        ns,
-        properties : []
-      };
-      for( let name in stats[ns] ) {
-        item.properties.push({
-          name,
-          count : stats[ns][name]
-        });
-      }
-      tmp.push(item);
-    }
+  //   let tmp = [];
+  //   for( let ns in stats ) {
+  //     let item = {
+  //       ns,
+  //       properties : []
+  //     };
+  //     for( let name in stats[ns] ) {
+  //       item.properties.push({
+  //         name,
+  //         count : stats[ns][name]
+  //       });
+  //     }
+  //     tmp.push(item);
+  //   }
 
-    this.fcrepoTypeStats = tmp;
-  }
+  //   this.fcrepoTypeStats = tmp;
+  // }
 
 }
 

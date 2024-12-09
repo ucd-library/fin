@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pg-rest
+spec:
+  # this enables direct access to the pod from within the cluster
+  # and no load balancing is done
+  clusterIP: None 
+  selector:
+    app: pg-rest
+  ports:
+  - protocol: TCP
+    port: 3000

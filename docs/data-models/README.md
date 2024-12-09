@@ -89,7 +89,7 @@ module.exports = new ItemModel();
 Data models should be built into the base fin service image, extending the image.  This is done by adding a `models` directory to the `/fin/services` directory.  The `Dockerfile` should look something like this:
 
 ```dockerfile
-FROM gcr.io/ucdlib-pubreg/fin-base-service
+FROM us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-base-service
 
 COPY models /fin/services/models
 ```

@@ -9,12 +9,23 @@ if( process.env.APP_VERSION ) {
   clientPackageVersion = process.env.APP_VERSION;
 }
 
+let defaultRoutes = ['about', 'item', 'search', 'browse', 'collections', 'collection', 'components'];
+
+if( config.adminUi.extensions.enabled ) {
+  config.adminUi.extensions.routes.forEach(elePath => {
+    defaultRoutes.push(elePath.path);
+  });
+}
+
 config.client = {
   title : 'Fin Admin UI',
 
   appName : process.env.FIN_APP_NAME || 'fin-admin-ui',
   assets : (env === 'prod') ? 'dist' : 'public',
-  appRoutes : ['about', 'item', 'search', 'browse', 'collections', 'collection', 'components'],
+  appRoutes : defaultRoutes,
+
+  extensions: config.adminUi.extensions,
+
   versions : {
     bundle : clientPackageVersion,
     loader : clientPackage.dependencies['@ucd-lib/cork-app-load'].replace(/^\D/, '')

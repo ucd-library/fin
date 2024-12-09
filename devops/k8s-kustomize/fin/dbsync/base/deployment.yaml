@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dbsync
+spec:
+  selector:
+    matchLabels:
+      app: dbsync
+  template:
+    metadata:
+      labels:
+        app: dbsync
+    spec:
+      containers:
+      - name: service
+        command: ["npm", "run", "dbsync"]
+        env:
+        - name: FIN_SERVICE_NAME
+          value: "dbsync"

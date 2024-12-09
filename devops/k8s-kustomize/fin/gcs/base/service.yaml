@@ -1,0 +1,6 @@
+kind: Service
+metadata:
+  name: gcs
+spec:
+  selector:
+    app: gcs

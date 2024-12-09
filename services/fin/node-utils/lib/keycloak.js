@@ -5,6 +5,7 @@ const jwt = require('./jwt.js');
 const FinAC = require('./fin-ac/index.js');
 const finac = new FinAC();
 const clone = require('clone');
+const request = require('request');
 
 class KeycloakUtils {
 
@@ -12,6 +13,7 @@ class KeycloakUtils {
     this.tokenCache = new Map();
     this.tokenRequestCache = new Map();
     this.tokenCacheTTL = config.oidc.tokenCacheTTL;
+    this.maxTokenRequests = 3;
 
     this.setUser = this.setUser.bind(this);
     this.protect = this.protect.bind(this);
@@ -79,97 +81,90 @@ class KeycloakUtils {
   }
 
   async verifyActiveToken(token='') {
-    this.initTls();
-
     token = token.replace(/^Bearer /i, '');
 
-    // 30 second caching
+    // check token cache
     if( this.tokenCache.has(token) ) {
       let result = this.tokenCache.get(token);
       return clone(result);
     }
 
-    let resp = {};
-    let requestResolve;
-    let requestReject;
-
-    try {
-      let result;
-
-      // if we get multiple requests at once, just make one
-      // request to the auth server
-      if( this.tokenRequestCache.has(token) ) {
-        let promise = this.tokenRequestCache.get(token);
-        result = await promise;
-
-        return clone(result);
-      }
-
-      // short abort
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
-
-      let request = fetch(config.oidc.baseUrl+'/protocol/openid-connect/userinfo', {
-        signal: controller.signal,
-        headers : {
-          authorization : 'Bearer '+token
-        }
-      });
-
-
-      let promise = new Promise((resolve, reject) => {
-        requestResolve = resolve;
-        requestReject = reject;
-      });
-      this.tokenRequestCache.set(token, promise);
-
-      let resp = await request;
-      let body = await resp.text();
-      clearTimeout(timeoutId);
-
-      result = {
-        active : resp.status === 200,
-        status : resp.status,
-        user : body ? JSON.parse(body) : null
-      }
-
-      this.tokenCache.set(token, result);
-      setTimeout(() => {
-        this.tokenCache.delete(token);
-      }, this.tokenCacheTTL);
-
-
-      requestResolve(result);
-      this.tokenRequestCache.delete(token);
+    // if we get multiple requests at once, just make one
+    // request to the auth server
+    if( this.tokenRequestCache.has(token) ) {
+      let promise = this.tokenRequestCache.get(token);
+      let result = await promise;
 
       return clone(result);
-    } catch(e) {
-      if( requestReject ){
-        requestReject(e);
-      }
-      this.tokenRequestCache.delete(token);
+    }
 
-      if (e.name === 'AbortError' || e.name === 'FetchError') {
-        logger.warn('Failed to verify jwt from keycloak, attempting pub key decryption', e)
-        let user = await jwt.validate(token);
-        if( user ) {
-          return {
-            active : true,
-            status : 200,
-            fallback : true,
-            user : clone(user)
-          }
+    // check request already in progress
+    let requestResolve, requestReject;
+    let promise = new Promise((resolve, reject) => {
+      requestResolve = resolve;
+      requestReject = reject;
+    });
+    this.tokenRequestCache.set(token, promise);
+
+    let attempt = 1;
+    let result = {
+      active : false,
+      status : -1,
+      user : null,
+    }
+    
+    while( attempt <= this.maxTokenRequests ) {
+      try {
+        result = await this._verifyTokenRequest(token);
+        break;
+      } catch(e) {
+        attempt++;
+        if( attempt > this.maxTokenRequests ) {
+          logger.fatal('Failed to verify token, max attempts reached: '+attempt, e);
+        } else {
+          logger.warn('Failed to verify token, retrying: '+attempt, e);
         }
       }
-
-      return {
-        active : resp.status === 200,
-        status : resp.status,
-        user : null,
-        error : true,
-        message : e.message
-      }
     }
+
+    requestResolve(clone(result));
+    return clone(result);
+  }
+
+  async _verifyTokenRequest(token) {
+    let result;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+    let request = fetch(config.oidc.baseUrl+'/protocol/openid-connect/userinfo', {
+      signal: controller.signal,
+      headers : {
+        authorization : 'Bearer '+token
+      }
+    });
+
+
+    let resp = await request;
+    let body = await resp.text();
+
+    // clear abort controller
+    clearTimeout(timeoutId);
+
+    result = {
+      active : resp.status === 200,
+      status : resp.status,
+      user : body ? JSON.parse(body) : null
+    }
+
+    this.tokenCache.set(token, result);
+    setTimeout(() => {
+      this.tokenCache.delete(token);
+    }, this.tokenCacheTTL);
+
+    this.tokenRequestCache.delete(token);
+
+    return clone(result);
   }
 
   async setUser(req, res, next) {

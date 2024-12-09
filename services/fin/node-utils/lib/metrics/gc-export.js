@@ -17,6 +17,7 @@ const { TraceExporter } = require('@google-cloud/opentelemetry-cloud-trace-expor
 const { GcpDetectorSync } = require("@google-cloud/opentelemetry-resource-util");
 const resourceAttributes = require("./resource-attributes");
 const fs = require('fs');
+const config = require('../../config.js');
 
 const env = process.env;
 let serviceAccountFile = process.env.GOOGLE_APPLICATION_CREDENTIALS || '/etc/fin/service-account.json';
@@ -54,12 +55,15 @@ function setup() {
       .merge(new GcpDetectorSync().detect()),
   });
 
+  let harvestInterval = config.metrics.harvestInterval;
+  if( harvestInterval < 30000 ) {
+    harvestInterval = 30000;
+  }
+
   // Register the exporter
   meterProvider.addMetricReader(
     new PeriodicExportingMetricReader({
-      // Export metrics every 10 seconds. 5 seconds is the smallest sample period allowed by
-      // Cloud Monitoring.
-      exportIntervalMillis: 10000,
+      exportIntervalMillis: harvestInterval,
       exporter: metricExporter,
     })
   );

@@ -8,6 +8,10 @@ class DataViewService extends BaseService {
     this.store = DataViewStore;
 
     this.baseUrl = '/fin';
+
+    this.pgQueryQueue = [];
+    this.maxPgQueryQueue = 3;
+    this.activeQueries = 0;
   }
 
   async getCoreData() {
@@ -22,18 +26,24 @@ class DataViewService extends BaseService {
   async pgQuery(table, query={}, name, queryCount) {
     let pgQuery = {table, query, queryCount};
 
-    return this.request({
-      url : `${this.baseUrl}/pg/${table}`,
-      qs: query,
-      fetchOptions : {
-        headers : {
-          'Prefer' : 'count=exact'
-        }
-      },
-      onLoading : request => this.store.setPgQueryLoading(name, request, pgQuery),
-      onLoad : result => this.store.setPgQueryLoad(name, result.body, pgQuery, result.response.headers),
-      onError : e => this.store.setPgQueryError(name, pgQuery ,e)
-    });
+    this.activeQueries++;
+    await this.checkRequesting(
+      name, this.store.data.pg, 
+      () => this.request({
+        url : `${this.baseUrl}/pg/${table}`,
+        qs: query,
+        fetchOptions : {
+          headers : {
+            'Prefer' : 'count=exact'
+          }
+        },
+        onLoading : request => this.store.setPgQueryLoading(name, pgQuery, request),
+        onLoad : result => this.store.setPgQueryLoad(name, result.body, pgQuery, result.response.headers),
+        onError : e => this.store.setPgQueryError(name, pgQuery ,e)
+      })
+    );
+
+    return this.store.data.pg.get(name);
   }
 
 }

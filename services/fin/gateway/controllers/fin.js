@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const {keycloak, models, config, logger, jwt, tests, directAccess, FinCache} = require('@ucd-lib/fin-service-utils');
+const {keycloak, models, config, logger, jwt, tests, utils, FinCache} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('../models/services.js');
 const httpProxy = require('http-proxy');
 const fetch = require('node-fetch');
@@ -8,11 +8,14 @@ const archive = require('../lib/archive.js');
 const transactionHelper = require('../lib/transactions.js');
 const gcsConfig = require('../../gcs/lib/config.js');
 const {ActiveMqTests} = tests;
-const finCache = new FinCache();
+// const finCache = new FinCache();
 
-let activeMqTest = new ActiveMqTests({
-  active: true,
-  agent : 'gateway'
+gcsConfig.load();
+let activeMqTest;
+utils.getContainerHostname().then(hostname => {
+  activeMqTest = new ActiveMqTests({
+    agent : hostname
+  });
 });
 
 let proxy = httpProxy.createProxyServer({
@@ -86,7 +89,7 @@ router.get('/status', keycloak.protect(['admin']), async (req, res) => {
     cleanConfig.server.cookieSecret = '********';
     cleanConfig.oidc.secret = '********';
 
-    await gcsConfig.loaded;
+    await gcsConfig.requestLoopPromise;
 
     res.json({
       registeredModels,
@@ -213,80 +216,80 @@ router.post('/archive', async (req, res) => {
   }
 });
 
-router.head(/\/rest\/.*/, async (req, res) => {
-  let finPath = req.originalUrl.replace('/fin/rest', '');
-  let roles = getRoles(req);
+// router.head(/\/rest\/.*/, async (req, res) => {
+//   let finPath = req.originalUrl.replace('/fin/rest', '');
+//   let roles = getRoles(req);
 
-  try {
-    let t = Date.now();
+//   try {
+//     let t = Date.now();
 
-    let exists = await finCache.exists(finPath);
-    if( !exists ) throw new Error('Not Found');
+//     let exists = await finCache.exists(finPath);
+//     if( !exists ) throw new Error('Not Found');
 
-    await directAccess.checkAccess(finPath, roles);
+//     await directAccess.checkAccess(finPath, roles);
 
-    res.set('x-child-count', (await finCache.getChildCount(finPath)));
-    res.set('link', (await directAccess.getTypes(finPath))
-      .map(type => `<${type}>; rel="type"`).join(', '));
+//     res.set('x-child-count', (await finCache.getChildCount(finPath)));
+//     res.set('link', (await directAccess.getTypes(finPath))
+//       .map(type => `<${type}>; rel="type"`).join(', '));
       
-    logger.info('head getContainer', finPath, Date.now()-t);
-    res.send();
-  } catch(e) {
-    handleFinRestError(res, e, finPath);
-  }
-});
+//     logger.info('head getContainer', finPath, Date.now()-t);
+//     res.send();
+//   } catch(e) {
+//     handleFinRestError(res, e, finPath);
+//   }
+// });
 
-router.get(/\/rest\/.*/, async (req, res) => {
-  let finPath = decodeURIComponent(req.originalUrl.replace('/fin/rest', ''));
+// router.get(/\/rest\/.*/, async (req, res) => {
+//   let finPath = decodeURIComponent(req.originalUrl.replace('/fin/rest', ''));
 
-  let roles = getRoles(req);
-  try {
-    let response;
+//   let roles = getRoles(req);
+//   try {
+//     let response;
 
-    if( req.get('Accept') === 'application/fin-cache' ) {
-      await directAccess.checkAccess(finPath, roles);
-      response = await finCache.get(finPath);
-    } else {
-      response = await directAccess.getContainer(finPath, roles);
-    }
+//     if( req.get('Accept') === 'application/fin-cache' ) {
+//       await directAccess.checkAccess(finPath, roles);
+//       response = await finCache.get(finPath);
+//     } else {
+//       response = await directAccess.getContainer(finPath, roles);
+//     }
     
-    res.json(response);
-  } catch(e) {
-    handleFinRestError(res, e, finPath);
-  }
-});
+//     res.json(response);
+//   } catch(e) {
+//     handleFinRestError(res, e, finPath);
+//   }
+// });
 
-router.get(/\/subject\/.*/, async (req, res) => {
-  let finPath = decodeURIComponent(req.originalUrl.replace('/fin/subject', ''));
-  let roles = getRoles(req);
+// router.get(/\/subject\/.*/, async (req, res) => {
+//   let finPath = decodeURIComponent(req.originalUrl.replace('/fin/subject', ''));
+//   let roles = getRoles(req);
 
-  try {
-    let response = await finCache.getSubject(finPath);    
+//   try {
+//     let response = await finCache.getSubject(finPath);    
 
-    // now given the response quads, check the user has access to the containers
-    // strip all quads the user doesn't have access to
-    let containers = new Set();
-    response.forEach(quad => containers.add(quad.fedora_id));
-    let noAccess = [];
-    containers = Array.from(containers);
+//     // now given the response quads, check the user has access to the containers
+//     // strip all quads the user doesn't have access to
+//     let containers = new Set();
+//     response.forEach(quad => containers.add(quad.fedora_id));
+//     let noAccess = [];
+//     containers = Array.from(containers);
 
-    for( let container of containers ) {
-      try {
-        await directAccess.checkAccess(container, roles);
-      } catch(e) {
-        noAccess.push(container);
-      }
-    }
+//     for( let container of containers ) {
+//       try {
+//         await directAccess.checkAccess(container, roles);
+//       } catch(e) {
+//         noAccess.push(container);
+//       }
+//     }
 
-    for( let container of noAccess ) {
-      response = response.filter(quad => quad.fedora_id !== container);
-    }
+//     for( let container of noAccess ) {
+//       response = response.filter(quad => quad.fedora_id !== container);
+//     }
     
-    res.json(response);
-  } catch(e) {
-    handleFinRestError(res, e, finPath);
-  }
-});
+//     res.json(response);
+//   } catch(e) {
+//     handleFinRestError(res, e, finPath);
+//   }
+// });
 
 function getRoles(req) {
   let roles = [];

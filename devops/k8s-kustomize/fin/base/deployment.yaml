@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fin-service-deployment
+spec:
+  selector:
+    matchLabels:
+      app: fin-service-deployment
+  template:
+    metadata:
+      labels:
+        app: fin-service-deployment
+    spec:
+      containers:
+      - name: service
+        image: us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-base-service:sandbox
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "200m"
+        env:
+        - name: FIN_METRICS_ENABLED
+          value: "true"
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /etc/fin/service-account.json
+        volumeMounts:
+        - name: service-account
+          mountPath: /etc/fin/service-account.json
+          subPath: service-account.json
+        - name: env-config
+          mountPath: /etc/fin/.env
+          subPath: .env
+        - name: ocfl-volume
+          mountPath: /data
+          readOnly: true
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 3000
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+          periodSeconds: 5
+          failureThreshold: 1
+      volumes:
+      - name: service-account
+        secret:
+          secretName: service-account
+      - name: env-config
+        secret:
+          secretName: env-config
+      - name: ocfl-volume
+        persistentVolumeClaim:
+          claimName: ocfl-volume-claim
+          readOnly: true

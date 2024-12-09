@@ -13,11 +13,14 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
       dbsyncTable : {type: String},
       dbsyncQuery : {type: Object},
       workflowQuery : {type: Object},
-      finCacheQuery : {type: Object},
+      finCacheData : {type: []},
       gcsQuery : {type: Object},
       children : {type: Array},
       ldpLinks : {type: Array},
-      properties : {type: Array}
+      properties : {type: Array},
+      versions : {type: Object},
+      digestsValid : {type: Boolean},
+      digestsCheckCompleted : {type: Boolean},
     }
   }
 
@@ -43,10 +46,16 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     this.dbsyncQuery = {limit: 0, order: 'path.asc'};
     this.workflowQuery = {limit: 0};
     this.gcsQuery = {limit: 0};
-    this.finCacheQuery = {limit: 0};
+    this.finCacheData = [];
     this.children = [];
     this.properties = [];
     this.ldpLinks = [];
+    this.versions = {
+      count : 0,
+      latest : ''
+    };
+    this.digestsValid = false;
+    this.digestsCheckCompleted = false;
 
     this._injectModel('AppStateModel', 'DataViewModel', 'FinApiModel');
   }
@@ -67,19 +76,39 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     if( path === this.path ) return;
 
     this.path = path;
+    this.versions = {
+      count : 0,
+      latest : ''
+    };
+    this.digestsValid = false;
+    this.digestsCheckCompleted = false;
+    this.binaryStateToken = null;
+    this.stateToken = null;
 
     this.queryDbSync();
     this.queryWorkflows();
     this.queryGcs();
-    this.queryFinCache();
 
     try {
       this.children = [];
       this.properties = [];
       this.ldpLinks = [];
       let resp = await this.FinApiModel.getContainer(this.path);
+
+      this.stateToken = resp.response.headers.get('x-state-token');
+      if( resp.isBinary ) {
+        this.binaryStateToken = resp.binaryHeaders.get('x-state-token');
+      } else {
+        this.binaryStateToken = null;
+      }
+      this.checkDigestsValid();
+ 
       let container = JSON.parse(resp.body);
       this.setChildren(container);
+
+      let versions = await this.FinApiModel.getContainerVersions(this.path);
+      versions = JSON.parse(versions.body);
+      this.setVersions(versions);
     } catch(e) {
       console.error(e);
     }
@@ -90,6 +119,40 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     if( !path.startsWith('/') ) path = '/'+path;
     window.location.hash = `#path-info${path}`;
   }
+
+  setVersions(graph) {
+    this.versions = {
+      count : 0,
+      latest : ''
+    };
+    if( graph['@graph'] ) {
+      graph = graph['@graph'];
+    }
+    if( !Array.isArray(graph) ) {
+      graph = [graph];
+    }
+
+    if( !graph.length ) return;
+
+    try {
+      let node = graph[0];
+      this.versions.count = node['http://www.w3.org/ns/ldp#contains'].length;
+      
+      let dates = node['http://www.w3.org/ns/ldp#contains'].map(i => {
+        let time = i['@id'].split('/').pop();
+        return new Date(
+          time.slice(0, 4),
+          parseInt(time.slice(4, 6))-1,
+          time.slice(6, 8),
+          time.slice(8, 10),
+          time.slice(10, 12)
+        );
+      });
+      dates.sort((a, b) => b.getTime() - a.getTime());
+      this.versions.latest = dates[0].toLocaleString();
+      
+    } catch(e) {}
+  };
 
   setChildren(graph) {
     if( graph['@graph'] ) {
@@ -210,19 +273,44 @@ export default class FinAdminPathInfo extends Mixin(LitElement)
     this.gcsQuery = query;
   }
 
-  async queryFinCache() {
-    if( !this.path ) return;
+  checkDigestsValid() {
+    if( this.digestsCheckCompleted ) return;
+    if( !this.finCacheData.length ) return;
+    if( !this.stateToken ) return;
 
-    let fedora_id = 'info:fedora'+this.path.replace('/fcr:metadata', '');
+    let cacheToken, binaryCacheToken;
 
-    let query = {
-      limit : this.finCacheQuery.limit || 10,
-      order : 'predicate.asc',
-      fedora_id : `eq.${fedora_id}`
-    };
+    if( this.binaryStateToken ) {
+      cacheToken = this.finCacheData.find(i => 
+        i.predicate === 'http://digital.ucdavis.edu/schema#ldpStateToken' &&
+        i.fin_path === '/fin/digests'+this.path+'/fcr-metadata'
+      );
+      binaryCacheToken = this.finCacheData.find(i =>
+        i.predicate === 'http://digital.ucdavis.edu/schema#ldpStateToken' &&
+        i.fin_path === '/fin/digests'+this.path
+      );
+    } else {
+      cacheToken = this.finCacheData.find(i => 
+        i.predicate === 'http://digital.ucdavis.edu/schema#ldpStateToken' &&
+        i.fin_path === '/fin/digests'+this.path
+      );
+    }
 
-    this.finCacheQuery = query;
-  }
+    if( !cacheToken ) return;
+
+    this.digestsCheckCompleted = true;
+
+    let binaryValid = true;
+    if( binaryCacheToken ) {
+      binaryValid = (binaryCacheToken.object === this.binaryStateToken );
+    }
+
+    if( cacheToken.object === this.stateToken && binaryValid ) {
+      this.digestsValid = true;
+    } else {
+      this.digestsValid = false;
+    }
+  } 
 
   _onRunWorkflowClick(e) {
     let currentWorkflows = this

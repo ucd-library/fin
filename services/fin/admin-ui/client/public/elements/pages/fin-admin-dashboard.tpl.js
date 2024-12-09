@@ -113,36 +113,6 @@ return html`
   <a href="/fin/rabbitmq/" target="_blank">RabbitMQ Admin UI</a> <span>Username/password: guest/guest</span>
 </div>
 
-<div style="margin-bottom: 20px">
-  <h2 id="fcrepo-type-stats" class="heading--weighted-underline">Fcrepo - Type Stats</h2>
-  <!-- <fin-admin-data-table 
-    name="dashboard-fcrepo-stats"
-    ?auto-refresh="${this.autoRefresh}">
-  </fin-admin-data-table> -->
-  ${this.fcrepoTypeStats.map(stat => html`
-    <ucd-theme-collapse title="${stat.ns}">
-      <div class="responsive-table">
-        <table>
-          <thead>
-            <tr class="column-label">
-              <th>Property</th>
-              <th>Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${stat.properties.map(prop => html`
-              <tr>
-                <td>${prop.name}</td>
-                <td>${prop.count}</td>
-              </tr>
-            `)}
-          </tbody>
-        </table>
-      </div>  
-    </ucd-theme-collapse>
-  `)}
-</div>
-
 <div>
   <h2 id="fcrepo-open-tx" class="heading--weighted-underline">Fcrepo - Open Transactions</h2>
   <div ?hidden="${this.openTransactions.length}">None</div>

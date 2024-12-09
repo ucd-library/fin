@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pg-rest
+spec:
+  selector:
+    matchLabels:
+      app: pg-rest
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: pg-rest 
+    spec:
+      containers:
+      - name: service
+        image: us-west1-docker.pkg.dev/digital-ucdavis-edu/pub/fin-pg-rest:sandbox
+        imagePullPolicy: Always
+        env:
+        - name: FIN_SERVICE_NAME
+          value: "pg-rest"
+        resources:
+          limits:
+            memory: "500Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 3000
