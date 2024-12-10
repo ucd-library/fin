@@ -224,6 +224,10 @@ class ProxyModel {
       path = path.replace(/\/fcr:metadata$/, '');
     }
 
+    if( config.gateway.proxy.disableFileDownload && path.match(/\.[a-zA-Z]+$/) ) {
+      return res.status(403).send('File downloads are disabled');
+    }
+
     // set fcrepo fin principal headers (see fcrepo config)
     if( req.user && req.user.roles ) {
       req.headers['x-fin-principal'] = req.user.roles.join(',');

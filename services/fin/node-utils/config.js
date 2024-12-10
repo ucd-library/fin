@@ -116,7 +116,8 @@ module.exports = {
     },
     proxy : {
       timeout : env.FIN_GATEWAY_TIMEOUT || 1000 * 60 * 5,
-      proxyTimeout : env.FIN_GATEWAY_PROXY_TIMEOUT || 1000 * 60 * 5
+      proxyTimeout : env.FIN_GATEWAY_PROXY_TIMEOUT || 1000 * 60 * 5,
+      disableFileDownload : env.FIN_GATEWAY_DISABLE_FILE_DOWNLOAD === 'true',
     },
     host : 'http://gateway:'+(env.FIN_GATEWAY_HTTP_PORT || 3000),
     fcrepoDataMount : env.GATEWAY_FCREPO_DATA_MOUNT || '/data',
@@ -152,6 +153,9 @@ module.exports = {
       port : env.FCREPO_RO_PORT || 8080,
       numInstances : parseInt(env.FCREPO_RO_NUM_INSTANCES || 2)
     },
+    dataMirror : {
+      url : env.FCREPO_DATA_MIRROR_URL || '',
+    }
   },
 
   metrics : {

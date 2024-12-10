@@ -183,6 +183,10 @@ class FinEsDataModel extends FinDataModel {
     return es.scroll(options);
   }
 
+  esClearScroll(options={}) {
+    return es.clearScroll(options);
+  }
+
   /**
    * @method esSearch
    * @description search the elasticsearch collections using
