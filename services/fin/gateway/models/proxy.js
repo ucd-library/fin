@@ -224,7 +224,9 @@ class ProxyModel {
       path = path.replace(/\/fcr:metadata$/, '');
     }
 
-    if( config.gateway.proxy.disableFileDownload && path.match(/\.[a-zA-Z]+$/) ) {
+    if( config.gateway.proxy.disableFileDownload && 
+        req.method === 'GET' &&
+        path.match(config.gateway.proxy.disableFileDownload) ) {
       return res.status(403).send('File downloads are disabled');
     }
 

@@ -58,6 +58,13 @@ let esFieldsExcludeCompact = processArray(process.env.ES_FIELDS_EXCLUDE_COMPACT)
 let gcsDiskCacheExts = processArray(process.env.GCS_DISK_CACHE_EXTS);
 let disableServices = processArray(process.env.DISABLE_FIN_SERVICES);
 
+let disableFileDownload = env.FIN_GATEWAY_DISABLE_FILE_DOWNLOAD;
+if( disableFileDownload === 'true' ) {
+  disableFileDownload = /\.[a-zA-Z]+$/;
+} else if( disableFileDownload ) {
+  disableFileDownload = new RegExp(disableFileDownload);
+}
+
 // make sure this is set for gcssync templates
 if( !env.WORKFLOW_ENV ) env.WORKFLOW_ENV = 'local-dev';
 
@@ -117,7 +124,7 @@ module.exports = {
     proxy : {
       timeout : env.FIN_GATEWAY_TIMEOUT || 1000 * 60 * 5,
       proxyTimeout : env.FIN_GATEWAY_PROXY_TIMEOUT || 1000 * 60 * 5,
-      disableFileDownload : env.FIN_GATEWAY_DISABLE_FILE_DOWNLOAD === 'true',
+      disableFileDownload,
     },
     host : 'http://gateway:'+(env.FIN_GATEWAY_HTTP_PORT || 3000),
     fcrepoDataMount : env.GATEWAY_FCREPO_DATA_MOUNT || '/data',
