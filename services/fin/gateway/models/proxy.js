@@ -224,10 +224,8 @@ class ProxyModel {
       path = path.replace(/\/fcr:metadata$/, '');
     }
 
-    if( config.gateway.proxy.disableFileDownload && 
-        req.method === 'GET' &&
-        path.match(config.gateway.proxy.disableFileDownload) ) {
-      return res.status(403).send('File downloads are disabled');
+    if( await this._mirrorOrBlockRequest(req, res, path) ) {
+      return;
     }
 
     // set fcrepo fin principal headers (see fcrepo config)
@@ -428,6 +426,39 @@ class ProxyModel {
   _isMetadataRequest(req) {
     let last = req.originalUrl.replace(/\/$/,'').split('/').pop();
     return (last === 'fcr:metadata');
+  }
+
+  async _mirrorOrBlockRequest(req, res, path) {
+    if( config.gateway.proxy.mirror.files && 
+        req.method === 'GET' &&
+        path.match(config.gateway.proxy.mirror.files) ) {
+
+      if( req?.user?.roles?.includes(config.gateway.proxy.mirror.agent) ) {
+        return false;
+      }
+      
+      let resp = await api.head({url: path});
+      if( resp.last.statusCode === 200 ) {
+        res.set('ETag', resp.last.headers.etag);
+        res.set('Content-Type', resp.last.headers['content-type']);
+        res.set('Content-Length', resp.last.headers['content-length']);
+        res.set('Content-Disposition', resp.last.headers['content-disposition']);
+        res.set('Location', config.gateway.proxy.mirror.host+path+'?etag='+resp.last.headers.etag);
+        res.status(302).send();
+        return true;
+      } else {
+        res.status(404).send('File not found');
+        return true;
+      }
+
+    } else if( config.gateway.proxy.disableFileDownload && 
+        req.method === 'GET' &&
+        path.match(config.gateway.proxy.disableFileDownload) ) {
+      res.status(403).send('File downloads are disabled');
+      return true;
+    }
+
+    return false;
   }
 
   _setReqTime(req) {

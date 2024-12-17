@@ -65,6 +65,13 @@ if( disableFileDownload === 'true' ) {
   disableFileDownload = new RegExp(disableFileDownload);
 }
 
+let mirrorDownloads = env.FIN_MIRROR_FILE_DOWNLOAD;
+if( mirrorDownloads === 'true' ) {
+  mirrorDownloads = /\.[a-zA-Z]+$/;
+} else if( mirrorDownloads ) {
+  mirrorDownloads = new RegExp(mirrorDownloads);
+}
+
 // make sure this is set for gcssync templates
 if( !env.WORKFLOW_ENV ) env.WORKFLOW_ENV = 'local-dev';
 
@@ -125,6 +132,11 @@ module.exports = {
       timeout : env.FIN_GATEWAY_TIMEOUT || 1000 * 60 * 5,
       proxyTimeout : env.FIN_GATEWAY_PROXY_TIMEOUT || 1000 * 60 * 5,
       disableFileDownload,
+      mirror : {
+        host : env.FIN_MIRROR_HOST,
+        files : mirrorDownloads,
+        agent : env.FIN_MIRROR_AGENT || 'mirror'
+      }
     },
     host : 'http://gateway:'+(env.FIN_GATEWAY_HTTP_PORT || 3000),
     fcrepoDataMount : env.GATEWAY_FCREPO_DATA_MOUNT || '/data',
