@@ -14,3 +14,5 @@ test
 temp/
 services/fin/admin-ui/client/public/js
 services/fin/admin-ui/client/dist
+Dockerfile.corkbuild
+fin-init.json
