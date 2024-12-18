@@ -1,5 +1,6 @@
 const logger = require('./logger.js');
 const pg = require('./pg.js');
+const config = require('../config.js');
 
 // const FinCache = require('./fin-cache.js');
 // const finCache = new FinCache();
@@ -14,14 +15,29 @@ class FinDigests {
 
   async onFcrepoRequest(req) {
     if ( req.headers['digest'] ) {
-      req.finDigests = req.headers['digest']
+      let digests = req.headers['digest']
         .split(',')
         .map(d => d.trim())
         .filter(d => d)
+
+      req.finDigests = digests
         .map(d => {
           let parts = d.split('=');
           return [parts.shift(), parts.join('=')];
         });
+
+      req.headers['digest'] = digests.filter(d => {
+        for( let type of config.finDigests.fcrepoDigests ) {
+          if( d.startsWith(type) ) return true;
+        }
+        return false;
+      });
+
+      if( req.headers['digest'].length === 0 ) {
+        delete req.headers['digest'];
+      } else {
+        req.headers['digest'] = req.headers['digest'].join(', ');
+      }
     }
 
     if( CONFIG.GET_METHODS.includes(req.method) ) {

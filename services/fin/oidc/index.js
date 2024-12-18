@@ -60,4 +60,7 @@ app.use(auth({
 
 app.listen(config.oidc.port, () => {
   logger.info('oidc service listening on port '+config.oidc.port);
+  logger.info('oidc service issuerBaseURL='+config.oidc.baseUrl);
+  logger.info('oidc service baseUrl='+config.server.url);
+  logger.info('oidc service clientID='+config.oidc.clientId);
 });

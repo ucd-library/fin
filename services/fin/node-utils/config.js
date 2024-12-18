@@ -299,7 +299,8 @@ module.exports = {
   },
 
   finDigests : {
-    basePath : env.FIN_DIGESTS_BASE_PATH || '/fin/digests'
+    basePath : env.FIN_DIGESTS_BASE_PATH || '/fin/digests',
+    fcrepoDigests : ['sha', 'sha-256', 'sha-512', 'sha-512/256', 'md5']
   },
 
   finac : {
