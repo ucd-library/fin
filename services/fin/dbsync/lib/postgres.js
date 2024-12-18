@@ -1,4 +1,7 @@
-const {pg, logger} = require('@ucd-lib/fin-service-utils');
+const {pg, logger, config} = require('@ucd-lib/fin-service-utils');
+const pgPkg = require('pg');
+
+const {Client} = pgPkg;
 
 class DbSyncPostgresUtils {
 
@@ -11,8 +14,49 @@ class DbSyncPostgresUtils {
   }
 
   async connect() {
-    await this.pg.connect()
-    await this.getEnumTypes()
+    await this.pg.connect();
+    await this.getEnumTypes();
+    await this.connectNotifyClient();
+  }
+
+  async connectNotifyClient() {
+    if( this.notifyClient ) return;
+
+    this.notifyClient = new Client({
+      host : config.pg.host, 
+      user : config.pg.user, 
+      port : config.pg.port,
+      database : config.pg.database,
+      options : '--search_path='+config.pg.searchPath.join(',')
+    }); 
+
+    this.notifyClient.on('connect', async () => {
+      logger.info('Postgresql notify client connected');
+    });
+
+    this.notifyClient.on('end', async () => {
+      logger.info('Postgresql notify client end event, attempting to reconnect');
+      this.notifyClient = null;
+      this.connectNotifyClient();
+    });
+
+    this.notifyClient.on('error', async e => {
+      logger.error('Postgresql notify client error event', e);
+    });
+
+    this.notifyClient.on('notification', async msg => {
+      if( msg.channel !== config.pg.notifyEvents.membershipUpdate ) return;
+      if( !this.onMembershipUpdate ) return;
+      try {
+        let data = JSON.parse(msg.payload);
+        this.onMembershipUpdate(data);
+      } catch(e) {
+        logger.error('Error processing reference update notification', e, msg);
+      }
+    });
+
+    await this.notifyClient.connect();
+    await this.notifyClient.query('LISTEN '+config.pg.notifyEvents.membershipUpdate);
   }
 
   /**

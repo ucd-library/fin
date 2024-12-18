@@ -250,7 +250,10 @@ module.exports = {
     port : env.PG_PORT || 5432,
     user : env.PG_USER || 'postgres',
     database : env.PG_DATABASE || 'fcrepo',
-    searchPath : ['public', 'dbsync', 'label_service', 'finac']
+    searchPath : ['public', 'dbsync', 'label_service', 'finac'],
+    notifyEvents : {
+      membershipUpdate : 'fin_membership_update',
+    }
   },
 
   jwt : {

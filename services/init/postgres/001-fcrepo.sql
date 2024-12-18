@@ -42,3 +42,40 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql;
+
+
+-- hack for notifiying of direct and indirect property updates
+CREATE OR REPLACE FUNCTION notify_after_membership_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF( TG_OP = 'DELETE' ) THEN
+      PERFORM pg_notify('fin_membership_update', 
+        json_build_object(
+          'property', OLD.property, 
+          'fedora_id', OLD.source_id
+        )::text
+      );
+    ELSE 
+      PERFORM pg_notify('fin_membership_update', 
+        json_build_object(
+          'property', NEW.property, 
+          'fedora_id', NEW.source_id
+        )::text
+      );
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DO
+$$BEGIN
+  CREATE TRIGGER notify_after_membership_update_trigger
+  AFTER INSERT OR UPDATE OR DELETE ON membership
+  FOR EACH ROW
+  EXECUTE FUNCTION notify_after_membership_update();
+EXCEPTION
+  WHEN duplicate_object THEN
+    -- Handle the exception here
+    RAISE NOTICE 'The trigger notify_after_membership_update_trigger already exists.';
+END$$;

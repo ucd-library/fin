@@ -31,6 +31,8 @@ class DbSync {
     // used to handle sigterm and sigint
     this.shutdown = false;
 
+    postgres.onMembershipUpdate = this.onMembershipUpdate.bind(this);
+
     this.init();
   }
 
@@ -99,6 +101,20 @@ class DbSync {
     let resp = await postgres.cleanupDeletedContainers();
     if( resp.rowCount === 0 ) return;
     logger.info('Cleanup ' + resp.rowCount + ' deleted containers from dbsync.update_status');
+  }
+
+  async onMembershipUpdate(msg) {
+    let fcpath = msg.fedora_id.replace(/^info:fedora/, '');
+
+    // send a reindex event for updated container
+    await this.messaging.sendMessage(
+      MessageWrapper.createMessage(
+        ['http://digital.ucdavis.edu/schema#Reindex'],
+        {
+          '@id': fcpath
+        }
+      )
+    );
   }
 
   async readLoop() {
@@ -255,7 +271,7 @@ class DbSync {
       // hack.  on delete fedora doesn't send the types.  so we have to sniff from path
       if (e.container_types.includes(this.WEBAC_CONTAINER) || e.path.match(/\/fcr:acl$/)) {
         let rootPath = e.path.replace(/\/fcr:acl$/, '');
-        let containerTypes = await this.getContainerTypes(rootPath);
+        let containerTypes = await this.getContainerTypes({path: rootPath});
 
         logger.info('ACL ' + e.path + ' updated, sending rendex event for: ' + rootPath);
 
