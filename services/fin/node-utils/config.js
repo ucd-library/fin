@@ -135,7 +135,9 @@ module.exports = {
       mirror : {
         host : env.FIN_MIRROR_HOST,
         files : mirrorDownloads,
-        agent : env.FIN_MIRROR_AGENT || 'mirror'
+        secret : env.FIN_MIRROR_SECRET,
+        agent : env.FIN_MIRROR_AGENT || 'mirror',
+        expires : env.FIN_MIRROR_TIMEOUT || 1000 * 60 * 5
       }
     },
     host : 'http://gateway:'+(env.FIN_GATEWAY_HTTP_PORT || 3000),

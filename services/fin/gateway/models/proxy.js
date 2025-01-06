@@ -1,5 +1,6 @@
 const {URL} = require('url');
 const api = require('@ucd-lib/fin-api');
+const crypto = require('crypto');
 const {logger, config, jwt, workflow, FinDigests} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('./services');
 const proxy = require('../lib/http-proxy');
@@ -220,12 +221,13 @@ class ProxyModel {
    */
   async _fcrepoProxyRequest(req, res) {
     let path = decodeURIComponent(req.originalUrl);
-    if( this._isMetadataRequest(req) ) {
-      path = path.replace(/\/fcr:metadata$/, '');
-    }
-
+    
     if( await this._mirrorOrBlockRequest(req, res, path) ) {
       return;
+    }
+    
+    if( this._isMetadataRequest(req) ) {
+      path = path.replace(/\/fcr:metadata$/, '');
     }
 
     // set fcrepo fin principal headers (see fcrepo config)
@@ -437,17 +439,20 @@ class ProxyModel {
         return false;
       }
       
-      let resp = await api.head({url: path});
+      let resp = await api.head({
+        url: path,
+        headers: req.headers
+      });
       if( resp.last.statusCode === 200 ) {
-        res.set('ETag', resp.last.headers.etag);
-        res.set('Content-Type', resp.last.headers['content-type']);
-        res.set('Content-Length', resp.last.headers['content-length']);
-        res.set('Content-Disposition', resp.last.headers['content-disposition']);
-        res.set('Location', config.gateway.proxy.mirror.host+path+'?etag='+resp.last.headers.etag);
+        let payload = this._getMirrorPayload(path, resp.last.headers.etag); 
+        res.set('Location', config.gateway.proxy.mirror.host+path+'?k='+payload.k+'&m='+payload.m);
         res.status(302).send();
         return true;
-      } else {
+      } else if ( resp.last.statusCode === 404 ) {
         res.status(404).send('File not found');
+        return true;
+      } else {
+        res.status(resp.last.statusCode).send(resp.last.body);
         return true;
       }
 
@@ -459,6 +464,30 @@ class ProxyModel {
     }
 
     return false;
+  }
+
+  _getMirrorPayload(path, etag) {
+    if( !config.gateway.proxy.mirror.secret ) {
+      throw new Error('Missing mirror secret');
+    }
+
+    const algorithm = 'aes-256-cbc';
+    const key = Buffer.alloc(32);
+    key.write(config.gateway.proxy.mirror.secret, 0, 32);
+    const iv = crypto.randomBytes(16);
+
+
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    let message = JSON.stringify({
+      path, etag, expires: Date.now() + config.gateway.proxy.mirror.expires
+    });
+    let encrypted = cipher.update(message, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+
+    return {
+        k: iv.toString('hex'),
+        m: encrypted
+    };
   }
 
   _setReqTime(req) {
