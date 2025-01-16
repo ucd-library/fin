@@ -981,6 +981,25 @@ class FinApi {
     return _simpleRequest(req);
   }
 
+  setFinAcProtected(path) {
+    return this.setFinAcAgent(path, 'protected');
+  }
+
+  setFinAcDiscoverable(path) {
+    return this.setFinAcAgent(path, 'discovery');
+  }
+
+  setFinAcAgent(path, agent) {
+    path += '/svc:finac?agent='+agent;
+    let req = this.baseRequest('POST', {path});
+    return _simpleRequest(req);
+  }
+
+  removeFinAc(path) {
+    path += '/svc:finac';
+    let req = this.baseRequest('DELETE', {path});
+    return _simpleRequest(req);
+  }
 
   /**
    * @method parseLinkHeader

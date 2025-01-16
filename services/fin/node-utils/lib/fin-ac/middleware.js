@@ -17,17 +17,24 @@ async function esRoles(req, res, next) {
   agents = Array.from(agents);
 
   // now add finac grants
-  let access = (await finac.getAgentsAccess(agents))
-    .map(item => config.finac.agents.protected+'-'+item.path);
+  let access = new Set();
+  (await finac.getAgentsAccess(agents))
+    .map(item => config.finac.agents.protected+'-'+item.path)
+    .forEach(role => access.add(role));
 
   // add roles to access excluding special roles
   agents.forEach(role => {
     if( config.finac.agents[role] ) return;
-    access.push(role);
+    access.add(role);
   });
-  access.push(config.finac.agents.public);
+  access.add(config.finac.agents.public);
 
-  req.esRoles = access;
+  // if admin add all roles
+  if( (user.roles || []).includes(config.finac.agents.admin) ) {
+    Object.keys(config.finac.agents).forEach(role => access.add(config.finac.agents[role]));
+  }
+
+  req.esRoles = Array.from(access);
   next();
 }
 

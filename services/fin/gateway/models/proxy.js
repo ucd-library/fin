@@ -443,9 +443,16 @@ class ProxyModel {
         url: path,
         headers: req.headers
       });
+
       if( resp.last.statusCode === 200 ) {
+
+        // only mirror non-rdf containers
+        if( api.isRdfContainer(resp.last) ) {
+          return false
+        }
+
         let payload = this._getMirrorPayload(path, resp.last.headers.etag); 
-        res.set('Location', config.gateway.proxy.mirror.host+path+'?k='+payload.k+'&m='+payload.m);
+        res.set('Location', config.gateway.proxy.mirror.host+'?k='+payload.k+'&m='+payload.m);
         res.status(302).send();
         return true;
       } else if ( resp.last.statusCode === 404 ) {

@@ -1,5 +1,6 @@
 const pg = require('./pg.js');
 const fcrepo = require('./fcrepo.js');
+const logger = require('../logger.js');
 
 class FinAc {
 
@@ -9,13 +10,14 @@ class FinAc {
 
   async setProtectedPath(path, agent) {
     path = await fcrepo.getFinAcPath(path);
-    await fcrepo.setProtectedPath(path, agent);
+    logger.info('Setting protected path: '+path+' for agent: '+agent);
+    let resp = await fcrepo.setProtectedPath(path, agent);
     // await pg.setProtectedPath(path, isPublic=false);
   }
 
   async removeProtectedPath(path) {
     path = await fcrepo.getFinAcPath(path);
-    await fcrepo.removeProtectedPath(path);
+    let resp = await fcrepo.removeProtectedPath(path);
     // await pg.removeProtectPath(path);
   }
 

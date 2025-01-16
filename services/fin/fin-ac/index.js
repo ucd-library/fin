@@ -80,18 +80,6 @@ app.put(/\/.*/, async (req, res) => {
   }
 });
 
-app.delete(/\/.*/, async (req, res) => {
-  try {
-    res.json(await model.removeProtectedPath(cleanPath(req.path)));
-  } catch(e) {
-    res.status(500).json({
-      error: true,
-      message : e.message,
-      stack : e.stack
-    });
-  }
-});
-
 function cleanPath(path) {
   return path.replace(/\/fcrepo\/rest/, '');
 }

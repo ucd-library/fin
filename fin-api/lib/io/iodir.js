@@ -76,6 +76,9 @@ class IoDir {
       let container = this.containers[containerFsId];
       if( !container ) {
         container = new FinImportContainer(this.config, this.fsroot);
+        if( this.config.finAcAgent ) {
+          container.finAcAgent = this.config.finAcAgent;
+        }
         this.containers[containerFsId] = container;
       }
 

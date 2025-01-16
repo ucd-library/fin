@@ -158,6 +158,7 @@ class FinIoImport {
       fcrepoPathType : options.fcrepoPathType,
       importFromRoot : options.importFromRoot,
       instanceConfig : this.instanceConfig,
+      finAcAgent : options.finAcAgent,
       api : api
     });
 
@@ -364,6 +365,11 @@ class FinIoImport {
 
     let forceUpdate = agShaManifest?._vIndirectContainers?.match !== true;
     await this.putContainer(container, forceUpdate, digests);
+
+    if( container.finAcAgent ) {
+      let resp = await api.setFinAcAgent(container.fcrepoPath, container.finAcAgent);
+      console.log(resp.last);
+    }
 
     if( container.dir ) {
       await this.putAgDir(container.dir);

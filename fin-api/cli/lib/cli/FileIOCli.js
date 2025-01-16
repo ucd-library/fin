@@ -27,6 +27,7 @@ class FileIOCli {
       importFromRoot,
       prepareFsLayoutImport,
       agImportStrategy,
+      finAcAgent : args.options.agent,
       logToDisk : args.options.logToDisk || false,
       debugShaChanges : args.options.debugShaChanges || false
     });

@@ -273,6 +273,13 @@ class DbSync {
         let rootPath = e.path.replace(/\/fcr:acl$/, '');
         let containerTypes = await this.getContainerTypes({path: rootPath});
 
+        containerTypes = containerTypes.map(type => {
+          if( typeof type === 'string' ) return type;
+          if( type['@id'] ) return type['@id'];
+          if( type['@value'] ) return type['@value'];
+          return type.url;
+        })
+
         logger.info('ACL ' + e.path + ' updated, sending rendex event for: ' + rootPath);
 
         // send a reindex event for root container
@@ -374,7 +381,6 @@ class DbSync {
       // did it.
       if (response.last.statusCode !== 200) {
         logger.info('Container ' + event.path + ' was publicly inaccessible (' + response.last.statusCode + ') from LDP, removing from index. url=' + response.last.request.url);
-
         if( response.last.statusCode === 404 ) {
           event.action = 'delete';
           event.message = 'Not Found: '+response.last.statusCode;
@@ -544,7 +550,7 @@ class DbSync {
 
     // make requests as the discovery agent/principal
     // admins can change principal using this header
-    headers[config.principal.headerName] = config.finac.agents.discover;
+    // headers[config.principal.headerName] = config.finac.agents.discover+','+config.finac.agents.protected;
 
     var response = await api.get({
       host: config.gateway.host,
@@ -566,7 +572,7 @@ class DbSync {
    * @description trigger data model(s) removal method.  Log the event and result
    */
   async remove(event, model) {
-    let json = await model.get(event.path);
+    let json = await model.get(event.path, {roles: [config.finac.agents.admin]});
     event.dbId = await this.queueDataValidation(model, event.path, json);
     event.dbResponse = await model.remove(event.path);
 
@@ -633,7 +639,7 @@ class DbSync {
 
     try {
       let { model } = await models.get(modelId);
-      let graph = await model.get(dbId);
+      let graph = await model.get(dbId, {roles: [config.finac.agents.admin]});
 
       if (!graph) {
         logger.info('No data found for ' + modelId + ' ' + dbId + ' removing validation');

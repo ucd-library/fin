@@ -43,7 +43,7 @@ class FinEsDataModel extends FinDataModel {
     }
 
     let esBody = finSearch.searchDocumentToEsBody(searchDocument);
-    let esResult = await this.esSearch(esBody, {admin: options.admin}, index);
+    let esResult = await this.esSearch(esBody, {admin: options.admin, roles: options.roles}, index);
     let result = finSearch.esResultToDamsResult(esResult, searchDocument);
 
     result.results.forEach(item => {
@@ -87,11 +87,15 @@ class FinEsDataModel extends FinDataModel {
               {term : {'@graph.identifier.raw' : identifier}},
               {term: {'@graph.@id': id}},
               {term: {'@id': id}}
-            ]
+            ],
+            minimum_should_match: 1
           }
         }
       }, 
-      {_source_excludes},
+      {
+        _source_excludes,
+        roles: opts.roles
+      },
       index
     );
 
@@ -202,6 +206,9 @@ class FinEsDataModel extends FinDataModel {
     options.index = index;
     options.body = body;
 
+    this.setRoles(body, options.roles);
+    if( options.roles ) delete options.roles;
+
     if( options._source_excludes === false ) {
       delete options._source_excludes; 
     } else if( options._source_excludes === 'compact' ) {
@@ -294,7 +301,7 @@ class FinEsDataModel extends FinDataModel {
     if( !index ) index = this.writeIndexAlias;
 
     // find container
-    let item = await this.get(id, {}, index);
+    let item = await this.get(id, {roles: [config.finac.agents.admin]}, index);
 
     if( !item ) return {message: 'no-op: item not found: '+id};
 
@@ -440,6 +447,28 @@ class FinEsDataModel extends FinDataModel {
     });
 
     return {destination: indexDest, response}
+  }
+
+  async setRoles(body, roles) {
+    if( !roles ) {
+      roles = [config.finac.agents.public];
+    } else if( !roles.includes(config.finac.agents.public) ) {
+      roles.push(config.finac.agents.public);
+    } 
+
+    if( !body.query ) body.query = {};
+    if( !body.query.bool ) body.query.bool = {};
+    if( !body.query.bool.filter ) body.query.bool.filter = [];
+    let hasRoles = body.query.bool.filter.findIndex(item => item?.terms?.roles);
+    
+    if( hasRoles === -1 ) {
+      body.query.bool.filter.push({
+        terms : {roles}
+      });
+      return;
+    }
+
+    body.query.bool.filter[hasRoles].terms.roles = roles;
   }
 
   async getAccessRoles(jsonld) {

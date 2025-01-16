@@ -15,7 +15,7 @@ async function request(options) {
   
   let jwt = (options.jwt !== undefined) ? options.jwt : auth.getJwt();
 
-  if( jwt && directAccess === false ) {
+  if( jwt && !directAccess ) {
     authUsed = true;
     options.headers['Authorization'] = `Bearer ${jwt}`;
 

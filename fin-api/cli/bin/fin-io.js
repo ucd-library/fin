@@ -9,6 +9,7 @@ program
   .option('-b, --force-binary-update', 'Always re-PUT binary, ignore sha check')
   .option('-r, --dry-run', 'do not write any containers')
   .option('-p, --prepare-fs-layout-import <dir>', 'Prepare the filesystem layout for import')
+  .option('-a, --agent <agent>', 'Agent to use for FinAC.  Set to "protected" to hide imported data')
   .option('--import-from-root', 'import data starting at given fs path, instead of looking for ArchivalGroups')
   .option('--fcrepo-path-type <type>', 'import relative to ArchivalGroups + subpath + id (id, default) or subpath + id (subpath)')
   .option('--ag-import-strategy <strategy>', 'import strategy for ArchivalGroups.  Options are transaction, delete or version-all (default, transaction)')

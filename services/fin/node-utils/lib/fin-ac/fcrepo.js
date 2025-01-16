@@ -44,7 +44,6 @@ class FinAcFcrepo {
     let webac = await this._getAcl(path);
     
     webac = this._stripFinacAgents(webac);
-    
     if( webac.length ) {
       await api.put({
         path: path+'/fcr:acl',
