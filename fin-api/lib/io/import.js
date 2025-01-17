@@ -367,8 +367,7 @@ class FinIoImport {
     await this.putContainer(container, forceUpdate, digests);
 
     if( container.finAcAgent ) {
-      let resp = await api.setFinAcAgent(container.fcrepoPath, container.finAcAgent);
-      console.log(resp.last);
+      await api.setFinAcAgent(container.fcrepoPath, container.finAcAgent);
     }
 
     if( container.dir ) {
