@@ -440,7 +440,7 @@ class ProxyModel {
       }
       
       let resp = await api.head({
-        url: path,
+        path: path.replace(/^\/fcrepo\/rest/, ''),
         headers: req.headers
       });
 
