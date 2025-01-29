@@ -1,7 +1,7 @@
 FROM debian:bullseye
 
 # copy PostgREST over
-COPY --from=postgrest/postgrest /bin/postgrest /bin
+COPY --from=postgrest/postgrest:v12.2.3 /bin/postgrest /bin
 
 RUN apt-get update && apt-get install -y curl libpq5 libpq-dev
 
