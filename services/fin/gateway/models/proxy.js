@@ -441,7 +441,8 @@ class ProxyModel {
       
       let resp = await api.head({
         path: path.replace(/^\/fcrepo\/rest/, ''),
-        headers: req.headers
+        headers: Object.assign({}, req.headers),
+        superuser: false
       });
 
       if( resp.last.statusCode === 200 ) {
