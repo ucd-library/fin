@@ -583,7 +583,7 @@ class FinEsDataModel extends FinDataModel {
             filter: {
               "remove_punctuation": {
                 type: "pattern_replace",
-                pattern: "[^\\w\\s]",
+                "pattern": "[^\\w\\d\\s]",
                 replacement: ""
               }
             }
