@@ -412,10 +412,14 @@ module.exports = {
 
   k8s : {
     enabled : env.K8S_ENABLED === 'true' ? true : false,
-    platform : env.K8S_PLATFORM || 'docker-desktop',
+    platform : env.K8S_PLATFORM,
     cluster : env.K8S_CLUSTER || 'fin',
     region : env.K8S_REGION || 'us-central1-c',
     namespace : env.K8S_NAMESPACE || 'default'
+  },
+
+  buildInfo : {
+    rootDir : env.BUILD_INFO_ROOT || '/cork-build-info',
   }
 
 }

@@ -67,7 +67,7 @@ module.exports = async (app) => {
     },
     getConfig : async (req, res, next) => {
       next({
-        user : {},
+        user : req.user,
         appRoutes,
         extensions : config.client.extensions,
         env : config.client.env,

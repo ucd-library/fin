@@ -1,4 +1,6 @@
 let {config} = require('@ucd-lib/fin-service-utils');
+let fs = require('fs');
+let path = require('path');
 
 let env = process.env.CLIENT_ENV || 'dev';
 
@@ -17,6 +19,17 @@ if( config.adminUi.extensions.enabled ) {
   });
 }
 
+const buildInfo = {};
+if( fs.existsSync(config.buildInfo.rootDir) ) {
+  fs.readdirSync(config.buildInfo.rootDir).forEach(file => {
+    if( !file.endsWith('.json') ) return;
+    let name = file.replace('.json', '');
+    buildInfo[name] = require(path.join(config.buildInfo.rootDir, file));
+  });
+} else {
+  console.log('Build info directory does not exist: '+config.buildInfo.rootDir);
+}
+
 config.client = {
   title : 'Fin Admin UI',
 
@@ -31,15 +44,10 @@ config.client = {
     loader : clientPackage.dependencies['@ucd-lib/cork-app-load'].replace(/^\D/, '')
   },
 
+  buildInfo,
+
   env : {
     CLIENT_ENV : env,
-    FIN_VERSION : process.env.FIN_APP_VERSION || '',
-    FIN_REPO_TAG : process.env.FIN_REPO_TAG || '',
-    FIN_BRANCH_NAME : process.env.FIN_BRANCH_NAME || '',
-    FIN_SERVER_REPO_HASH : process.env.FIN_SERVER_REPO_HASH || '',
-    APP_VERSION : process.env.APP_VERSION || '',
-    BUILD_DATETIME : process.env.BUILD_DATETIME || '',
-    FIN_SERVER_IMAGE : process.env.FIN_SERVER_IMAGE || '',
     CLOUD_DASHBOARD_URL : process.env.CLOUD_DASHBOARD_URL || '',
   }
 };
