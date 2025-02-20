@@ -46,9 +46,9 @@ return html`
 <div class="env">
   <div>
   Fin Build: 
-  <span>${this.env.FIN_VERSION}</span> |
-  <span><a href="${this.env.REPO_URL}/tree/${this.env.FIN_BRANCH_NAME}" target="_blank">${this.env.FIN_BRANCH_NAME}</a></span> |
-  <span><a href="${this.env.REPO_URL}/tree/${this.env.FIN_SERVER_REPO_HASH}" target="_blank">${this.env.FIN_SERVER_REPO_HASH}</a></span> |
+  <span>${this.buildInfo.tag || this.buildInfo.branch}</span> |
+  <span><a href="${this.buildInfo.httpRemote}/tree/${this.buildInfo.branch}" target="_blank">${this.buildInfo.branch}</a></span> |
+  <span><a href="${this.buildInfo.httpRemote}/tree/${this.buildInfo.commit}" target="_blank">${this.buildInfo.commit}</a></span> |
   <span>${this.buildTime.toLocaleString()}</span>
   </div>
   <div ?hidden="${!this.cloudDashboardUrl}">

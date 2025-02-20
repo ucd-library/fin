@@ -4,6 +4,7 @@ const fs = require('fs');
 const spaMiddleware = require('@ucd-lib/spa-router-middleware');
 const {logger, keycloak} = require('@ucd-lib/fin-service-utils');
 const config = require('../config');
+const { buildInfo } = require('../../node-utils/config');
 
 
 const loaderPath = path.join(__dirname, '..', 'client', config.client.assets, 'loader', 'loader.js');
@@ -70,6 +71,7 @@ module.exports = async (app) => {
         user : req.user,
         appRoutes,
         extensions : config.client.extensions,
+        buildInfo : config.client.buildInfo,
         env : config.client.env,
       });
     },
