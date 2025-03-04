@@ -6,7 +6,9 @@ const setup = require('./lib/server/setup');
 const {logReqMiddleware} = require('@ucd-lib/logger');
 
 const app = express();
-app.use(logReqMiddleware(logger));
+app.use(logReqMiddleware(logger, {
+  debug : [/^\/health\/?/]
+}));
 
 async function start() {
   await setup(app);

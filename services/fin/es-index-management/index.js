@@ -15,7 +15,9 @@ api.setConfig({
 });
 
 const app = express();
-app.use(logReqMiddleware(logger));
+app.use(logReqMiddleware(logger, {
+  debug : [/^\/health\/?/]
+}));
 
 app.use(middleware.httpTiming());
 controllers.health.register(app);
