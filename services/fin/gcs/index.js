@@ -5,11 +5,15 @@ const gcsConfig = require('./lib/config.js');
 const path = require('path');
 const diskCache = require('./lib/disk-cache.js');
 const fs = require('fs-extra');
+const {logReqMiddleware} = require('@ucd-lib/logger');
+
 const {gcs} = gc;
 
 const MAX_AGE=86400;
 const PORT = 3000;
 const app = express();
+app.use(logReqMiddleware(logger));
+
 controllers.health.register(app);
 app.use(middleware.httpTiming());
 

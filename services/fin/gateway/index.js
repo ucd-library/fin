@@ -1,10 +1,12 @@
 const express = require('express');
-const {config} = require('@ucd-lib/fin-service-utils');
+const {config, logger} = require('@ucd-lib/fin-service-utils');
 const http = require('./lib/server/http');
 const https = require('./lib/server/https');
 const setup = require('./lib/server/setup');
+const {logReqMiddleware} = require('@ucd-lib/logger');
 
 const app = express();
+app.use(logReqMiddleware(logger));
 
 async function start() {
   await setup(app);

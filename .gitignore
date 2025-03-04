@@ -17,4 +17,4 @@ services/fin/admin-ui/client/dist
 Dockerfile.corkbuild
 fin-init.json
 *.cork-build.json
-corkkube.Dockerfile
+corkbuild.Dockerfile

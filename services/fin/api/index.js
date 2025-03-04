@@ -3,9 +3,12 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const {logReqMiddleware} = require('@ucd-lib/logger');
 
 // create express instance
 const app = express();
+app.use(logReqMiddleware(logger));
+
 controllers.health.register(app);
 app.use(middleware.httpTiming());
 

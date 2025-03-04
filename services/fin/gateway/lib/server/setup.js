@@ -48,27 +48,6 @@ async function setup(app) {
     next();
   });
 
-  // setup simple http logging
-  app.use((req, res, next) => {
-    let userAgent = req.get('User-Agent') || 'no-user-agent';
-    let url = req.originalUrl || req.url;
-
-    // help debug hanging requests
-    logger.debug(`request: ${req.method} ${req.protocol}/${req.httpVersion} ${url} ${userAgent}`);
-    req.requestStartTime = Date.now();
-
-    res.on('finish',() => {
-      let times = [];
-      if( req.fcrepoProxyTime ) {
-        times.push(`fcrepo:${req.fcrepoProxyTime}ms`);
-      }
-      times.push(`total:${Date.now()-req.requestStartTime}ms`);
-
-      logger.info(`${res.statusCode} ${req.method} ${req.protocol}/${req.httpVersion} ${url} ${userAgent}, ${times.join(', ')}`);
-    });
-    next();
-  });
-
   // setup user decoding
   app.use(keycloak.setUser);
 

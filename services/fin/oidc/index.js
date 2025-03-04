@@ -3,10 +3,13 @@ const {config, keycloak, logger, middleware, controllers} = require('@ucd-lib/fi
 const express = require('express');
 const { auth } = require('express-openid-connect');
 const bodyParser = require('body-parser');
+const {logReqMiddleware} = require('@ucd-lib/logger');
 
 keycloak.initTls();
 
 const app = express();
+app.use(logReqMiddleware(logger));
+
 controllers.health.register(app);
 app.use(middleware.httpTiming());
 

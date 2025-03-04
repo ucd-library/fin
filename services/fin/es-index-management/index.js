@@ -4,6 +4,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const api = require('@ucd-lib/fin-api');
 const elasticsearch = require('./elasticsearch.js');
+const {logReqMiddleware} = require('@ucd-lib/logger');
 
 const {FinEsDataModel} = dataModels;
 
@@ -14,6 +15,8 @@ api.setConfig({
 });
 
 const app = express();
+app.use(logReqMiddleware(logger));
+
 app.use(middleware.httpTiming());
 controllers.health.register(app);
 app.use(bodyParser.text({type: '*/*'}));

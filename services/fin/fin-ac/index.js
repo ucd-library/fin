@@ -1,7 +1,8 @@
 const {config, logger, FinAC, middleware, controllers} = require('@ucd-lib/fin-service-utils');
-
 const express = require('express');
 const api = require('@ucd-lib/fin-api');
+const {logReqMiddleware} = require('@ucd-lib/logger');
+
 const model = new FinAC();
 
 api.setConfig({
@@ -11,6 +12,8 @@ api.setConfig({
 })
 
 const app = express();
+app.use(logReqMiddleware(logger));
+
 controllers.health.register(app);
 app.use(middleware.httpTiming());
 

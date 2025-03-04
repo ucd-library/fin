@@ -3,6 +3,8 @@ const express = require('express');
 const ReindexCrawler = require('./lib/reindex-crawler.js');
 const postgres = require('./lib/postgres.js');
 const api = require('@ucd-lib/fin-api');
+const {logReqMiddleware} = require('@ucd-lib/logger');
+
 require('./lib/model');
 
 api.setConfig({
@@ -11,6 +13,8 @@ api.setConfig({
 
 
 const app = express();
+app.use(logReqMiddleware(logger));
+
 controllers.health.register(app);
 app.use(middleware.httpTiming());
 

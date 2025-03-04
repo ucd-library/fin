@@ -2,9 +2,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const {gc, logger, config, middleware, controllers} = require('@ucd-lib/fin-service-utils');
+const {logReqMiddleware} = require('@ucd-lib/logger');
 const {workflowModel} = gc;
 
 const app = express();
+app.use(logReqMiddleware(logger));
+
 controllers.health.register(app);
 app.use(middleware.httpTiming());
 
