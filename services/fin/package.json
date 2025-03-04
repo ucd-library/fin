@@ -43,7 +43,7 @@
     "@opentelemetry/sdk-node": "^0.46.0",
     "@opentelemetry/sdk-trace-node": "^1.19.0",
     "@opentelemetry/semantic-conventions": "^1.19.0",
-    "@ucd-lib/logger": "^0.0.4",
+    "@ucd-lib/logger": "^0.0.5",
     "@ucd-lib/spa-router-middleware": "^0.2.3",
     "amqplib": "^0.10.3",
     "archiver": "^5.3.1",
