@@ -1,13 +1,12 @@
 const path = require('path');
 const utils = require('./utils');
 const pathutils = require('../utils/path');
-const { debug } = require('console');
-const { match } = require('assert');
 
 const FIN_IO_DIGEST_NAME = {
   BINARY_HASH : 'sha256',
   METADATA_HASH : 'finio-metadata-sha256',
 }
+const BINARY_TYPE= 'http://fedora.info/definitions/v4/repository#Binary';
 const FIN_DIGEST_PREDICATE = 'http://digital.ucdavis.edu/schema#hasMessageDigest';
 const DIGEST_PREDICATE = 'http://www.loc.gov/premis/rdf/v1#hasMessageDigest';
 class FinImportContainer {
@@ -46,6 +45,10 @@ class FinImportContainer {
       instance : null,
       mainNode : null,
     }
+
+    // used to sniff out current type of container
+    this.linkHeaders = null;
+    this.containerExistsInLdp = false;
 
     this.pathDebug = {
       fcrepoPath : null,
@@ -397,7 +400,15 @@ class FinImportContainer {
     this.digestsCacheRequest = null;
 
     if( resp.last.statusCode !== 200 ) {
+      this.containerExistsInLdp = false;
       return null;
+    }
+
+    this.containerExistsInLdp = true;
+    this.linkHeaders = this.api.parseLinkHeader(resp.last.headers['link']);
+    let types = (this.linkHeaders?.type || []).map(type => type.url);
+    if( types.includes(BINARY_TYPE) ) {
+      this.isBinary = true;
     }
 
     let digests = (resp.last.headers['digest'] || '')

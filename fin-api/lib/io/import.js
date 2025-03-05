@@ -414,7 +414,9 @@ class FinIoImport {
 
       // add binary
       if( container.isBinary ) {
-        await this.putBinary(container);
+        if( container.binary.fsfull ) {
+          await this.putBinary(container);
+        }
         await this.putBinaryMetadata(container);
         continue;
       } else {
@@ -439,6 +441,10 @@ class FinIoImport {
   async putContainer(container, force=false, digests=[]) {
     if( this.sigInt ) return;
 
+    if( container.fcrepoPath.match(/\.[a-z]+$/) ) {
+      throw new Error('Cannot add rdf container with extension in path: '+container.fcrepoPath);
+    }
+
     console.log(`PUT CONTAINER: ${container.fcrepoPath}\n -> ${container.metadata.fsfull}`);      
 
     let headers = {
@@ -450,7 +456,6 @@ class FinIoImport {
     // update log message as well
 
     // fetch server hash and local hash at the same time
-
 
     // if( response.last.statusCode === 200 ) {
     //   let links = api.parseLinkHeader(response.last.headers.link || '') || {};
@@ -581,7 +586,7 @@ class FinIoImport {
     if( !container.metadata.fsfull ) return false;
 
     let containerPath = pathutils.joinUrlPath(container.fcrepoPath, 'fcr:metadata');
-    console.log(`PUT BINARY METADATA: ${containerPath}\n -> ${container.binary.fsfull}`);
+    console.log(`PUT BINARY METADATA: ${containerPath}\n -> ${container.metadata.fsfull}`);
 
     if( this.options.dryRun === true ) return true;
 
