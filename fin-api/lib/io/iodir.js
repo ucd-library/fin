@@ -188,14 +188,6 @@ class IoDir {
     if( agTypeConfig && agTypeConfig.virtualArchiveGroup ) {
       let vgConfig = agTypeConfig.virtualArchiveGroup
 
-      if( !node['@type'] ) node['@type'] = [];
-
-      // strip out archival group from the node if it exists
-      let index = node['@type'].indexOf(utils.TYPES.ARCHIVAL_GROUP);
-      if( index > -1 ) node['@type'].splice(index, 1);
-      
-      node['@type'].push(utils.TYPES.FIN_ARCHIVAL_GROUP);
-
       // check for predicate and regex match
       if( vgConfig.predicate && vgConfig.regex ) {
         let re = new RegExp(vgConfig.regex);
@@ -217,8 +209,17 @@ class IoDir {
       isArchivalGroup = utils.isNodeOfType(node, utils.TYPES.ARCHIVAL_GROUP);
     }
 
+    // strip out archival group from the node if it exists
+    if( node['@type'] ) {
+      let index = node['@type'].indexOf(utils.TYPES.ARCHIVAL_GROUP);
+      if( index > -1 ) node['@type'].splice(index, 1);
+    }
+
     // check for archival group node
     if( isArchivalGroup ) {
+
+      if( !node['@type'] ) node['@type'] = [];
+      node['@type'].push(utils.TYPES.FIN_ARCHIVAL_GROUP);
 
       // handle fin io import instance config if provided by the server
       container.agTypeConfig = agTypeConfig;
