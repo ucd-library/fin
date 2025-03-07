@@ -250,7 +250,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
       if( typeof row.updated === 'string' ) {
         row.updated = new Date(row.updated);
       }
-      if( row.updated.getTime() > Date.now() - 1000*60*30 ) {
+
+      if( row.updated.getTime() > Date.now() - 1000*60*30 && state === 'init' ) {
         this.workflowDeleteErrors.push({
           workflow: row.path+' '+row.name,
           error: 'Workflow with state "init" updated in last 30 minutes, skipping delete'
@@ -280,8 +281,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
 
     let rs = results.resultSet;
     if( rs.total > rs.stop+1 ) {
-      // we are deleting, so start at 0
-      this.deleteWorkflows(state, name, 0, limit);
+      this.deleteWorkflows(state, name, rs.stop+1, limit);
     } else {
       this.deletingWorkflows = false;
       this.querySelector('fin-admin-data-table[name="dashboard-workflow-stats"]').runQuery();
