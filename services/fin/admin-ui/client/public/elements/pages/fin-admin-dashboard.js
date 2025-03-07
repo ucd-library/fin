@@ -242,6 +242,7 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     );
 
 
+    let dCount = 0;
     for( let row of results.payload ) {
       this.workflowPath = row.path;
       this.workflowName = row.name;
@@ -258,6 +259,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
         });
         continue;
       }
+
+      dCount++;
 
       try {
         let {response, body} = await this.FinApiModel.deleteWorkflow(row.path, row.name);
@@ -280,8 +283,8 @@ export default class FinAdminDashboard extends Mixin(LitElement)
     }
 
     let rs = results.resultSet;
-    if( rs.total > rs.stop+1 ) {
-      this.deleteWorkflows(state, name, rs.stop+1, limit);
+    if( rs.total >= dCount+1 ) {
+      this.deleteWorkflows(state, name, dCount+1, limit);
     } else {
       this.deletingWorkflows = false;
       this.querySelector('fin-admin-data-table[name="dashboard-workflow-stats"]').runQuery();
