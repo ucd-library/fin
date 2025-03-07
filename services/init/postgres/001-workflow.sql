@@ -9,8 +9,8 @@ END $$;
 
 CREATE TABLE IF NOT EXISTS workflow (
   workflow_id UUID PRIMARY KEY,
-  created timestamp NOT NULL DEFAULT NOW(),
-  updated timestamp NOT NULL DEFAULT NOW(),
+  created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   type TEXT NOT NULL,
   name TEXT NOT NULL,
   state fin_workflow_state NOT NULL,
