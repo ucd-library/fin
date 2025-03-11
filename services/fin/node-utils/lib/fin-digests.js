@@ -46,7 +46,7 @@ class FinDigests {
   }
 
   async onFcrepoResponse(req, res) {
-    if (this._ignoreResponse(req)) return;
+    if (this._ignoreResponse(req, res)) return;
 
     // if this is a request to set the precooked digest header, just return
     if( CONFIG.GET_METHODS.includes(req.method) ) {
@@ -193,9 +193,9 @@ class FinDigests {
    * @param {Request} req express request object 
    * @returns {Boolean}
    */
-  _ignoreResponse(req) {
+  _ignoreResponse(req, res) {
     if (req.originalUrl.match(/\/svc:.*$/)) return true;
-    if (req.statusCode > 299) return true;
+    if (res.statusCode > 299) return true;
     return false;
   }
 }
