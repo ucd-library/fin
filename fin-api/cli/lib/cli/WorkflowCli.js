@@ -135,6 +135,56 @@ ${this.getGcWorkflowUrl(data.data.gcExecution)}
     Logger.log(lastPing);
   }
 
+  async setParams(args) {
+    let finPath = args.finPath + '/svc:workflow/' + args.workflowName + '/params';
+
+
+    let baseOptions = {
+      headers: {
+        'content-type': 'application/json'
+      },
+      content: JSON.stringify(args.params)
+    }
+
+    let response = await http.post({path: finPath, options: {}}, baseOptions);
+
+    if( args.print ) return;
+
+    response = response.response.data;
+    if( response.statusCode !== 200 ) {
+      console.error(response.statusCode, response.body);
+      return;
+    }
+
+    let data = JSON.parse(response.body);
+
+    Logger.log();
+    Logger.log(JSON.stringify(data, null, 2));
+    Logger.log();
+  }
+
+  async getParams(args) {
+    let path = args.finPath + '/svc:workflow/' + args.workflowName + '/params';
+    let response = await http.get({
+      path,
+      options: {}
+    });
+
+    if( args.print ) return;
+
+    response = response.response.data;
+    if( response.statusCode !== 200 ) {
+      Logger.error(response.statusCode, response.body);
+      return;
+    }
+
+    let data = JSON.parse(response.body);
+
+    Logger.log();
+    Logger.log(JSON.stringify(data, null, 2));
+    Logger.log();
+  }
+
   async delete(args) {
     args.path = args.finPath + '/svc:workflow/' + args.workflowName;
     delete args.finPath;

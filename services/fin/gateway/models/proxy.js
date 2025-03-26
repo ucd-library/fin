@@ -254,7 +254,10 @@ class ProxyModel {
 
     // set base user auth
     let fcrepoApiConfig = api.getConfig();
+
     if( req.user && req.user.roles && req.user.roles.includes(config.finac.agents.admin) ) {
+      req.headers['authorization'] = 'Basic '+Buffer.from(fcrepoApiConfig.adminUsername+':'+fcrepoApiConfig.adminPassword).toString('base64');
+    } else if ( req.originalUrl.match(/^\/fcrepo\/static\//) ) { // hack for static files
       req.headers['authorization'] = 'Basic '+Buffer.from(fcrepoApiConfig.adminUsername+':'+fcrepoApiConfig.adminPassword).toString('base64');
     } else {
       req.headers['authorization'] = 'Basic '+Buffer.from(fcrepoApiConfig.username+':'+fcrepoApiConfig.password).toString('base64');

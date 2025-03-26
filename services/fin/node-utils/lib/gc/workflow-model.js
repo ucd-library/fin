@@ -29,6 +29,9 @@ class FinGcWorkflowModel {
     this.wClient = new WorkflowsClient();
     this.eClient = new ExecutionsClient();
 
+    this.PARAMS_EXT_REGEX = /\.params\.json$/;
+    this.WORKFLOW_EXT_REGEX = /\.json$/;
+
     this.statusLoopStarted = false;
   }
 
@@ -368,6 +371,26 @@ class FinGcWorkflowModel {
     }
   }
 
+  getGcsParamsFile(workflowName, finPath) {
+    let bucket = this.getGcsBucket(workflowName);
+    return 'gs://'+path.join(bucket, finPath, workflowName+'.params.json');
+  }
+
+  setWorkflowParams(workflowName, finPath, params) {
+    let paramsPath = this.getGcsParamsFile(workflowName, finPath);
+    return gcs.getGcsFileObjectFromPath(paramsPath)
+      .save(JSON.stringify(params, null, 2));
+  }
+
+  async getWorkflowParams(workflowName, finPath) {
+    let paramsPath = this.getGcsParamsFile(workflowName, finPath);
+    let paramsFile = gcs.getGcsFileObjectFromPath(paramsPath);
+    if( (await paramsFile.exists())[0] ) {
+      return JSON.parse(await gcs.loadFileIntoMemory(paramsPath));
+    }
+    return {};
+  }
+
   async initWorkflow(finWorkflowId) {
     let workflowInfo = await this.getWorkflowInfo(finWorkflowId);
 
@@ -440,6 +463,9 @@ class FinGcWorkflowModel {
     let finWorkflowId = workflowInfo.id || workflowInfo.workflow_id;
     // https://github.com/googleapis/google-cloud-node/blob/main/packages/google-cloud-workflows-executions/samples/generated/v1/executions.create_execution.js#L56
     // https://cloud.google.com/workflows/docs/reference/executions/rest/v1/projects.locations.workflows.executions#Execution
+
+    // inject params into workflow
+    workflowInfo.data.params = await this.getWorkflowParams(workflowInfo.name, workflowInfo.data.finPath);
 
     let execution = {
       argument: JSON.stringify(workflowInfo.data)
@@ -752,7 +778,10 @@ class FinGcWorkflowModel {
 
     let resp = await gcs.getGcsFilesInFolder(gcsFile);
     for( let file of resp.files ) {
-      if( file.name.match(/\.json$/) ) {
+      if( file.name.match(this.PARAMS_EXT_REGEX) ) {
+        continue;
+      }
+      if( file.name.match(this.WORKFLOW_EXT_REGEX) ) {
         await this.loadWorkflowFromGcs({
           bucket,
           filename: file.name
@@ -818,7 +847,7 @@ class FinGcWorkflowModel {
 
     if( exists ) {
       // debugging this, list cloud get LONG.
-      logger.info('Workflow file '+gcsFilePath+' already exists in db');
+      logger.debug('Workflow file '+gcsFilePath+' already exists in db');
       return;
     }
 

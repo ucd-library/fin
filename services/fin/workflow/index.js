@@ -1,7 +1,7 @@
 // create express router
 const express = require('express');
 const bodyParser = require('body-parser');
-const {gc, logger, config, middleware, controllers} = require('@ucd-lib/fin-service-utils');
+const {gc, logger, config, middleware, controllers, keycloak} = require('@ucd-lib/fin-service-utils');
 const {logReqMiddleware} = require('@ucd-lib/logger');
 const {workflowModel} = gc;
 
@@ -13,7 +13,7 @@ app.use(logReqMiddleware(logger, {
 controllers.health.register(app);
 app.use(middleware.httpTiming());
 
-app.get('/reload', async (req, res) => {
+app.get('/reload', keycloak.protect(['admin']), async (req, res) => {
   if( req.query.fcPath !== '/fcrepo/rest' ) {
     return res.status(403).json({error : 'Must be called from root path /'});
   }
@@ -57,7 +57,35 @@ app.get('/list', async (req, res) => {
 
 });
 
-app.post('/:workflowName', bodyParser.json(), async (req, res) => {
+app.post('/:workflowName/params', keycloak.protect(['admin']), bodyParser.json(), async (req, res) => {
+  let finPath = req.query.fcPath.replace(/\/fcrepo\/rest/, '');
+
+  try {
+    await workflowModel.setWorkflowParams(req.params.workflowName, finPath, req.body);
+    res.json({success: true});
+  } catch(e) {
+    res.status(500).json({
+      error : e.message,
+      stack : e.stack
+    });
+  }
+});
+
+app.get('/:workflowName/params', async (req, res) => {
+  let finPath = req.query.fcPath.replace(/\/fcrepo\/rest/, '');
+
+  try {
+    let workflowInfo = await workflowModel.getWorkflowParams(req.params.workflowName, finPath);
+    res.json(workflowInfo);
+  } catch(e) {
+    res.status(500).json({
+      error : e.message,
+      stack : e.stack
+    });
+  }
+});
+
+app.post('/:workflowName', keycloak.protect(['admin']), bodyParser.json(), async (req, res) => {
 
   let finPath = req.query.fcPath.replace(/\/fcrepo\/rest/, '');
 
@@ -120,7 +148,7 @@ app.get('/:workflowId', async (req, res) => {
   }
 });
 
-app.delete('/:workflowName', async (req, res) => {
+app.delete('/:workflowName', keycloak.protect(['admin']), async (req, res) => {
   try {
     let finPath = req.query.fcPath.replace(/\/fcrepo\/rest/, '');
     let workflowName = req.params.workflowName;

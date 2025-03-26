@@ -29,6 +29,25 @@ program
 
 stdOptionWrapper(
   program
+    .command('set-params <path> <workflow>')
+    .description('Set params for a workflow on a container')
+    .requiredOption('-p, --params <object>', 'JSON string of params to set')
+    .action((finPath, workflowName, options) => {
+      workflowCli.setParams({finPath, workflowName, params: JSON.parse(options.params)})
+    })
+  );
+
+stdOptionWrapper(
+  program
+    .command('get-params <path> <workflow>')
+    .description('Get params for a workflow on a container')
+    .action((finPath, workflowName) => {
+      workflowCli.getParams({finPath, workflowName})
+    })
+  );
+
+stdOptionWrapper(
+  program
     .command('delete <path> <workflow-name>')
     .description('Delete a workflow from GCS')
     .option('-b, --gcs-bucket <name>', 'GCS Bucket workflow is stored in')
