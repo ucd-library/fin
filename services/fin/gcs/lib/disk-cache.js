@@ -68,7 +68,7 @@ class GcsDiskCache {
       file = resp.rows[0];
 
       // check the recheck age and md5 hash
-      if( file.last_accessed < new Date(Date.now() - this.config.recheckAge) ) {
+      // if( file.last_accessed < new Date(Date.now() - this.config.recheckAge) ) {
         let gcsFile = gcs.getGcsFileObjectFromPath('gs://'+path.join(bucket, finPath));
         let metadata = (await gcsFile.getMetadata())[0];
 
@@ -82,9 +82,9 @@ class GcsDiskCache {
         }
       
 
-      } else {
-        logger.info(`Found file in disk cache: ${bucket}/${finPath}`);
-      }
+      // } else {
+      //   logger.info(`Found file in disk cache: ${bucket}/${finPath}`);
+      // }
     }
 
     if( !resp.rows.length ) {
