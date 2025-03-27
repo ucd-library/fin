@@ -4,6 +4,7 @@ const path = require('path');
 // load custom .env file if it exists in environment variables
 // this is really useful for k8s environments where individual 
 // env variables from secrets are verbose and hard to manage
+// This will not overwrite existing env variables
 let envPath = '/etc/fin/.env';
 if( process.env.FIN_ENV_FILE ) {
   envPath = process.env.FIN_ENV_FILE;

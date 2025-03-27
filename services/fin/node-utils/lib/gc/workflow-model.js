@@ -465,7 +465,7 @@ class FinGcWorkflowModel {
     // https://cloud.google.com/workflows/docs/reference/executions/rest/v1/projects.locations.workflows.executions#Execution
 
     // inject params into workflow
-    workflowInfo.data.params = await this.getWorkflowParams(workflowInfo.name, workflowInfo.data.finPath);
+    workflowInfo.data.params = JSON.stringify(await this.getWorkflowParams(workflowInfo.name, workflowInfo.data.finPath));
 
     let execution = {
       argument: JSON.stringify(workflowInfo.data)
