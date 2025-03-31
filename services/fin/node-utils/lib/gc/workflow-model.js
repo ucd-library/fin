@@ -596,7 +596,7 @@ class FinGcWorkflowModel {
     await gcs.cleanFolder(workflowInfo.data.tmpGcsBucket, workflowId);
   }
 
-  async _updateWorkflowBuckets(workflow={}) {
+  _updateWorkflowBuckets(workflow={}) {
     if( !workflow.data ) return;
     if( typeof workflow.data === 'string' ) {
       workflow.data = JSON.parse(workflow.data);
@@ -626,6 +626,10 @@ class FinGcWorkflowModel {
   }
 
   async getWorkflows(finPath) {
+    console.log(await pg.getWorkflows(finPath));
+    console.log(((await pg.getWorkflows(finPath)) || []).map(w => this._updateWorkflowBuckets(w)));
+
+
     return ((await pg.getWorkflows(finPath)) || []).map(w => this._updateWorkflowBuckets(w));
   }
 
