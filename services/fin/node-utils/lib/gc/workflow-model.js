@@ -626,10 +626,6 @@ class FinGcWorkflowModel {
   }
 
   async getWorkflows(finPath) {
-    console.log(await pg.getWorkflows(finPath));
-    console.log(((await pg.getWorkflows(finPath)) || []).map(w => this._updateWorkflowBuckets(w)));
-
-
     return ((await pg.getWorkflows(finPath)) || []).map(w => this._updateWorkflowBuckets(w));
   }
 
