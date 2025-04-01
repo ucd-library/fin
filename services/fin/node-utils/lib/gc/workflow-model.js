@@ -882,6 +882,31 @@ class FinGcWorkflowModel {
     return (await gcsFile.exists())[0];
   }
 
+  async batchStatus(name, finIds) {
+    let workflows = await pg.batchGetWorkflows(name, finIds);
+    let gcsPqSize = 5;
+
+    for( let i = 0; i < workflows.length; i += gcsPqSize ) {
+      let queryArray = [];
+      for( let j = i; j < i+gcsPqSize && j < workflows.length; j++ ) {
+        queryArray.push(workflows[j].workflow_id);
+      }
+      let result = await Promise.all(queryArray.map(id => this.getWorkflowParams(name, id)));
+      for( let j = 0; j < queryArray.length; j++ ) {
+        workflows[i+j].params = result[j];
+      }
+    }
+    return workflows;
+  }
+
+  async batchStart(name, params, finIds) {
+    for( let finId of finIds ) {
+      if( params ) await this.setWorkflowParams(name, finId, params);
+      await this.createWorkflow(name, finId, {force: true});
+    }
+    return this.batchStatus(name, finIds);
+  }
+
   async _checkTimeouts() {
     let timeout = config.google.workflow.timeoutMinutes;
     let rows = await pg.getTimeoutActiveAndInitWorkflows(timeout);

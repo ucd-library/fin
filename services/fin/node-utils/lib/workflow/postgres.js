@@ -77,6 +77,24 @@ class WorkflowPostgresUtils {
     return resp.rows;
   }
 
+  async batchGetWorkflows(name, workflowIds, select=['state']) {
+    if( typeof select === 'string' ) {
+      select = [select];
+    }
+    let selectStr = select.join(',');
+
+    let resp = await this.pg.query(
+      `SELECT 
+        ${selectStr} 
+      FROM ${this.schema}.workflow 
+      WHERE
+        name = $1 AND 
+        data->>'finPath' = ANY($1::text[])`, 
+      [name, workflowIds]
+    );
+    return resp.rows;
+  }
+
   async getWorkflowNamesForPath(path) {
     let resp = await this.pg.query(
       `select distinct name from ${this.schema}.workflow where state = 'completed' and data->>'finPath' = $1`, 

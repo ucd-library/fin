@@ -57,6 +57,58 @@ app.get('/list', async (req, res) => {
 
 });
 
+app.post('/batch/start', keycloak.protect(['admin']), async (req, res) => {
+  try {
+    if( !req.body.name ) {
+      return res.status(400).json({error : 'Missing name'});
+    }
+    if( !req.body.ids ) {
+      return res.status(400).json({error : 'Missing ids'});
+    }
+    if( !Array.isArray(req.body.ids) ) {
+      return res.status(400).json({error : 'ids must be an array'});
+    }
+
+    let result = await workflowModel.batchStart(
+      req.body.name,
+      req.body.params,
+      req.body.ids
+    );
+    res.json(result);
+  } catch(e) {
+    res.status(500).json({
+      error : e.message,
+      stack : e.stack
+    });
+  }
+});
+
+app.post('/batch/status', keycloak.protect(['admin']), async (req, res) => {
+  try {
+    if( !req.body.name ) {
+      return res.status(400).json({error : 'Missing name'});
+    }
+    if( !req.body.ids ) {
+      return res.status(400).json({error : 'Missing ids'});
+    }
+    if( !Array.isArray(req.body.ids) ) {
+      return res.status(400).json({error : 'ids must be an array'});
+    }
+
+    let result = await workflowModel.batchStatus(
+      req.body.name,
+      req.body.ids
+    );
+    res.json(result);
+  } catch(e) {
+    res.status(500).json({
+      error : e.message,
+      stack : e.stack
+    });
+  }
+});
+
+
 app.post('/:workflowName/params', keycloak.protect(['admin']), bodyParser.json(), async (req, res) => {
   let finPath = req.query.fcPath.replace(/\/fcrepo\/rest/, '');
 
