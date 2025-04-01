@@ -57,7 +57,11 @@ app.get('/list', async (req, res) => {
 
 });
 
-app.post('/batch/start', keycloak.protect(['admin']), async (req, res) => {
+app.post('/batch/start', keycloak.protect(['admin']), bodyParser.json(), async (req, res) => {
+  if( req.query.fcPath !== '/fcrepo/rest' ) {
+    return res.status(403).json({error : 'Must be called from root path /'});
+  }
+
   try {
     if( !req.body.name ) {
       return res.status(400).json({error : 'Missing name'});
@@ -83,7 +87,11 @@ app.post('/batch/start', keycloak.protect(['admin']), async (req, res) => {
   }
 });
 
-app.post('/batch/status', keycloak.protect(['admin']), async (req, res) => {
+app.post('/batch/status', keycloak.protect(['admin']), bodyParser.json(), async (req, res) => {
+  if( req.query.fcPath !== '/fcrepo/rest' ) {
+    return res.status(403).json({error : 'Must be called from root path /'});
+  }
+
   try {
     if( !req.body.name ) {
       return res.status(400).json({error : 'Missing name'});
