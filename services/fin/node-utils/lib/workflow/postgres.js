@@ -77,7 +77,10 @@ class WorkflowPostgresUtils {
     return resp.rows;
   }
 
-  async batchGetWorkflows(name, workflowIds, select=['state']) {
+  async batchGetWorkflows(name, workflowIds, select) {
+    if( !select ) {
+      select = ['state', 'workflow_id', 'created', `data->>'finPath' as finPath`];
+    }
     if( typeof select === 'string' ) {
       select = [select];
     }
@@ -89,7 +92,7 @@ class WorkflowPostgresUtils {
       FROM ${this.schema}.workflow 
       WHERE
         name = $1 AND 
-        data->>'finPath' = ANY($1::text[])`, 
+        data->>'finPath' = ANY($2::text[])`, 
       [name, workflowIds]
     );
     return resp.rows;
