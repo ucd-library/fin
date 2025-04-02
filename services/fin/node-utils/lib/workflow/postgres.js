@@ -79,7 +79,7 @@ class WorkflowPostgresUtils {
 
   async batchGetWorkflows(name, workflowIds, select) {
     if( !select ) {
-      select = ['state', 'workflow_id', 'created', `data->>'finPath' as finPath`];
+      select = ['state', 'workflow_id', 'created', `data->>'finPath' as "finPath"`];
     }
     if( typeof select === 'string' ) {
       select = [select];
