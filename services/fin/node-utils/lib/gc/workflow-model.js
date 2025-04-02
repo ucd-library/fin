@@ -889,9 +889,9 @@ class FinGcWorkflowModel {
     for( let i = 0; i < workflows.length; i += gcsPqSize ) {
       let queryArray = [];
       for( let j = i; j < i+gcsPqSize && j < workflows.length; j++ ) {
-        queryArray.push(workflows[j].workflow_id);
+        queryArray.push(workflows[j].finPath);
       }
-      let result = await Promise.all(queryArray.map(id => this.getWorkflowParams(name, id)));
+      let result = await Promise.all(queryArray.map(finPath => this.getWorkflowParams(name, finPath)));
       for( let j = 0; j < queryArray.length; j++ ) {
         workflows[i+j].params = result[j];
       }
