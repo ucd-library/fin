@@ -56,6 +56,10 @@ COPY ${FIN_REPO_SERVICE_ROOT}/oidc oidc
 COPY ${FIN_REPO_SERVICE_ROOT}/workflow workflow
 COPY ${FIN_REPO_SERVICE_ROOT}/uber uber
 
+# Service Definitions
+RUN mkdir -p /etc/fin
+COPY ${FIN_REPO_SERVICE_ROOT}/service-defs /etc/fin/services
+
 # Admin UI
 COPY ${FIN_REPO_SERVICE_ROOT}/admin-ui admin-ui
 RUN cd admin-ui/client/public && npm install
@@ -65,15 +69,5 @@ RUN npm run admin-ui-dist
 # Leave us in the service root dir
 WORKDIR ${FIN_SERVICE_ROOT}
 
-ARG FIN_APP_VERSION
-ENV FIN_APP_VERSION=${FIN_APP_VERSION}
-ARG FIN_REPO_TAG
-ENV FIN_REPO_TAG=${FIN_REPO_TAG}
-ARG FIN_BRANCH_NAME
-ENV FIN_BRANCH_NAME=${FIN_BRANCH_NAME}
-ARG FIN_SERVER_REPO_HASH
-ENV FIN_SERVER_REPO_HASH=${FIN_SERVER_REPO_HASH}
-ARG BUILD_DATETIME
-ENV BUILD_DATETIME=${BUILD_DATETIME}
 
 CMD [ "bash", "-c", "tail -f /dev/null"]

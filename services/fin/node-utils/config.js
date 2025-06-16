@@ -362,6 +362,11 @@ module.exports = {
     refreshTokenExpire : (86400 * 30)
   },
 
+  services : {
+    rootDir : env.FIN_SERVICE_DEF_ROOT || '/etc/fin/services',
+    skipFcrepo : env.FIN_SERVICE_SKIP_FCREPO === 'true',
+  },
+
   models : {
     rootDir : env.FIN_MODEL_ROOT || '/fin/services/models'
   },

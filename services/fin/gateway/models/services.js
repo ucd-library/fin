@@ -8,6 +8,8 @@ const util = require('util');
 const redis = require('../lib/redisClient')();
 const jwt = require('jsonwebtoken');
 const label = require('../models/label');
+const fs = require('fs');
+const path = require('path');
 // const finCache = new FinCache();
 
 jsonld.frame = util.promisify(jsonld.frame);
@@ -85,6 +87,25 @@ class ServiceModel {
     for( let name of modelNames ) {
       let modelService = await models.get(name);
       await this.loadModelTransformService(modelService);
+    }
+
+    if( config.services.rootDir && 
+        fs.existsSync(config.services.rootDir) &&
+        fs.statSync(config.services.rootDir).isDirectory() ) {
+      let files = fs.readdirSync(config.services.rootDir);
+      for (let file of files) {
+        let filePath = path.join(config.services.rootDir, file);
+        if (fs.statSync(filePath).isFile() && file.endsWith('.jsonld.json')) {
+          logger.info(`Loading service definition from disk: ${filePath}`);
+          await this.loadService(filePath);
+        }
+      }
+    } else {
+      logger.info(`${config.services.rootDir} does not exist, or is not a directory, skipping service disk reload`);
+    }
+
+    if( config.services.skipFcrepo ) {
+      logger.info('FIN_SERVICE_SKIP_FCREPO set, skipping fcrepo service reload');
     }
 
     // load services from fcrepo but don't wait so we can start the server
@@ -169,20 +190,27 @@ class ServiceModel {
   }
 
   async loadService(uri) {
-    let fcPath = uri.split(api.getConfig().fcBasePath)[1];
+    let graph, fcPath = '', nodeId = '';
 
-    let response = await api.metadata({
-      path: fcPath,
-      headers : {
-        Accept: 'application/ld+json; profile="http://www.w3.org/ns/json-ld#compacted"'
-      }
-    });
+    if( uri.match(/^\//) && fs.existsSync(uri) ) {
+      graph = JSON.parse(fs.readFileSync(uri, 'utf8'));
+    } else {
+      fcPath = uri.split(api.getConfig().fcBasePath)[1];
 
-    let graph = JSON.parse(response.data.body);
+      let response = await api.metadata({
+        path: fcPath,
+        headers : {
+          Accept: 'application/ld+json; profile="http://www.w3.org/ns/json-ld#compacted"'
+        }
+      });
+
+      graph = JSON.parse(response.data.body);
+      nodeId = api.getConfig().fcBasePath+fcPath.replace(/\/fcr:metadata$/, '');
+    }
+
     if( graph['@graph'] ) graph = graph['@graph'];
     if( !Array.isArray(graph) ) graph = [graph]
 
-    let nodeId = api.getConfig().fcBasePath+fcPath.replace(/\/fcr:metadata$/, '');
     let mainNode = graph.find(item => item['@id'].match(nodeId));
     let types = mainNode['@type'];
 
