@@ -106,6 +106,7 @@ class ServiceModel {
 
     if( config.services.skipFcrepo ) {
       logger.info('FIN_SERVICE_SKIP_FCREPO set, skipping fcrepo service reload');
+      return;
     }
 
     // load services from fcrepo but don't wait so we can start the server
