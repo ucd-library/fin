@@ -191,22 +191,27 @@ class ServiceModel {
   }
 
   async loadService(uri) {
+    logger.info('Loading service from', uri);
     let graph, fcPath = '', nodeId = '';
 
-    if( uri.match(/^\//) && fs.existsSync(uri) ) {
-      graph = JSON.parse(fs.readFileSync(uri, 'utf8'));
-    } else {
-      fcPath = uri.split(api.getConfig().fcBasePath)[1];
+    try {
+      if( uri.match(/^\//) && fs.existsSync(uri) ) {
+        graph = JSON.parse(fs.readFileSync(uri, 'utf8'));
+      } else {
+        fcPath = uri.split(api.getConfig().fcBasePath)[1];
+        let response = await api.metadata({
+          path: fcPath,
+          headers : {
+            Accept: 'application/ld+json; profile="http://www.w3.org/ns/json-ld#compacted"'
+          }
+        });
 
-      let response = await api.metadata({
-        path: fcPath,
-        headers : {
-          Accept: 'application/ld+json; profile="http://www.w3.org/ns/json-ld#compacted"'
-        }
-      });
-
-      graph = JSON.parse(response.data.body);
-      nodeId = api.getConfig().fcBasePath+fcPath.replace(/\/fcr:metadata$/, '');
+        graph = JSON.parse(response.data.body);
+        nodeId = api.getConfig().fcBasePath+fcPath.replace(/\/fcr:metadata$/, '');
+      }
+    } catch (e) {
+      logger.error('Error loading service from fcrepo: ', uri, e.message, e.stack);
+      return;
     }
 
     if( graph['@graph'] ) graph = graph['@graph'];
