@@ -120,14 +120,28 @@ class FinSearch {
       bool : {}
     }
 
-    // append a text 'multi_match' search
+    // append a text 'multi_match' search / simple_query_string
     if( query.text && query.textFields ) {
-      esBody.query.bool.must = [{
-        multi_match : {
-          query : query.text,
-          fields : query.textFields
-        }
-      }];
+      if( query.simple_query_string ) {
+        // use simple_query_string query
+        esBody.query.bool.must = [{
+          simple_query_string : {
+            query : query.text,
+            fields : query.textFields
+            // "default_operator": "and",
+            // "analyze_wildcard": true,
+            // "flags": "OR|AND|NOT|PHRASE|PRECEDENCE|ESCAPE|PREFIX|WHITESPACE"
+          }
+        }];
+      } else {
+        // multimatch query
+        esBody.query.bool.must = [{
+          multi_match : {
+            query : query.text,
+            fields : query.textFields
+          }
+        }];
+      }
     }
 
     if( !query.filters ) return esBody;
