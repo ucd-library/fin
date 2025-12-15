@@ -35,6 +35,9 @@ class FinSearch {
         response.results = esResult.hits.hits
           .map(item => {
             item._source._score = item._score;
+            if( item._explanation ) {
+              item._source._explanation = item._explanation;
+            }
             return item._source;
           });
       }
@@ -99,6 +102,10 @@ class FinSearch {
     }
     if( !query.limit && noLimit === true ) {
       esBody.size = 10000 - esBody.from;
+    }
+    
+    if( query.explain ) {
+      esBody.explain = true;
     }
 
     let aggs = this._getEsAggs(query.facets);
