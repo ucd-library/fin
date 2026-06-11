@@ -24,10 +24,10 @@ class PG {
       max : 3
     });
 
-    this.client.on('end', async () => {
+    this.client.on('end', () => {
       logger.info('Postgresql client end event');
     });
-    this.client.on('error', async e => {
+    this.client.on('error', e => {
       logger.error('Postgresql client error event', e);
     });
   }
@@ -48,11 +48,26 @@ class PG {
 
       this.connecting = this.client.connect();
       this._client = await this.connecting;
+
+      this._client.on('end', () => {
+        logger.info('Postgresql client end event');
+        this.resetClient();
+      });
+      this._client.on('error', e => {
+        logger.error('Postgresql client error event', e);
+        this.resetClient();
+      });
+
       logger.info('Connected to postgresql');
       this.connecting = null;
       this.wait = null;
       this.connected = true;
     }
+  }
+
+  resetClient() {
+    this._client = null;
+    this.connected = false;
   }
 
   async query(query, params) {

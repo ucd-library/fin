@@ -18,11 +18,6 @@ api.setConfig({
 });
 
 async function setup(app) {
-  // models like the service model and auth model require access
-  // to fcrepo, init these models here
-  await startupCheck();
-  logger.info('fcrepo connection established');
-
   await servicesModel.init();
 
   logger.info('fin services initialized');
@@ -73,6 +68,11 @@ async function setup(app) {
 
   require('../../../admin-ui/controllers/static')(app);
   app.use('/fin', require('../../controllers/fin'));
+
+  // models like the service model and auth model require access
+  // to fcrepo, init these models here
+  startupCheck()
+    .then(() => logger.info('fcrepo connection established'));
 }
 
 module.exports = setup;

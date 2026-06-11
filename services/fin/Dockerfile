@@ -1,4 +1,4 @@
-FROM node:20-bullseye
+FROM node:22-bookworm
 
 
 ENV FIN_SERVICE_ROOT=/fin/services
@@ -11,9 +11,15 @@ ARG FIN_REPO_API_ROOT=fin-api
 ENV DEBIAN_FRONTEND=noninteractive
 
 COPY ${FIN_REPO_SERVICE_ROOT}/install-depends.sh /install-depends.sh
-RUN chmod +x /install-depends.sh && \
-  /install-depends.sh && \
-  rm /install-depends.sh
+RUN apt-get update && apt-get install -y --no-install-recommends git jq zip unzip vim apt-transport-https ca-certificates gnupg dnsutils
+RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | \
+  tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+  apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - 
+  
+RUN apt update -y && apt install --no-install-recommends -y google-cloud-cli
+RUN rm -rf /var/lib/apt/lists/*
+RUN apt-get clean
 
 RUN mkdir -p $FIN_SERVICE_ROOT
 RUN mkdir -p $FIN_API_ROOT
