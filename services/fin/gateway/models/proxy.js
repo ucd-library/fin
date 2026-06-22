@@ -225,7 +225,7 @@ class ProxyModel {
     if( await this._mirrorOrBlockRequest(req, res, path) ) {
       return;
     }
-    
+
     if( this._isMetadataRequest(req) ) {
       path = path.replace(/\/fcr:metadata$/, '');
     }
@@ -434,12 +434,12 @@ class ProxyModel {
   }
 
   async _mirrorOrBlockRequest(req, res, path) {
-    if( config.gateway.proxy.mirror.files && 
+    let matchPath = path.split('?')[0];
+	  if( config.gateway.proxy.mirror.files && 
         req.method === 'GET' &&
-        path.match(config.gateway.proxy.mirror.files) ) {
-
+        matchPath.match(config.gateway.proxy.mirror.files) ) {
       if( req?.user?.roles?.includes(config.gateway.proxy.mirror.agent) ) {
-        return false;
+	      return false;
       }
       
       let resp = await api.head({
@@ -449,14 +449,15 @@ class ProxyModel {
       });
 
       if( resp.last.statusCode === 200 ) {
-
         // only mirror non-rdf containers
         if( api.isRdfContainer(resp.last) ) {
-          return false
+		      return false
         }
 
         let payload = this._getMirrorPayload(path, resp.last.headers.etag); 
-        res.set('Location', config.gateway.proxy.mirror.host+'?k='+payload.k+'&m='+payload.m);
+        let params = '?k='+payload.k+'&m='+payload.m;
+        if( path.indexOf('download=true') > -1 ) params += '&download=true';
+        res.set('Location', config.gateway.proxy.mirror.host+params);
         res.status(302).send();
         return true;
       } else if ( resp.last.statusCode === 404 ) {
@@ -469,7 +470,7 @@ class ProxyModel {
 
     } else if( config.gateway.proxy.disableFileDownload && 
         req.method === 'GET' &&
-        path.match(config.gateway.proxy.disableFileDownload) ) {
+        matchPath.match(config.gateway.proxy.disableFileDownload) ) {
       res.status(403).send('File downloads are disabled');
       return true;
     }
