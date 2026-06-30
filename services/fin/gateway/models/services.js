@@ -443,6 +443,15 @@ class ServiceModel {
       .map(item => item.trim())
       .filter(item => item)
 
+    // Reindex events (sent by ReindexCrawler) don't set the fcrepo jms headers.
+    // Fall back to the activitystreams#object in the message body for @id/@type.
+    if( !id ) {
+      id = event.getFinId();
+    }
+    if( !types.length ) {
+      types = event.getContainerTypes();
+    }
+
     // if( this.finCacheEnabled ) {
     //   try {
     //     await finCache.onFcrepoEvent(event);
