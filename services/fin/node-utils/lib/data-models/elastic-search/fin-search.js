@@ -61,7 +61,7 @@ class FinSearch {
           //  - we haven't already added the range (cause you will hit this twice)
           if( !response.aggregations.ranges[facet] &&
               searchDocument.facets[facet] &&
-              searchDocument.facets[facet].type === 'range' && 
+              (searchDocument.facets[facet].type === 'range' || searchDocument.facets[facet].type === 'range-overlap') &&
               esResult.aggregations[facet+'-min'] &&
               esResult.aggregations[facet+'-max'] &&
               esResult.aggregations[facet+'-max'].value ) {
@@ -148,6 +148,7 @@ class FinSearch {
 
     let range = {};
     let rangeWithNull = [];
+    let rangeOverlap = [];
     let keywords = [];
     let prefix = {};
 
@@ -195,6 +196,22 @@ class FinSearch {
           }
           range[attr] = attrProps.value;
         }
+
+      // the attribute is a range facet backed by two separate bounding fields
+      // (eg an uncertain/circa date stored as a year span rather than a single value),
+      // so a document matches if its [startField, endField] interval overlaps the
+      // query's {gte, lte}, not just when a single field falls within it
+      } else if( attrProps.type === 'range-overlap' ) {
+
+        if( attrProps.value.includeNull ) {
+          let r = Object.assign({}, attrProps.value);
+          delete r.includeNull;
+
+          rangeOverlap.push(this._getRangeOverlapWithNullQuery(r, attrProps.startField, attrProps.endField));
+        } else {
+          rangeOverlap.push(this._getRangeOverlapQuery(attrProps.value, attrProps.startField, attrProps.endField));
+        }
+
       } else if( attrProps.type === 'prefix' ) {
 
         prefix[attr] = attrProps.value;
@@ -227,6 +244,15 @@ class FinSearch {
       esBody.query.bool.must = esBody.query.bool.must.concat(rangeWithNull);
     }
 
+    // just like above, range-overlap clauses are already full bool queries, so concat
+    if( rangeOverlap.length > 0 ) {
+      if( !esBody.query.bool.must ) {
+        esBody.query.bool.must = [];
+      }
+
+      esBody.query.bool.must = esBody.query.bool.must.concat(rangeOverlap);
+    }
+
     if( Object.keys(prefix).length > 0 ) {
       if( !esBody.query.bool.must ) {
         esBody.query.bool.must = [];
@@ -257,13 +283,24 @@ class FinSearch {
         }
       } else if( facets[key].type === 'range' ) {
         aggs[key+'-min'] = {
-          min : { 
+          min : {
             field : key
           }
         }
         aggs[key+'-max'] = {
-          max : { 
+          max : {
             field : key
+          }
+        }
+      } else if( facets[key].type === 'range-overlap' ) {
+        aggs[key+'-min'] = {
+          min : {
+            field : facets[key].startField
+          }
+        }
+        aggs[key+'-max'] = {
+          max : {
+            field : facets[key].endField
           }
         }
       }
@@ -297,6 +334,58 @@ class FinSearch {
               must_not: {
                 exists: {
                   field: attr
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+
+  /**
+   * @method _getRangeOverlapQuery
+   * @description get the part of the es query document matching documents whose
+   * [startField, endField] interval overlaps the given {gte, lte} query range.
+   * Used for range facets stored as two separate bounding fields (eg an
+   * uncertain/circa date stored as a year span) instead of a single value, so
+   * a fuzzy record matches whenever any part of its possible range falls in the
+   * user's selected window, not just a single representative value.
+   *
+   * @param {Object} value {gte, lte} query range, either bound optional
+   * @param {String} startField field holding each document's range start
+   * @param {String} endField field holding each document's range end
+   *
+   * @returns {Object} elasticsearch bool query clause
+   */
+  _getRangeOverlapQuery(value, startField, endField) {
+    let must = [];
+    if( value.gte !== undefined ) must.push({range: {[endField] : {gte: value.gte}}});
+    if( value.lte !== undefined ) must.push({range: {[startField] : {lte: value.lte}}});
+    return {bool: {must}};
+  }
+
+  /**
+   * @method _getRangeOverlapWithNullQuery
+   * @description same as {@link _getRangeOverlapQuery} but also matches documents
+   * where the range isn't set at all (the "include unspecified" case).
+   *
+   * @param {Object} value {gte, lte} query range
+   * @param {String} startField field holding each document's range start
+   * @param {String} endField field holding each document's range end
+   *
+   * @returns {Object} elasticsearch bool query clause
+   */
+  _getRangeOverlapWithNullQuery(value, startField, endField) {
+    return {
+      bool : {
+        should : [
+          this._getRangeOverlapQuery(value, startField, endField),
+          {
+            bool: {
+              must_not: {
+                exists: {
+                  field: startField
                 }
               }
             }
