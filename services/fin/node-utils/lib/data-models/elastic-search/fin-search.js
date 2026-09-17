@@ -63,13 +63,19 @@ class FinSearch {
               searchDocument.facets[facet] &&
               (searchDocument.facets[facet].type === 'range' || searchDocument.facets[facet].type === 'range-overlap') &&
               esResult.aggregations[facet+'-min'] &&
-              esResult.aggregations[facet+'-max'] &&
-              esResult.aggregations[facet+'-max'].value ) {
+              esResult.aggregations[facet+'-max'] ) {
 
-                response.aggregations.ranges[facet] = {
-              min : esResult.aggregations[facet+'-min'].value,
-              max : esResult.aggregations[facet+'-max'].value,
-            };
+            // range/range-overlap have nested aggs for min/max to allow min/max years to be outside of the search results returned
+            // other results are filtered to the min/max years (in _getEsAggs())
+            let minValue = esResult.aggregations[facet+'-min'].scoped.agg.value;
+            let maxValue = esResult.aggregations[facet+'-max'].scoped.agg.value;
+
+            if( maxValue != null ) {
+              response.aggregations.ranges[facet] = {
+                min : minValue,
+                max : maxValue,
+              };
+            }
           }
         }
       }
@@ -101,7 +107,7 @@ class FinSearch {
       esBody.size = 10000 - esBody.from;
     }
 
-    let aggs = this._getEsAggs(query.facets);
+    let aggs = this._getEsAggs(query.facets, query.filters);
     if( Object.keys(aggs).length ) esBody.aggs = aggs;
 
     if( query.sort ) {
@@ -156,7 +162,7 @@ class FinSearch {
     // and range filters
     for( var attr in query.filters ) {
       let attrProps = query.filters[attr];
-      
+
       // the attribute is a keyword facet
       if( attrProps.type === 'keyword' ) {
 
@@ -184,7 +190,7 @@ class FinSearch {
 
         // we want to include null values in the range filter        
         if( attrProps.value.includeNull ) {
-          
+
           let r = Object.assign({}, attrProps.value);
           let nullValue = r.includeNull;
           delete r.includeNull;
@@ -264,13 +270,68 @@ class FinSearch {
   }
 
   /**
+   * @method _buildExclusionFilterQuery
+   * @description build an elasticsearch bool query representing every currently active
+   * filter EXCEPT the one named `excludeAttr` - used only to scope a range/range-overlap
+   * facet's own min/max aggregation to every OTHER active filter (see _getEsAggs), without
+   * touching the main query's own filter-building above.
+   *
+   * @param {Object} filters searchDocument.filters
+   * @param {String} excludeAttr filter attribute to leave out
+   *
+   * @returns {Object} elasticsearch bool query
+   */
+  _buildExclusionFilterQuery(filters = {}, excludeAttr) {
+    let filter = [];
+    let must = [];
+
+    for( var attr in filters ) {
+      if( attr === excludeAttr ) continue;
+      let attrProps = filters[attr];
+
+      if( attrProps.type === 'keyword' ) {
+        if( attrProps.op === 'or' ) {
+          filter.push({terms: {[attr]: attrProps.value}});
+        } else if( attrProps.op === 'and' ) {
+          attrProps.value.forEach(val => filter.push({term: {[attr]: val}}));
+        }
+      } else if( attrProps.type === 'range' ) {
+        if( attrProps.value.includeNull ) {
+          let r = Object.assign({}, attrProps.value);
+          delete r.includeNull;
+          must.push(this._getRangeWithNullQuery(r, attr));
+        } else {
+          must.push({range: {[attr]: attrProps.value}});
+        }
+      } else if( attrProps.type === 'range-overlap' ) {
+        if( attrProps.value.includeNull ) {
+          let r = Object.assign({}, attrProps.value);
+          delete r.includeNull;
+          must.push(this._getRangeOverlapWithNullQuery(r, attrProps.startField, attrProps.endField));
+        } else {
+          must.push(this._getRangeOverlapQuery(attrProps.value, attrProps.startField, attrProps.endField));
+        }
+      } else if( attrProps.type === 'prefix' ) {
+        must.push({prefix: {[attr]: attrProps.value}});
+      }
+    }
+
+    let bool = {};
+    if( filter.length > 0 ) bool.filter = filter;
+    if( must.length > 0 ) bool.must = must;
+    return {bool};
+  }
+
+  /**
    * @method _getEsAggs
    * @description given a ucd dams search document facets object, return
    * a elastic search aggregation object.
    * 
    * @param {Object.<string, {type: string, max: number}>} facets hash of facet key to facet description object
+   * @param {Object} [filters] searchDocument.filters - used to scope each range/range-overlap
+   * facet's own aggregation to the other active filters (excluding date filters)
    */
-  _getEsAggs(facets = {}) {
+  _getEsAggs(facets = {}, filters = {}) {
     let aggs = {};
 
     for( var key in facets ) {
@@ -281,28 +342,22 @@ class FinSearch {
             size : facets[key].max || 1000
           }
         }
-      } else if( facets[key].type === 'range' ) {
+      } else if( facets[key].type === 'range' || facets[key].type === 'range-overlap' ) {
+        let isOverlap = facets[key].type === 'range-overlap';
+        let minField = isOverlap ? facets[key].startField : key;
+        let maxField = isOverlap ? facets[key].endField : key;
+
+        // scope dates min/max to exclude dates, so the min / max dates available in the range slider persist
+        let filterBool = this._buildExclusionFilterQuery(filters, key);
+
         aggs[key+'-min'] = {
-          min : {
-            field : key
-          }
-        }
+          global: {},
+          aggs: { scoped: { filter: filterBool, aggs: { agg: { min: { field: minField } } } } }
+        };
         aggs[key+'-max'] = {
-          max : {
-            field : key
-          }
-        }
-      } else if( facets[key].type === 'range-overlap' ) {
-        aggs[key+'-min'] = {
-          min : {
-            field : facets[key].startField
-          }
-        }
-        aggs[key+'-max'] = {
-          max : {
-            field : facets[key].endField
-          }
-        }
+          global: {},
+          aggs: { scoped: { filter: filterBool, aggs: { agg: { max: { field: maxField } } } } }
+        };
       }
     }
 
