@@ -1,4 +1,4 @@
-FROM debian:bullseye
+FROM debian:bookworm
 
 # copy PostgREST over
 COPY --from=postgrest/postgrest:v12.2.3 /bin/postgrest /bin

@@ -3,6 +3,10 @@ FROM fcrepo/fcrepo:6.5.1-tomcat9
 
 RUN apt update && apt install -y vim rsync
 
+# drop the default HTTP connector timeout from Tomcat's 20s to 10s -
+# misbehaving clients were holding threads open and causing a backlog of hung requests
+RUN sed -i 's/connectionTimeout="20000"/connectionTimeout="10000"/' $CATALINA_HOME/conf/server.xml
+
 RUN mkdir -p /etc/fin
 COPY fcrepo.properties /etc/fin/fcrepo.properties
 COPY root-authorization.ttl /etc/fin/root-authorization.ttl
