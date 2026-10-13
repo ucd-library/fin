@@ -41,6 +41,8 @@ class LabelService {
     if( container['@graph'] ) container = container['@graph'];
     if( !Array.isArray(container) ) container = [container];
 
+    await pg.query(`DELETE FROM ${this.schema}.label WHERE container = $1`, [containerPath]);
+
     for( let node of container ) {
       for( let type of this.TYPES ) {
         if( !node[type] ) continue;
