@@ -197,6 +197,9 @@ class ProxyModel {
       return res.status(200).send();
     }
 
+    // block requests to fcr:versions
+    if (req.path.includes('fcr:versions')) return res.status(403).end();
+
     // set forwarded header to our base server url
     if( config.server.url ) {
       forwardedHeader(req.headers);
