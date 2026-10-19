@@ -8,6 +8,7 @@ The following are the standard environmental variables used by Fin and it's core
   - [Postgres Config](#postgres-config)
   - [ElasticSearch Config](#elasticsearch-config)
   - [Redis Config](#redis-config)
+  - [Gateway Turnstile Config](#gateway-turnstile-config)
 
 # Base Config
 
@@ -221,3 +222,84 @@ Default: 6379
 Default: fcrepo
 
 Host name of the `fcrepo` service
+
+# Gateway Turnstile Config
+
+Turnstile is a concurrency admission gate for direct, unauthenticated `/fcrepo/*` binary GET
+requests (any request whose path ends in a file extension). It caps how many such requests
+from a single client IP group (/24 for ipv4, /64 for ipv6 by default) may be in flight at
+once, queues a small number more, and rejects the rest with a `429` - protecting fcrepo from
+being overwhelmed by a distributed bot network without needing to behaviorally distinguish
+bots from humans. State is coordinated across gateway replicas via Postgres, and the gate
+fails open (lets requests through unthrottled) on any Postgres error.
+
+## FIN_GATEWAY_TURNSTILE_ENABLED
+
+Default: false
+
+Set to `true` to enable the turnstile gate.
+
+## FIN_GATEWAY_TURNSTILE_BINARY_PATH_REGEX
+
+Default: `\.[a-zA-Z]+$`
+
+Regular expression (as a string) used to decide whether a request path looks like a binary
+download. Matches `config.gateway.proxy.disableFileDownload`'s default pattern.
+
+## FIN_GATEWAY_TURNSTILE_MAX_SERVED
+
+Default: 1
+
+Maximum number of concurrent in-flight requests allowed per ip group.
+
+## FIN_GATEWAY_TURNSTILE_MAX_PENDING
+
+Default: 5
+
+Maximum number of queued (waiting) requests allowed per ip group before new requests are
+rejected with `429`.
+
+## FIN_GATEWAY_TURNSTILE_PENDING_TIMEOUT_MS
+
+Default: 10000
+
+How long (in milliseconds) a queued request will wait for an in-flight slot before it is
+expired and rejected with `429`.
+
+## FIN_GATEWAY_TURNSTILE_POLL_INTERVAL_MS
+
+Default: 250
+
+How often (in milliseconds) a queued request polls Postgres to check whether it has been
+promoted to an in-flight slot.
+
+## FIN_GATEWAY_TURNSTILE_IPV4_PREFIX
+
+Default: 24
+
+IPv4 group prefix length, in bits. Must be a multiple of 8.
+
+## FIN_GATEWAY_TURNSTILE_IPV6_PREFIX
+
+Default: 64
+
+IPv6 group prefix length, in bits. Must be a multiple of 16.
+
+## FIN_GATEWAY_TURNSTILE_STALE_ACTIVE_MS
+
+Default: 300000 (5 minutes)
+
+Age after which an in-flight slot is assumed abandoned (e.g. the gateway pod serving it
+crashed) and reclaimed.
+
+## FIN_GATEWAY_TURNSTILE_ALLOWLIST
+
+Default: unset (empty)
+
+Comma-separated list of client ips that bypass the turnstile gate entirely, just like
+authenticated requests. Each entry may be a bare ip (`203.0.113.5`), a CIDR range
+(`198.51.100.0/24`), or an explicit start-end range (`192.0.2.10-192.0.2.20`). Both ipv4 and
+ipv6 are supported, and entries may be mixed, e.g.
+`203.0.113.5,198.51.100.0/24,2001:db8::/32`. Invalid entries are logged and ignored rather
+than failing startup. The list is parsed once at process start, so changing it requires a
+gateway restart.
