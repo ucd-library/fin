@@ -26,6 +26,8 @@
  *   FIN_TEST_ALLOWLISTED_IP           spoofed ip for the allowlist-bypass scenario (default 169.237.1.100, inside the UC Davis
  *                                     campus range 169.237.0.0/16) - that range (or a range covering this ip) must be present
  *                                     in the target gateway's FIN_GATEWAY_TURNSTILE_ALLOWLIST for this scenario to pass
+ *   FIN_TEST_SCENARIO                 key of a single scenario to run (default 'all'). One of: baseline, single-swarm,
+ *                                     grouping, cross-group, ipv6, slow-drip, bypass, auth-bypass, allowlist-bypass, sequential
  */
 
 const BASE_URL = (process.env.FIN_TEST_BASE_URL || 'http://localhost:30000').replace(/\/$/, '');
@@ -37,6 +39,7 @@ const TIMEOUT_CLASSIFY_MS = parseInt(process.env.FIN_TEST_TIMEOUT_CLASSIFY_MS ||
 const SCENARIO_PAUSE_MS = parseInt(process.env.FIN_TEST_SCENARIO_PAUSE_MS || '1500');
 const AUTH_COOKIE = process.env.FIN_TEST_AUTH_COOKIE || '';
 const ALLOWLISTED_IP = process.env.FIN_TEST_ALLOWLISTED_IP || '169.237.1.100';
+const SCENARIO = process.env.FIN_TEST_SCENARIO || 'all';
 
 const PDF_URL = BASE_URL + PDF_PATH;
 const CONTAINER_URL = BASE_URL + CONTAINER_PATH;
@@ -601,20 +604,30 @@ async function main() {
   console.log(col('dim', `  allowlist test ip:       ${ALLOWLISTED_IP}`));
 
   const scenarios = [
-    scenarioBaseline,
-    scenarioSingleSwarm,
-    scenarioGroupingCorrectness,
-    scenarioCrossGroupIsolation,
-    scenarioIpv6Grouping,
-    scenarioSlowDripTimeout,
-    scenarioBypass,
-    scenarioAuthBypass,
-    scenarioAllowlistBypass,
-    scenarioSequentialFairUse
+    {key: 'baseline', fn: scenarioBaseline},
+    {key: 'single-swarm', fn: scenarioSingleSwarm},
+    {key: 'grouping', fn: scenarioGroupingCorrectness},
+    {key: 'cross-group', fn: scenarioCrossGroupIsolation},
+    {key: 'ipv6', fn: scenarioIpv6Grouping},
+    {key: 'slow-drip', fn: scenarioSlowDripTimeout},
+    {key: 'bypass', fn: scenarioBypass},
+    {key: 'auth-bypass', fn: scenarioAuthBypass},
+    {key: 'allowlist-bypass', fn: scenarioAllowlistBypass},
+    {key: 'sequential', fn: scenarioSequentialFairUse}
   ];
 
-  for( const scenario of scenarios ) {
-    await scenario();
+  let toRun = scenarios;
+  if( SCENARIO !== 'all' ) {
+    toRun = scenarios.filter(s => s.key === SCENARIO);
+    if( !toRun.length ) {
+      console.error(col('red', `\nUnknown FIN_TEST_SCENARIO '${SCENARIO}'. Valid keys: ${scenarios.map(s => s.key).join(', ')}, all`));
+      process.exit(1);
+    }
+  }
+  console.log(col('dim', `  scenario filter: ${SCENARIO}`));
+
+  for( const scenario of toRun ) {
+    await scenario.fn();
     await sleep(SCENARIO_PAUSE_MS);
   }
 
