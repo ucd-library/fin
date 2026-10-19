@@ -9,7 +9,6 @@ server/backups
 loaded-transforms
 gitinfo.json
 fcrepo-webapp-*-SNAPSHOT*
-tests
 test
 temp/
 services/fin/admin-ui/client/public/js
