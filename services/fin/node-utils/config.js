@@ -73,6 +73,9 @@ if( mirrorDownloads === 'true' ) {
   mirrorDownloads = new RegExp(mirrorDownloads);
 }
 
+let turnstileBinaryPath = env.FIN_GATEWAY_TURNSTILE_BINARY_PATH_REGEX;
+turnstileBinaryPath = turnstileBinaryPath ? new RegExp(turnstileBinaryPath) : /\.[a-zA-Z]+$/;
+
 // make sure this is set for gcssync templates
 if( !env.WORKFLOW_ENV ) env.WORKFLOW_ENV = 'local-dev';
 
@@ -140,6 +143,18 @@ module.exports = {
         agent : env.FIN_MIRROR_AGENT || 'mirror',
         expires : env.FIN_MIRROR_TIMEOUT || 1000 * 60 * 5
       }
+    },
+    turnstile : {
+      enabled : env.FIN_GATEWAY_TURNSTILE_ENABLED === 'true',
+      binaryPathRegex : turnstileBinaryPath,
+      maxServedPerGroup : parseInt(env.FIN_GATEWAY_TURNSTILE_MAX_SERVED || 1),
+      maxPendingPerGroup : parseInt(env.FIN_GATEWAY_TURNSTILE_MAX_PENDING || 5),
+      pendingTimeoutMs : parseInt(env.FIN_GATEWAY_TURNSTILE_PENDING_TIMEOUT_MS || 10000),
+      pollIntervalMs : parseInt(env.FIN_GATEWAY_TURNSTILE_POLL_INTERVAL_MS || 250),
+      ipv4PrefixLength : parseInt(env.FIN_GATEWAY_TURNSTILE_IPV4_PREFIX || 24),
+      ipv6PrefixLength : parseInt(env.FIN_GATEWAY_TURNSTILE_IPV6_PREFIX || 64),
+      staleActiveMs : parseInt(env.FIN_GATEWAY_TURNSTILE_STALE_ACTIVE_MS || 1000 * 60 * 5),
+      allowlist : env.FIN_GATEWAY_TURNSTILE_ALLOWLIST || ''
     },
     host : 'http://gateway:'+(env.FIN_GATEWAY_HTTP_PORT || 3000),
     fcrepoDataMount : env.GATEWAY_FCREPO_DATA_MOUNT || '/data',

@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const {logger, config, jwt, workflow, FinDigests} = require('@ucd-lib/fin-service-utils');
 const serviceModel = require('./services');
 const proxy = require('../lib/http-proxy');
+const turnstile = require('../lib/turnstile');
 const serviceProxy = require('./service-proxy');
 const forwardedHeader = require('../lib/forwarded-header');
 const authenticationServiceProxy = require('./service-proxy/authentication-service');
@@ -228,7 +229,12 @@ class ProxyModel {
     if( await this._mirrorOrBlockRequest(req, res, path) ) {
       return;
     }
-    
+
+    if( config.gateway.turnstile.enabled ) {
+      let proceed = await turnstile.admit(req, res);
+      if( !proceed ) return;
+    }
+
     if( this._isMetadataRequest(req) ) {
       path = path.replace(/\/fcr:metadata$/, '');
     }
