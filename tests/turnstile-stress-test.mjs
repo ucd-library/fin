@@ -27,7 +27,13 @@
  *                                     campus range 169.237.0.0/16) - that range (or a range covering this ip) must be present
  *                                     in the target gateway's FIN_GATEWAY_TURNSTILE_ALLOWLIST for this scenario to pass
  *   FIN_TEST_SCENARIO                 key of a single scenario to run (default 'all'). One of: baseline, single-swarm,
- *                                     grouping, cross-group, ipv6, slow-drip, bypass, auth-bypass, allowlist-bypass, sequential
+ *                                     grouping, cross-group, ipv6, slow-drip, bypass, auth-bypass, allowlist-bypass,
+ *                                     sequential, real-ip
+ *
+ * Most scenarios spoof CF-Connecting-IP, which only works against a gateway that isn't actually
+ * sitting behind Cloudflare. To test a real dev/prod deployment behind Cloudflare's edge, run just
+ * the 'real-ip' scenario (FIN_TEST_SCENARIO=real-ip) - it sends no spoofed header at all, so it
+ * exercises the gate using your actual source ip, exactly as Cloudflare would report it.
  */
 
 const BASE_URL = (process.env.FIN_TEST_BASE_URL || 'http://localhost:30000').replace(/\/$/, '');
@@ -301,6 +307,31 @@ async function scenarioSingleSwarm() {
     printVerdict('INFO', `all ${ok} requests succeeded with no rejections - either turnstile is disabled, or its limits are configured higher than this burst size`);
   } else {
     printVerdict('FAIL', 'no successful requests at all - check FIN_TEST_BASE_URL/PDF_PATH and that the gateway is reachable');
+  }
+  return results;
+}
+
+async function scenarioRealIp() {
+  const specs = Array.from({length: BURST_SIZE}, (_, i) => ({
+    url: PDF_URL, label: `real client #${i + 1}`
+  }));
+  const results = await runBurst(
+    'Scenario: real-ip burst (no spoofed header)',
+    `${BURST_SIZE} concurrent requests sent with no CF-Connecting-IP header at all, so the gateway groups `
+      + 'them by whatever source ip it actually sees (your real ip locally, or the ip Cloudflare reports for '
+      + 'a dev/prod deployment behind its edge). Use this one against a real Cloudflare-fronted target, where '
+      + 'the spoofed-header scenarios above do not apply.',
+    specs
+  );
+  recordScenario('real-ip burst', results);
+
+  const immediate = results.filter(r => r.outcome === 'immediate').length;
+  const ok = results.filter(r => r.ok && r.status === 200).length;
+  const rejected = results.filter(r => r.ok && r.status === 429).length;
+  if( ok > 0 && (rejected > 0 || ok === results.length) ) {
+    printVerdict('PASS', `${immediate} immediate, ${ok - immediate} queued, ${rejected} rejected - gate is actively shaping traffic from this real ip`);
+  } else {
+    printVerdict('FAIL', 'no successful requests at all - check FIN_TEST_BASE_URL/PDF_PATH and that the target is reachable');
   }
   return results;
 }
@@ -605,6 +636,7 @@ async function main() {
 
   const scenarios = [
     {key: 'baseline', fn: scenarioBaseline},
+    {key: 'real-ip', fn: scenarioRealIp},
     {key: 'single-swarm', fn: scenarioSingleSwarm},
     {key: 'grouping', fn: scenarioGroupingCorrectness},
     {key: 'cross-group', fn: scenarioCrossGroupIsolation},
